@@ -31,7 +31,7 @@ import { createLocalStorageRepository } from "../infrastructure/localStorageRepo
 import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js";
 import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js";
 import { renderProjectManagement } from "./projectManagement.js";
-import { renderStartPage } from "./startPage.js?v=20260527-home";
+import { renderStartPage } from "./startPage.js?v=20260527-buttons";
 import { renderOverview } from "./steps/overview.js";
 import { renderImplementation } from "./steps/implementation.js";
 import { renderStep1 } from "./steps/step1.js";

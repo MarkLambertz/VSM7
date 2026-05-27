@@ -190,17 +190,20 @@ select:focus {
 }
 
 .completeness-trigger {
-  display: grid;
-  grid-template-columns: auto auto;
+  display: inline-flex;
   gap: 6px;
   align-items: center;
-  min-height: 36px;
+  justify-content: center;
+  height: 34px;
+  min-height: 0;
   padding: 0 10px;
   border: 1px solid var(--blue);
   border-radius: 6px;
   background: var(--blue-soft);
   color: var(--blue);
   font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .completeness-trigger span {
@@ -325,11 +328,18 @@ select:focus {
 .primary-button,
 .ghost-button,
 .icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: 34px;
+  min-height: 0;
   border: 1px solid transparent;
   border-radius: 6px;
-  min-height: 36px;
   padding: 0 12px;
   font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .save-indicator {
@@ -373,14 +383,16 @@ select:focus {
 }
 
 .ghost-button.small {
-  min-height: 30px;
+  height: 28px;
+  min-height: 0;
   padding: 0 10px;
   font-size: 12px;
 }
 
 .icon-button {
-  width: 32px;
-  min-height: 32px;
+  width: 30px;
+  height: 30px;
+  min-height: 0;
   padding: 0;
   border-color: #f0c4bd;
   background: #fff7f6;
@@ -414,7 +426,11 @@ select:focus {
 }
 
 .step-rail-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-top: auto;
+  height: 32px;
   min-height: 32px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
@@ -422,6 +438,7 @@ select:focus {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+  line-height: 1.1;
 }
 
 .step-button {
@@ -705,21 +722,29 @@ select:focus {
 .substep-bar {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: 8px;
-  padding: 10px;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
 }
 
 .substep-button {
-  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: 36px;
+  min-height: 0;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
   background: #fff;
   color: var(--ink);
   font-weight: 800;
+  line-height: 1.1;
   padding: 0 12px;
+  white-space: nowrap;
 }
 
 .substep-button.is-active {
@@ -1152,6 +1177,11 @@ td input[type="radio"] {
   display: flex;
   justify-content: flex-end;
   padding: 14px 0 4px;
+}
+
+.flow-footer .primary-button {
+  height: 40px;
+  padding: 0 18px;
 }
 
 .empty-state {
