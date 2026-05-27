@@ -389,13 +389,13 @@ select:focus {
 
 .workspace-layout {
   display: grid;
-  grid-template-columns: 262px minmax(0, 1fr);
+  grid-template-columns: 247px minmax(0, 1fr);
   gap: 18px;
   padding: 18px;
 }
 
 .workspace-layout.nav-collapsed {
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: 58px minmax(0, 1fr);
 }
 
 .workspace-layout.no-rail {
@@ -408,14 +408,14 @@ select:focus {
   align-self: start;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-height: calc(100vh - 110px);
   padding-bottom: 20px;
 }
 
 .step-rail-toggle {
   margin-top: auto;
-  min-height: 34px;
+  min-height: 32px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: #fff;
@@ -426,17 +426,58 @@ select:focus {
 
 .step-button {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  gap: 8px;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 7px;
   align-items: center;
   width: 100%;
-  min-height: 48px;
+  min-height: 42px;
+  padding: 6px 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
   color: var(--ink);
   text-align: left;
   box-shadow: 0 1px 0 rgba(31, 41, 51, 0.04);
+}
+
+.step-button strong {
+  font-size: 13px;
+}
+
+.step-button.is-home {
+  grid-template-columns: 1fr;
+}
+
+.home-label {
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.home-icon {
+  display: none;
+}
+
+.home-icon span {
+  position: relative;
+  display: block;
+  width: 15px;
+  height: 13px;
+  border: 3px solid var(--blue);
+  border-top: 0;
+  border-radius: 2px;
+}
+
+.home-icon span::before {
+  position: absolute;
+  top: -8px;
+  left: -2px;
+  width: 12px;
+  height: 12px;
+  border-top: 3px solid var(--blue);
+  border-left: 3px solid var(--blue);
+  content: "";
+  transform: rotate(45deg);
 }
 
 .step-button.is-active {
@@ -447,12 +488,32 @@ select:focus {
 .step-token {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 6px;
   background: var(--surface-strong);
   color: var(--blue);
   font-weight: 800;
+  font-size: 13px;
+}
+
+.step-token-icon {
+  color: var(--ink);
+}
+
+.backlog-icon {
+  display: grid;
+  gap: 3px;
+  width: 17px;
+}
+
+.backlog-icon span {
+  display: block;
+  height: 4px;
+  border-left: 4px solid var(--blue);
+  border-radius: 2px;
+  background: var(--blue);
+  box-shadow: inset 6px 0 0 #fff;
 }
 
 .step-button small,
@@ -485,12 +546,25 @@ select:focus {
 .step-rail.is-collapsed .step-button {
   grid-template-columns: 1fr;
   justify-items: center;
-  padding: 7px;
+  padding: 6px;
 }
 
-.step-rail.is-collapsed .step-button span:nth-child(2),
+.step-rail.is-collapsed .step-button:not(.is-home) > span:nth-child(2),
 .step-rail.is-collapsed .step-score {
   display: none;
+}
+
+.step-rail.is-collapsed .home-label {
+  display: none;
+}
+
+.step-rail.is-collapsed .home-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: var(--surface-strong);
 }
 
 .main-surface {
@@ -1104,11 +1178,11 @@ td input[type="radio"] {
   }
 
   .workspace-layout {
-    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-columns: 195px minmax(0, 1fr);
   }
 
   .workspace-layout.nav-collapsed {
-    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-columns: 58px minmax(0, 1fr);
   }
 
   .workspace-layout.no-rail {
@@ -1118,20 +1192,17 @@ td input[type="radio"] {
 
 @media (max-width: 840px) {
   .workspace-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: 195px minmax(0, 1fr);
+    gap: 12px;
     padding: 12px;
   }
 
   .workspace-layout.nav-collapsed {
-    grid-template-columns: 1fr;
+    grid-template-columns: 58px minmax(0, 1fr);
   }
 
   .workspace-layout.no-rail {
     grid-template-columns: 1fr;
-  }
-
-  .step-rail {
-    position: static;
   }
 
   .topbar-context,
@@ -1167,5 +1238,23 @@ td input[type="radio"] {
 
   .project-row-actions {
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 420px) {
+  .workspace-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-layout.nav-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-layout.no-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .step-rail {
+    position: static;
   }
 }

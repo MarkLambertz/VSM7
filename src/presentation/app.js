@@ -31,7 +31,7 @@ import { createLocalStorageRepository } from "../infrastructure/localStorageRepo
 import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js";
 import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js";
 import { renderProjectManagement } from "./projectManagement.js";
-import { renderStartPage } from "./startPage.js?v=20260527-nav";
+import { renderStartPage } from "./startPage.js?v=20260527-home";
 import { renderOverview } from "./steps/overview.js";
 import { renderImplementation } from "./steps/implementation.js";
 import { renderStep1 } from "./steps/step1.js";
@@ -140,20 +140,48 @@ function renderNavigation(completeness) {
     <nav class="step-rail ${isNavCollapsed ? "is-collapsed" : ""}" aria-label="VSM steps">
       ${stepDefinitions.map((step) => `
         <button
-          class="step-button ${activeView === step.id ? "is-active" : ""}"
+          class="step-button ${step.id === "overview" ? "is-home" : ""} ${activeView === step.id ? "is-active" : ""}"
           data-action="navigate"
-          data-view="${step.id}"
+          data-view="${step.id === "overview" ? "start" : step.id}"
+          aria-label="${escapeAttr(step.id === "overview" ? "Home" : navLabel(step))}"
         >
-          <span class="step-token">${escapeHtml(step.shortLabel)}</span>
-          <span>
-            <strong>${escapeHtml(navLabel(step))}</strong>
-          </span>
-          <span class="step-score">${step.id === "overview" ? "" : `${scores.get(step.id) ?? 0}%`}</span>
+          ${renderStepToken(step)}
+          ${step.id === "overview" ? "" : `
+            <span>
+              <strong>${escapeHtml(navLabel(step))}</strong>
+            </span>
+          `}
+          ${step.id === "overview" ? "" : `<span class="step-score">${scores.get(step.id) ?? 0}%</span>`}
         </button>
       `).join("")}
       <button class="step-rail-toggle" data-action="toggle-nav">${isNavCollapsed ? "Expand" : "Collapse"}</button>
     </nav>
   `;
+}
+
+function renderStepToken(step) {
+  if (step.id === "overview") {
+    return `
+      <span class="home-label">Home</span>
+      <span class="home-icon" aria-hidden="true">
+        <span></span>
+      </span>
+    `;
+  }
+
+  if (step.id === "implementation") {
+    return `
+      <span class="step-token step-token-icon" aria-label="Backlog">
+        <span class="backlog-icon" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </span>
+    `;
+  }
+
+  return `<span class="step-token">${escapeHtml(step.shortLabel)}</span>`;
 }
 
 function renderActiveView(completeness, projects) {
