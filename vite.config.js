@@ -42,6 +42,7 @@ export default defineConfig({
         // Remove type="module" and fix paths
         let result = html
           .replace(/type="module"\s*/g, '')
+          .replace(/crossorigin\s*/g, '')  // Remove crossorigin attribute
           .replace(/src="\/assets\//g, 'src="./assets/')
           .replace(/href="\.\/src\/presentation\/styles\.css[^"]*/g, 'href="./assets/styles.css"')
         
@@ -52,6 +53,20 @@ export default defineConfig({
             '</title>\n    <link rel="stylesheet" href="./assets/styles.css">'
           )
         }
+        
+        // Move script tag to bottom of body (after #app element)
+        // This ensures DOM is ready before script runs
+        const scriptMatch = result.match(/<script[^>]*src="\.\/assets\/bundle\.js"[^>]*><\/script>/)
+        if (scriptMatch) {
+          result = result.replace(scriptMatch[0], '')
+          result = result.replace(
+            '<div id="app" class="app-shell"></div>',
+            '<div id="app" class="app-shell"></div>\n    ' + scriptMatch[0] + '\n  '
+          )
+        }
+        
+        // Clean up double newlines
+        result = result.replace(/\n\s*\n/g, '\n')
         
         return result
       }
