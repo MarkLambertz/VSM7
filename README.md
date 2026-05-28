@@ -1,6 +1,6 @@
-# VSM Workshop Workspace
+# VSM7 Workshop Workspace
 
-A first working slice for a generic Viable System Model workshop app.
+A first working slice for a generic Viable System Model workshop app with a Node.js backend.
 
 The app treats workshop files as generated outputs, while the canonical project data stays in one browser-based workspace:
 
@@ -8,13 +8,15 @@ The app treats workshop files as generated outputs, while the canonical project 
 
 ## Run
 
-Use any static web server from this folder. For example:
+Use the Node.js development server from this folder:
 
 ```sh
-python3 -m http.server 4173
+npm run dev
 ```
 
 Then open `http://localhost:4173`.
+
+The server stores project data in `data/workspaces.json`. That file is ignored by Git so workshop data does not leak into source control.
 
 ## Scope
 
@@ -27,11 +29,13 @@ This slice focuses on the canonical VSM data model and the SCT-centered flow:
 - Step V-VII: structured capture for meetings, communication checks, representation, and implementation
 - Completeness assistant
 - Downloadable Word/Excel-compatible outcomes plus project JSON
+- Node.js API-backed project persistence, with browser localStorage fallback if the API is unavailable
 
 ## Architecture
 
 - `src/domain`: VSM entities, factory functions, and completeness policies
 - `src/application`: workspace repository coordination
-- `src/infrastructure`: local storage and export adapters
+- `src/infrastructure`: browser repository adapters and export adapters
 - `src/presentation`: browser UI
+- `src/server`: Node.js HTTP server and file-backed workspace store
 - `tests`: domain-level checks
