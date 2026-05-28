@@ -16,6 +16,8 @@ npm run dev
 
 Then open `http://localhost:4174`.
 
+On macOS you can also double-click `start.command`, which starts the Node-backed app on `http://localhost:4174`.
+
 The server stores project data in `data/workspaces.json`. That file is ignored by Git so workshop data does not leak into source control.
 
 ## Scope
