@@ -1,24 +1,22 @@
 # VSM7 Workshop Workspace
 
-A first working slice for a generic Viable System Model workshop app with a Node.js backend.
+A first working slice for a generic Viable System Model workshop app that runs in the browser.
 
-The app treats workshop files as generated outputs, while the canonical project data stays in one browser-based workspace:
+The app treats workshop files as generated outputs, while the canonical project data stays in browser localStorage:
 
 `Organization -> VSM Project -> Steps I-VII -> Structured Artifacts -> Exports`
 
 ## Run
 
-Use the Node.js development server from this folder:
+Open `index.html` in a browser, or on macOS double-click:
 
 ```sh
-npm run dev
+./start.command
 ```
 
-Then open `http://localhost:4174`.
+For sharing with stakeholders, publish the folder to any static web host. No Node.js backend is required for app usage.
 
-On macOS you can also double-click `start.command`, which starts the Node-backed app on `http://localhost:4174`.
-
-The server stores project data in `data/workspaces.json`. That file is ignored by Git so workshop data does not leak into source control.
+Node.js is only needed for developer activities such as running unit tests.
 
 ## Scope
 
@@ -31,13 +29,18 @@ This slice focuses on the canonical VSM data model and the SCT-centered flow:
 - Step V-VII: structured capture for meetings, communication checks, representation, and implementation
 - Completeness assistant
 - Downloadable Word/Excel-compatible outcomes plus project JSON
-- Node.js API-backed project persistence, with browser localStorage fallback if the API is unavailable
+- Browser localStorage persistence for workshop/project data
 
 ## Architecture
 
 - `src/domain`: VSM entities, factory functions, and completeness policies
 - `src/application`: workspace repository coordination
-- `src/infrastructure`: browser repository adapters and export adapters
+- `src/infrastructure`: browser localStorage and export adapters
 - `src/presentation`: browser UI
-- `src/server`: Node.js HTTP server and file-backed workspace store
 - `tests`: domain-level checks
+
+## Tests
+
+```sh
+npm test
+```

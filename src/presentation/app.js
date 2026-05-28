@@ -27,7 +27,7 @@ import {
   saveWorkspace
 } from "../application/workspaceService.js";
 import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js";
-import { createWorkspaceRepository } from "../infrastructure/workspaceRepositoryFactory.js";
+import { createLocalStorageRepository } from "../infrastructure/localStorageRepository.js";
 import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js";
 import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js";
 import { renderProjectManagement } from "./projectManagement.js";
@@ -43,7 +43,7 @@ import { renderStep6 } from "./steps/step6.js";
 import { renderStep7 } from "./steps/step7.js";
 
 const app = document.querySelector("#app");
-const repository = await createWorkspaceRepository();
+const repository = createLocalStorageRepository();
 const maxEmbeddedFileSize = 1_000_000;
 let workspace = loadWorkspace(repository);
 if (listWorkspaces(repository).length === 0) {
