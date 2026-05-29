@@ -6,17 +6,56 @@ import {
   escapeHtml,
   field,
   removeButton,
-  stepHeader,
   tableHeader,
   textarea
 } from "../shared/renderHelpers.js";
 
 export const step1Subpages = [
-  { id: "sif", label: "SIF & Recursion" },
-  { id: "segmentation", label: "Segmentation Options" },
-  { id: "criteria", label: "Key Buying Criteria" },
-  { id: "six-pack", label: "Six Pack Fields" },
-  { id: "evaluation", label: "Evaluation" }
+  {
+    id: "sif",
+    label: "SIF & Recursion",
+    title: "Set the system boundary",
+    focus: "Create a shared picture of the System-in-Focus and the recursion levels around it.",
+    artifact: "Named System-in-Focus with purpose, stakeholders, and recursion context.",
+    visual: "Boundary sketch",
+    prompts: ["What exactly is inside the System-in-Focus?", "Which parent and child systems frame the discussion?", "Which stakeholders must recognize themselves in the boundary?"]
+  },
+  {
+    id: "segmentation",
+    label: "Segmentation Options",
+    title: "Open the segmentation space",
+    focus: "Capture the plausible ways the business could be decomposed before evaluating them.",
+    artifact: "Candidate segmentation options with decision notes.",
+    visual: "Segmentation map",
+    prompts: ["Which segmentation logic is currently used?", "Which alternatives could create more effective management attention?", "What decision notes explain each option?"]
+  },
+  {
+    id: "criteria",
+    label: "Key Buying Criteria",
+    title: "Make market logic explicit",
+    focus: "Translate customer choice and competitive pressure into weighted criteria.",
+    artifact: "Weighted key buying criteria with relative position to competition.",
+    visual: "Customer value lens",
+    prompts: ["Why do customers choose one offer over another?", "Which criteria truly decide the purchase?", "Do the weights add up to 100 percent?"]
+  },
+  {
+    id: "six-pack",
+    label: "Six Pack Fields",
+    title: "Translate strategy into ambition",
+    focus: "Describe priorities, targets, and ambitions along the Six Pack of Control.",
+    artifact: "Strategic fields of action with supporting links and files.",
+    visual: "Six Pack compass",
+    prompts: ["What must change for each control variable?", "Which ambition needs top management attention?", "Which evidence or source material should stay connected?"]
+  },
+  {
+    id: "evaluation",
+    label: "Evaluation",
+    title: "Force the segmentation decision",
+    focus: "Compare the options row by row and select the segmentation that best fits the system.",
+    artifact: "Prioritized segmentation matrix and decision rationale.",
+    visual: "Decision heatmap",
+    prompts: ["Where does each option clearly win or lose?", "Are weak fields visible enough for later SCT work?", "Can the group explain the selected option?"]
+  }
 ];
 
 const sixPackGuidance = {
@@ -47,22 +86,116 @@ const sixPackGuidance = {
 };
 
 export function renderStep1(workspace, activeStep1Subpage) {
+  const activeSubpage = getStep1Subpage(activeStep1Subpage);
+
   return `
-    ${stepHeader("Step I", "Operative Units", "Define the System-in-Focus, recursion context, segmentation options, key buying criteria, Six Pack fields, and final segmentation evaluation.")}
+    <div class="step1-workshop-shell">
+      ${renderStep1Stage(workspace, activeSubpage)}
+      ${renderStep1Progress(activeSubpage)}
+    </div>
     ${renderStep1Subnav(activeStep1Subpage)}
     ${renderStep1Subpage(workspace, activeStep1Subpage)}
   `;
 }
 
+export function getStep1FullscreenTileCount(workspace, activeStep1Subpage) {
+  return getStep1FullscreenTiles(workspace, activeStep1Subpage).length;
+}
+
+export function renderStep1Fullscreen(workspace, activeStep1Subpage, activeTileIndex) {
+  const tiles = getStep1FullscreenTiles(workspace, activeStep1Subpage);
+  const safeIndex = clampTileIndex(activeTileIndex, tiles.length);
+  const tile = tiles[safeIndex];
+
+  return `
+    <div class="step1-fullscreen-shell" aria-label="Step I fullscreen workshop mode">
+      <div class="step1-fullscreen-progress" aria-label="Fullscreen tile progress">
+        ${tiles.map((item, index) => `
+          <span class="${index < safeIndex ? "is-done" : ""} ${index === safeIndex ? "is-current" : ""}">
+            ${escapeHtml(item.shortLabel)}
+          </span>
+        `).join("")}
+      </div>
+      <article class="step1-fullscreen-tile ${escapeAttr(tile.variant || "")}">
+        <div class="fullscreen-tile-header">
+          <div>
+            <p class="eyebrow">${escapeHtml(tile.kicker)}</p>
+            <h1>${escapeHtml(tile.title)}</h1>
+            <p>${escapeHtml(tile.description)}</p>
+          </div>
+          <span class="fullscreen-tile-counter">${safeIndex + 1} / ${tiles.length}</span>
+        </div>
+        <div class="fullscreen-tile-body">
+          ${tile.content}
+        </div>
+      </article>
+    </div>
+  `;
+}
+
+function clampTileIndex(activeTileIndex, tileCount) {
+  return Math.min(Math.max(Number(activeTileIndex) || 0, 0), Math.max(tileCount - 1, 0));
+}
+
+function getStep1Subpage(activeStep1Subpage) {
+  return step1Subpages.find((subpage) => subpage.id === activeStep1Subpage) || step1Subpages[0];
+}
+
+function renderStep1Stage(workspace, activeSubpage) {
+  const selectedOption = workspace.step1.segmentationOptions
+    .find((option) => option.id === workspace.step1.selectedSegmentationOptionId);
+
+  return `
+    <section class="step1-stage" aria-label="Step I workshop focus">
+      <div class="step1-stage-copy">
+        <p class="eyebrow">Step I · Operative Units</p>
+        <h1>${escapeHtml(activeSubpage.title)}</h1>
+        <p>${escapeHtml(activeSubpage.focus)}</p>
+        <div class="stage-context-strip">
+          <span><strong>SIF</strong>${escapeHtml(workspace.sif.name || "Not named yet")}</span>
+          <span><strong>Selected segmentation</strong>${escapeHtml(selectedOption?.name || "Open decision")}</span>
+          <span><strong>Outcome</strong>${escapeHtml(activeSubpage.artifact)}</span>
+        </div>
+      </div>
+      <aside class="step1-visual-slot" aria-label="Visual placeholder">
+        <div class="visual-grid">
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
+        </div>
+        <div>
+          <span>Visual placeholder</span>
+          <strong>${escapeHtml(activeSubpage.visual)}</strong>
+          <small>Illustration · icon · photo · workshop canvas</small>
+        </div>
+      </aside>
+    </section>
+  `;
+}
+
+function renderStep1Progress(activeSubpage) {
+  const currentIndex = step1Subpages.findIndex((subpage) => subpage.id === activeSubpage.id);
+
+  return `
+    <div class="step1-progress-strip" aria-label="Step I progress">
+      ${step1Subpages.map((subpage, index) => `
+        <span class="${index < currentIndex ? "is-done" : ""} ${subpage.id === activeSubpage.id ? "is-current" : ""}">
+          ${String(index + 1).padStart(2, "0")}
+        </span>
+      `).join("")}
+    </div>
+  `;
+}
+
 function renderStep1Subnav(activeStep1Subpage) {
   return `
-    <section class="substep-bar" aria-label="Step I subpages">
-      ${step1Subpages.map((subpage) => `
+    <section class="substep-bar step1-substep-bar" aria-label="Step I subpages">
+      ${step1Subpages.map((subpage, index) => `
         <button
           class="substep-button ${activeStep1Subpage === subpage.id ? "is-active" : ""}"
           data-action="step1-subpage"
           data-subpage="${escapeAttr(subpage.id)}"
         >
+          <span>${String(index + 1).padStart(2, "0")}</span>
           ${escapeHtml(subpage.label)}
         </button>
       `).join("")}
@@ -91,8 +224,15 @@ function renderStep1Subpage(workspace, activeStep1Subpage) {
 }
 
 function renderStep1Sif(workspace) {
+  return renderWorkshopTaskFrame("sif", `
+    ${renderSifSection(workspace)}
+    ${renderRecursionSection(workspace)}
+  `);
+}
+
+function renderSifSection(workspace) {
   return `
-    <section class="work-section">
+    <section class="work-section sif-capture-section">
       <div class="section-heading">
         <h2>System-in-Focus</h2>
         <button class="ghost-button" data-action="export-step" data-step="step1">Download Outcome</button>
@@ -105,11 +245,18 @@ function renderStep1Sif(workspace) {
         ${textarea("Customers and stakeholders", "sif.customers", workspace.sif.customers)}
       </div>
     </section>
-    <section class="work-section">
+  `;
+}
+
+function renderRecursionSection(workspace) {
+  const sortedLevels = sortRecursionLevels(workspace.step1.recursionLevels);
+
+  return `
+    <section class="work-section recursion-capture-section">
       <div class="section-heading">
         <div>
           <h2>Recursion Levels</h2>
-          <p class="section-note inline">Levels are fixed. You can change only name and description.</p>
+          <p class="section-note inline">Levels are fixed. Add organizations on an existing level, or extend one level above or below.</p>
         </div>
         <div class="header-actions">
           <button class="ghost-button" data-action="add-recursion-above">One level above (${escapeHtml(nextRecursionLevel(workspace, "above"))})</button>
@@ -118,13 +265,20 @@ function renderStep1Sif(workspace) {
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Level</th><th>Name</th><th>Description</th><th></th></tr></thead>
-          <tbody>${sortRecursionLevels(workspace.step1.recursionLevels).map((item) => `
+          <thead><tr><th>Level</th><th>Name</th><th>Description</th><th>Actions</th></tr></thead>
+          <tbody>${sortedLevels.map((item, index) => `
             <tr>
               <td><span class="recursion-level-token">${escapeHtml(item.level)}</span></td>
               <td>${cellInput("step1.recursionLevels", item.id, "name", item.name)}</td>
               <td>${cellInput("step1.recursionLevels", item.id, "description", item.description)}</td>
-              <td>${isBaseRecursionLevel(item.level) ? "" : removeButton("step1.recursionLevels", item.id)}</td>
+              <td class="recursion-actions">
+                <button
+                  class="ghost-button small"
+                  data-action="add-recursion-same-level"
+                  data-level="${escapeAttr(item.level)}"
+                >Add org.</button>
+                ${isProtectedBaseRecursionRow(sortedLevels, item, index) ? "" : removeButton("step1.recursionLevels", item.id)}
+              </td>
             </tr>
           `).join("")}</tbody>
         </table>
@@ -163,7 +317,19 @@ function isBaseRecursionLevel(level) {
   return ["R+1", "R0", "R-1"].includes(level);
 }
 
+function isProtectedBaseRecursionRow(sortedLevels, item, index) {
+  if (!isBaseRecursionLevel(item.level)) {
+    return false;
+  }
+
+  return sortedLevels.findIndex((candidate) => candidate.level === item.level) === index;
+}
+
 function renderStep1SegmentationOptions(workspace) {
+  return renderWorkshopTaskFrame("segmentation", renderSegmentationOptionsSection(workspace));
+}
+
+function renderSegmentationOptionsSection(workspace) {
   return `
     <section class="work-section">
       ${tableHeader("Segmentation Options", "add-segmentation")}
@@ -187,6 +353,10 @@ function renderStep1SegmentationOptions(workspace) {
 }
 
 function renderStep1KeyBuyingCriteria(workspace) {
+  return renderWorkshopTaskFrame("criteria", renderKeyBuyingCriteriaSection(workspace));
+}
+
+function renderKeyBuyingCriteriaSection(workspace) {
   return `
     <section class="work-section">
       ${tableHeader("Key Buying Criteria", "add-criterion")}
@@ -210,6 +380,10 @@ function renderStep1KeyBuyingCriteria(workspace) {
 }
 
 function renderStep1SixPack(workspace) {
+  return renderWorkshopTaskFrame("six-pack", renderSixPackSection(workspace));
+}
+
+function renderSixPackSection(workspace) {
   return `
     <section class="work-section strategic-fields-section">
       <div class="section-heading">
@@ -337,6 +511,10 @@ function formatFileMeta(file) {
 }
 
 function renderStep1Evaluation(workspace) {
+  return renderWorkshopTaskFrame("evaluation", renderEvaluationSection(workspace));
+}
+
+function renderEvaluationSection(workspace) {
   const options = workspace.step1.segmentationOptions;
   const rows = getStep1EvaluationRows(workspace);
   const totals = calculateSegmentationTotals(workspace, rows, options);
@@ -351,15 +529,161 @@ function renderStep1Evaluation(workspace) {
       ${options.length < 2
         ? emptyState("Add at least two segmentation options before evaluating.")
         : renderSegmentationEvaluationMatrix(workspace, rows, options, totals)}
-      <div class="field-grid two step1-decision-fields">
-        <label class="field decision-field-select">
-          <span>Preferred segmentation option</span>
-          <select data-path="step1.selectedSegmentationOptionId">
-            <option value="">Select</option>
-            ${options.map((option) => `<option value="${escapeAttr(option.id)}" ${workspace.step1.selectedSegmentationOptionId === option.id ? "selected" : ""}>${escapeHtml(option.name || "Unnamed option")}</option>`).join("")}
-          </select>
-        </label>
-        ${textarea("Decision rationale", "step1.decisionRationale", workspace.step1.decisionRationale)}
+      ${renderSegmentationDecisionFields(workspace, options)}
+    </section>
+  `;
+}
+
+function renderSegmentationDecisionFields(workspace, options) {
+  return `
+    <div class="field-grid two step1-decision-fields">
+      <label class="field decision-field-select">
+        <span>Preferred segmentation option</span>
+        <select data-path="step1.selectedSegmentationOptionId">
+          <option value="">Select</option>
+          ${options.map((option) => `<option value="${escapeAttr(option.id)}" ${workspace.step1.selectedSegmentationOptionId === option.id ? "selected" : ""}>${escapeHtml(option.name || "Unnamed option")}</option>`).join("")}
+        </select>
+      </label>
+      ${textarea("Decision rationale", "step1.decisionRationale", workspace.step1.decisionRationale)}
+    </div>
+  `;
+}
+
+function getStep1FullscreenTiles(workspace, activeStep1Subpage) {
+  const subpage = getStep1Subpage(activeStep1Subpage);
+  const index = step1Subpages.findIndex((item) => item.id === subpage.id) + 1;
+  const briefTile = createFullscreenTile(
+    `${String(index).padStart(2, "0")} · Explanation`,
+    subpage.title,
+    subpage.focus,
+    renderFullscreenBriefContent(workspace, subpage),
+    "is-explanation",
+    "Brief"
+  );
+
+  if (subpage.id === "sif") {
+    return [
+      briefTile,
+      createFullscreenTile("System-in-Focus", "System-in-Focus", "Name the system, its purpose, and its relevant customers or stakeholders.", renderSifSection(workspace), "is-form", "SIF"),
+      createFullscreenTile("Recursion Levels", "Recursion Levels", "Adjust the names and descriptions of the fixed recursion levels around the System-in-Focus.", renderRecursionSection(workspace), "is-table", "Rec")
+    ];
+  }
+
+  if (subpage.id === "segmentation") {
+    return [
+      briefTile,
+      createFullscreenTile("Segmentation Options", "Segmentation Options", "Capture the candidate segmentation logics that later become columns in the evaluation matrix.", renderSegmentationOptionsSection(workspace), "is-table", "Options")
+    ];
+  }
+
+  if (subpage.id === "criteria") {
+    return [
+      briefTile,
+      createFullscreenTile("Key Buying Criteria", "Key Buying Criteria", "Capture the customer-facing criteria and their relative weight.", renderKeyBuyingCriteriaSection(workspace), "is-table", "KBC")
+    ];
+  }
+
+  if (subpage.id === "six-pack") {
+    const fieldTiles = workspace.step1.strategicFields.map((fieldItem, fieldIndex) => createFullscreenTile(
+      fieldItem.variable,
+      fieldItem.variable,
+      sixPackGuidance[fieldItem.variable]?.meaning || "Describe strategic priorities, targets, and ambitions for this field.",
+      `<section class="work-section strategic-fields-section fullscreen-single-field">${renderStrategicField(fieldItem)}</section>`,
+      "is-form",
+      String(fieldIndex + 1).padStart(2, "0")
+    ));
+
+    return [
+      briefTile,
+      ...fieldTiles
+    ];
+  }
+
+  return [
+    briefTile,
+    createFullscreenTile("Evaluation Matrix", "Segmentation Evaluation", "Use the giant matrix view to keep the group oriented while scores and totals change.", renderFullscreenEvaluationMatrix(workspace), "is-matrix", "Matrix"),
+    createFullscreenTile("Decision", "Decision Rationale", "Select the preferred segmentation and capture the rationale while the workshop memory is fresh.", renderFullscreenDecision(workspace), "is-form", "Decision")
+  ];
+}
+
+function createFullscreenTile(kicker, title, description, content, variant, shortLabel) {
+  return { kicker, title, description, content, variant, shortLabel };
+}
+
+function renderFullscreenBriefContent(workspace, subpage) {
+  const selectedOption = workspace.step1.segmentationOptions
+    .find((option) => option.id === workspace.step1.selectedSegmentationOptionId);
+
+  return `
+    <div class="fullscreen-brief-layout">
+      <div class="fullscreen-brief-copy">
+        <div class="stage-context-strip">
+          <span><strong>SIF</strong>${escapeHtml(workspace.sif.name || "Not named yet")}</span>
+          <span><strong>Selected segmentation</strong>${escapeHtml(selectedOption?.name || "Open decision")}</span>
+          <span><strong>Outcome</strong>${escapeHtml(subpage.artifact)}</span>
+        </div>
+        <ul class="brief-prompts fullscreen-prompts">
+          ${subpage.prompts.map((prompt) => `<li>${escapeHtml(prompt)}</li>`).join("")}
+        </ul>
+      </div>
+      <aside class="step1-visual-slot fullscreen-visual-slot" aria-label="Visual placeholder">
+        <div class="visual-grid">
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
+        </div>
+        <div>
+          <span>Visual placeholder</span>
+          <strong>${escapeHtml(subpage.visual)}</strong>
+          <small>Illustration · icon · photo · workshop canvas</small>
+        </div>
+      </aside>
+    </div>
+  `;
+}
+
+function renderFullscreenEvaluationMatrix(workspace) {
+  const options = workspace.step1.segmentationOptions;
+  const rows = getStep1EvaluationRows(workspace);
+  const totals = calculateSegmentationTotals(workspace, rows, options);
+
+  return `
+    <section class="work-section fullscreen-matrix-section">
+      <p class="section-note">Use forced prioritization per row. With ${options.length || "n"} segmentation option(s), each row uses a score scale of 1 to n+1; the same number can only appear once in that row.</p>
+      ${options.length < 2
+        ? emptyState("Add at least two segmentation options before evaluating.")
+        : renderSegmentationEvaluationMatrix(workspace, rows, options, totals)}
+    </section>
+  `;
+}
+
+function renderFullscreenDecision(workspace) {
+  return `
+    <section class="work-section fullscreen-decision-section">
+      ${renderSegmentationDecisionFields(workspace, workspace.step1.segmentationOptions)}
+    </section>
+  `;
+}
+
+function renderWorkshopTaskFrame(subpageId, content) {
+  const subpage = getStep1Subpage(subpageId);
+  const index = step1Subpages.findIndex((item) => item.id === subpage.id) + 1;
+
+  return `
+    <section class="workshop-task-frame">
+      <aside class="workshop-brief-panel">
+        <span class="brief-index">${String(index).padStart(2, "0")}</span>
+        <h2>${escapeHtml(subpage.title)}</h2>
+        <p>${escapeHtml(subpage.focus)}</p>
+        <div class="brief-outcome">
+          <span>Workshop outcome</span>
+          <strong>${escapeHtml(subpage.artifact)}</strong>
+        </div>
+        <ul class="brief-prompts">
+          ${subpage.prompts.map((prompt) => `<li>${escapeHtml(prompt)}</li>`).join("")}
+        </ul>
+      </aside>
+      <div class="workshop-capture-panel">
+        ${content}
       </div>
     </section>
   `;

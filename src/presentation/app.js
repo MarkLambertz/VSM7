@@ -34,7 +34,14 @@ import { renderProjectManagement } from "./projectManagement.js";
 import { renderStartPage } from "./startPage.js?v=20260527-buttons";
 import { renderOverview } from "./steps/overview.js";
 import { renderImplementation } from "./steps/implementation.js";
-import { renderStep1 } from "./steps/step1.js";
+import {
+  focusStepOrder,
+  getGenericFocusStepTitle,
+  getGenericFocusTileCount,
+  hasGenericFocusMode,
+  renderGenericFocusFullscreen
+} from "./steps/focusMode.js";
+import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js";
 import { renderStep2 } from "./steps/step2.js";
 import { renderStep3 } from "./steps/step3.js";
 import { renderStep4 } from "./steps/step4.js";
@@ -51,6 +58,9 @@ if (listWorkspaces(repository).length === 0) {
 }
 let activeView = "start";
 let activeStep1Subpage = "sif";
+let isFocusFullscreen = false;
+let activeStep1FullscreenTile = 0;
+let activeGenericFocusTile = 0;
 let isCompletenessOpen = false;
 let isNavCollapsed = false;
 let saveStatus = "Saved";
@@ -80,8 +90,19 @@ app.addEventListener("keydown", (event) => {
   dispatchAction(event);
 });
 
+document.addEventListener("keydown", (event) => {
+  if (!isFocusFullscreen || event.key !== "Escape") {
+    return;
+  }
+
+  event.preventDefault();
+  isFocusFullscreen = false;
+  render();
+});
+
 function render() {
   syncAllocations(workspace);
+  document.body.classList.toggle("has-fullscreen-workshop", isFocusFullscreen);
   const completeness = evaluateCompleteness(workspace);
   const projects = listWorkspaces(repository);
   const showStepNavigation = activeView !== "start" && activeView !== "projects";
@@ -107,6 +128,7 @@ function render() {
         <button class="ghost-button ${activeView === "projects" ? "is-active" : ""}" data-action="navigate" data-view="projects">Projects</button>
         <button class="ghost-button" data-action="export-project-report">Report</button>
         <button class="ghost-button" data-action="export-project-json">Archive</button>
+        ${renderTopbarFocusButton()}
       </div>
       ${isCompletenessOpen ? renderCompletenessLayer(completeness) : ""}
     </header>
@@ -117,7 +139,102 @@ function render() {
         ${renderFlowFooter()}
       </main>
     </div>
+    ${renderFocusFullscreenLayer()}
   `;
+}
+
+function renderFocusFullscreenLayer() {
+  if (!isFocusFullscreen) {
+    return "";
+  }
+
+  if (activeView === "step1") {
+    return renderStep1FullscreenLayer();
+  }
+
+  if (hasGenericFocusMode(activeView)) {
+    return renderGenericFocusFullscreenLayer();
+  }
+
+  return "";
+}
+
+function renderStep1FullscreenLayer() {
+  const tileCount = getStep1FullscreenTileCount(workspace, activeStep1Subpage);
+  const safeTileIndex = clampStep1FullscreenTile(activeStep1FullscreenTile, tileCount);
+  const canMoveBack = canMoveStep1Fullscreen("prev", safeTileIndex, tileCount);
+  const canMoveForward = canMoveStep1Fullscreen("next", safeTileIndex, tileCount);
+
+  return `
+    <section class="step1-fullscreen-overlay" aria-label="Step I fullscreen focus mode">
+      <button class="fullscreen-exit-button" data-action="step1-fullscreen-close" title="Exit fullscreen focus mode" aria-label="Exit fullscreen focus mode">x</button>
+      ${renderStep1Fullscreen(workspace, activeStep1Subpage, safeTileIndex)}
+      <div class="fullscreen-nav-controls" aria-label="Fullscreen tile navigation">
+        <button class="ghost-button" data-action="step1-fullscreen-prev" ${canMoveBack ? "" : "disabled"}>Back</button>
+        <span>${safeTileIndex + 1} / ${tileCount}</span>
+        <button class="primary-button" data-action="step1-fullscreen-next" ${canMoveForward ? "" : "disabled"}>Forward</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderGenericFocusFullscreenLayer() {
+  const tileCount = getGenericFocusTileCount(workspace, activeView, getGenericFocusContext());
+  const safeTileIndex = clampFocusTile(activeGenericFocusTile, tileCount);
+  const canMoveBack = canMoveGenericFocus("prev", safeTileIndex, tileCount);
+  const canMoveForward = canMoveGenericFocus("next", safeTileIndex, tileCount);
+
+  return `
+    <section class="step1-fullscreen-overlay" aria-label="${escapeAttr(getGenericFocusStepTitle(activeView))} fullscreen focus mode">
+      <button class="fullscreen-exit-button" data-action="focus-fullscreen-close" title="Exit fullscreen focus mode" aria-label="Exit fullscreen focus mode">x</button>
+      ${renderGenericFocusFullscreen(workspace, activeView, safeTileIndex, getGenericFocusContext())}
+      <div class="fullscreen-nav-controls" aria-label="Fullscreen tile navigation">
+        <button class="ghost-button" data-action="focus-fullscreen-prev" ${canMoveBack ? "" : "disabled"}>Back</button>
+        <span>${safeTileIndex + 1} / ${tileCount}</span>
+        <button class="primary-button" data-action="focus-fullscreen-next" ${canMoveForward ? "" : "disabled"}>Forward</button>
+      </div>
+    </section>
+  `;
+}
+
+function clampStep1FullscreenTile(tileIndex, tileCount) {
+  return Math.min(Math.max(Number(tileIndex) || 0, 0), Math.max(tileCount - 1, 0));
+}
+
+function clampFocusTile(tileIndex, tileCount) {
+  return Math.min(Math.max(Number(tileIndex) || 0, 0), Math.max(tileCount - 1, 0));
+}
+
+function getGenericFocusContext() {
+  return { taskSources, vsmSystems };
+}
+
+function canMoveStep1Fullscreen(direction, tileIndex, tileCount) {
+  const subpageIndex = getActiveStep1SubpageIndex();
+
+  if (direction === "prev") {
+    return tileIndex > 0 || subpageIndex > 0;
+  }
+
+  return tileIndex < tileCount - 1 || subpageIndex < step1Subpages.length - 1 || focusStepOrder.length > 0;
+}
+
+function getActiveStep1SubpageIndex() {
+  return Math.max(0, step1Subpages.findIndex((subpage) => subpage.id === activeStep1Subpage));
+}
+
+function canMoveGenericFocus(direction, tileIndex, tileCount) {
+  const stepIndex = getActiveGenericFocusIndex();
+
+  if (direction === "prev") {
+    return tileIndex > 0 || stepIndex > 0 || activeView === focusStepOrder[0];
+  }
+
+  return tileIndex < tileCount - 1 || stepIndex < focusStepOrder.length - 1;
+}
+
+function getActiveGenericFocusIndex() {
+  return Math.max(0, focusStepOrder.findIndex((viewId) => viewId === activeView));
 }
 
 function headerContextItem(label, value) {
@@ -200,6 +317,29 @@ function renderActiveView(completeness, projects) {
   };
 
   return (views[activeView] || views.overview)();
+}
+
+function renderTopbarFocusButton() {
+  const canOpenFocusMode = activeView === "step1" || hasGenericFocusMode(activeView);
+  if (!canOpenFocusMode || isFocusFullscreen) {
+    return "";
+  }
+
+  const action = activeView === "step1" ? "step1-fullscreen-open" : "focus-fullscreen-open";
+  const label = activeView === "step1"
+    ? "Open fullscreen focus mode for Step I"
+    : `Open fullscreen focus mode for ${getGenericFocusStepTitle(activeView)}`;
+
+  return `
+    <button
+      class="topbar-focus-button"
+      data-action="${escapeAttr(action)}"
+      title="Open fullscreen focus mode"
+      aria-label="${escapeAttr(label)}"
+    >
+      <span class="fullscreen-corners" aria-hidden="true"><span></span></span>
+    </button>
+  `;
 }
 
 function navLabel(step) {
@@ -456,6 +596,7 @@ function handleAction(button) {
 
   if (action === "step1-subpage") {
     activeStep1Subpage = button.dataset.subpage || "sif";
+    activeStep1FullscreenTile = 0;
     render();
     return;
   }
@@ -463,6 +604,61 @@ function handleAction(button) {
   if (action === "navigate") {
     activeView = button.dataset.view || "overview";
     isCompletenessOpen = false;
+    if (activeView !== "step1" && !hasGenericFocusMode(activeView)) {
+      isFocusFullscreen = false;
+    }
+    render();
+    return;
+  }
+
+  if (action === "step1-fullscreen-open") {
+    activeStep1FullscreenTile = 0;
+    isFocusFullscreen = true;
+    isCompletenessOpen = false;
+    render();
+    return;
+  }
+
+  if (action === "step1-fullscreen-close") {
+    isFocusFullscreen = false;
+    render();
+    return;
+  }
+
+  if (action === "step1-fullscreen-prev") {
+    moveStep1Fullscreen("prev");
+    render();
+    return;
+  }
+
+  if (action === "step1-fullscreen-next") {
+    moveStep1Fullscreen("next");
+    render();
+    return;
+  }
+
+  if (action === "focus-fullscreen-open") {
+    activeGenericFocusTile = 0;
+    isFocusFullscreen = true;
+    isCompletenessOpen = false;
+    render();
+    return;
+  }
+
+  if (action === "focus-fullscreen-close") {
+    isFocusFullscreen = false;
+    render();
+    return;
+  }
+
+  if (action === "focus-fullscreen-prev") {
+    moveGenericFocus("prev");
+    render();
+    return;
+  }
+
+  if (action === "focus-fullscreen-next") {
+    moveGenericFocus("next");
     render();
     return;
   }
@@ -489,6 +685,7 @@ function handleAction(button) {
     workspace = replaceWorkspace(repository, createWorkspace());
     activeView = "start";
     activeStep1Subpage = "sif";
+    isFocusFullscreen = false;
     isCompletenessOpen = false;
     render();
     return;
@@ -498,6 +695,7 @@ function handleAction(button) {
     workspace = replaceWorkspace(repository, createSampleWorkspace());
     activeView = "overview";
     activeStep1Subpage = "sif";
+    isFocusFullscreen = false;
     isCompletenessOpen = false;
     render();
     return;
@@ -507,6 +705,7 @@ function handleAction(button) {
     workspace = replaceWorkspace(repository, createProjectWorkspace());
     activeView = "overview";
     activeStep1Subpage = "sif";
+    isFocusFullscreen = false;
     isCompletenessOpen = false;
     render();
     return;
@@ -516,6 +715,7 @@ function handleAction(button) {
     workspace = replaceWorkspace(repository, createWorkspace());
     activeView = "projects";
     activeStep1Subpage = "sif";
+    isFocusFullscreen = false;
     isCompletenessOpen = false;
     render();
     return;
@@ -525,6 +725,7 @@ function handleAction(button) {
     workspace = openWorkspace(repository, button.dataset.projectId);
     activeView = "overview";
     activeStep1Subpage = "sif";
+    isFocusFullscreen = false;
     isCompletenessOpen = false;
     render();
     return;
@@ -536,6 +737,7 @@ function handleAction(button) {
       workspace = openWorkspace(repository, project.id);
       activeView = "overview";
       activeStep1Subpage = "sif";
+      isFocusFullscreen = false;
       isCompletenessOpen = false;
       render();
     }
@@ -546,6 +748,7 @@ function handleAction(button) {
     workspace = deleteWorkspace(repository, button.dataset.projectId);
     activeView = "projects";
     activeStep1Subpage = "sif";
+    isFocusFullscreen = false;
     isCompletenessOpen = false;
 
     if (!listWorkspaces(repository).length) {
@@ -558,6 +761,13 @@ function handleAction(button) {
 
   if (action === "remove-item") {
     removeFromCollection(button.dataset.collection, button.dataset.id);
+    saveNow();
+    render();
+    return;
+  }
+
+  if (action === "add-recursion-same-level") {
+    addRecursionSameLevel(button.dataset.level);
     saveNow();
     render();
     return;
@@ -613,6 +823,90 @@ function addRecursionLevel(direction) {
   const level = nextRecursionLevel(direction);
   workspace.step1.recursionLevels.push(createRecursionLevel(level, "", ""));
   workspace.step1.recursionLevels.sort((left, right) => recursionRank(left.level) - recursionRank(right.level));
+}
+
+function addRecursionSameLevel(level) {
+  if (!level) {
+    return;
+  }
+
+  workspace.step1.recursionLevels.push(createRecursionLevel(level, "", ""));
+  workspace.step1.recursionLevels.sort((left, right) => recursionRank(left.level) - recursionRank(right.level));
+}
+
+function moveStep1Fullscreen(direction) {
+  const tileCount = getStep1FullscreenTileCount(workspace, activeStep1Subpage);
+
+  if (direction === "prev") {
+    if (activeStep1FullscreenTile > 0) {
+      activeStep1FullscreenTile = clampStep1FullscreenTile(activeStep1FullscreenTile - 1, tileCount);
+      return;
+    }
+
+    const previousSubpage = step1Subpages[getActiveStep1SubpageIndex() - 1];
+    if (!previousSubpage) {
+      return;
+    }
+
+    activeStep1Subpage = previousSubpage.id;
+    activeStep1FullscreenTile = getStep1FullscreenTileCount(workspace, activeStep1Subpage) - 1;
+    return;
+  }
+
+  if (activeStep1FullscreenTile < tileCount - 1) {
+    activeStep1FullscreenTile = clampStep1FullscreenTile(activeStep1FullscreenTile + 1, tileCount);
+    return;
+  }
+
+  const nextSubpage = step1Subpages[getActiveStep1SubpageIndex() + 1];
+  if (!nextSubpage) {
+    if (focusStepOrder.length > 0) {
+      activeView = focusStepOrder[0];
+      activeGenericFocusTile = 0;
+    }
+    return;
+  }
+
+  activeStep1Subpage = nextSubpage.id;
+  activeStep1FullscreenTile = 0;
+}
+
+function moveGenericFocus(direction) {
+  const tileCount = getGenericFocusTileCount(workspace, activeView, getGenericFocusContext());
+
+  if (direction === "prev") {
+    if (activeGenericFocusTile > 0) {
+      activeGenericFocusTile = clampFocusTile(activeGenericFocusTile - 1, tileCount);
+      return;
+    }
+
+    const previousStep = focusStepOrder[getActiveGenericFocusIndex() - 1];
+    if (!previousStep) {
+      if (activeView === focusStepOrder[0]) {
+        activeView = "step1";
+        activeStep1Subpage = step1Subpages.at(-1)?.id || "evaluation";
+        activeStep1FullscreenTile = getStep1FullscreenTileCount(workspace, activeStep1Subpage) - 1;
+      }
+      return;
+    }
+
+    activeView = previousStep;
+    activeGenericFocusTile = getGenericFocusTileCount(workspace, activeView, getGenericFocusContext()) - 1;
+    return;
+  }
+
+  if (activeGenericFocusTile < tileCount - 1) {
+    activeGenericFocusTile = clampFocusTile(activeGenericFocusTile + 1, tileCount);
+    return;
+  }
+
+  const nextStep = focusStepOrder[getActiveGenericFocusIndex() + 1];
+  if (!nextStep) {
+    return;
+  }
+
+  activeView = nextStep;
+  activeGenericFocusTile = 0;
 }
 
 function nextRecursionLevel(direction) {
