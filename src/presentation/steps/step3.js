@@ -1,4 +1,4 @@
-import { cellInput, cellSelect, escapeHtml, removeButton, stepHeader, tableHeader, textarea } from "../shared/renderHelpers.js";
+import { cellInput, cellSelect, escapeHtml, removeButton, stepHeader, tableHeader, textarea } from "../shared/renderHelpers.js?v=20260530-step2-neutral";
 
 export function renderStep3(workspace, taskSources, vsmSystems) {
   return `

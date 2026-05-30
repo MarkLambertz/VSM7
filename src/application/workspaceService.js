@@ -1,4 +1,4 @@
-import { ensureWorkspaceShape, syncAllocations } from "../domain/vsm.js";
+import { ensureWorkspaceShape, syncAllocations } from "../domain/vsm.js?v=20260530-step2-neutral";
 
 export function loadWorkspace(repository) {
   return ensureWorkspaceShape(repository.load());
@@ -33,4 +33,13 @@ export function deleteWorkspace(repository, workspaceId) {
 
 export function renameWorkspace(repository, workspaceId, name) {
   repository.renameProject?.(workspaceId, name);
+}
+
+export function renameOrganization(repository, organizationId, name) {
+  repository.renameOrganization?.(organizationId, name);
+}
+
+export function deleteOrganization(repository, organizationId) {
+  repository.deleteOrganization?.(organizationId);
+  return loadWorkspace(repository);
 }

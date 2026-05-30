@@ -1,5 +1,5 @@
-import { createAllocation } from "../../domain/vsm.js";
-import { allocationCheckbox, allocationInput, emptyState, escapeHtml, stepHeader } from "../shared/renderHelpers.js";
+import { createAllocation } from "../../domain/vsm.js?v=20260530-step2-neutral";
+import { allocationCheckbox, allocationInput, emptyState, escapeHtml, stepHeader } from "../shared/renderHelpers.js?v=20260530-step2-neutral";
 
 export function renderStep4(workspace) {
   return `

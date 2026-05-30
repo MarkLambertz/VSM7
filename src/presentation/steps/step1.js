@@ -8,7 +8,8 @@ import {
   removeButton,
   tableHeader,
   textarea
-} from "../shared/renderHelpers.js";
+} from "../shared/renderHelpers.js?v=20260530-step2-neutral";
+import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260530-step2-neutral";
 
 export const step1Subpages = [
   {
@@ -99,7 +100,6 @@ const sixPackGuidance = {
     example: "Example: Shorten order-to-cash cycle by aligning delivery milestones with customer payments."
   }
 };
-
 export function renderStep1(workspace, activeStep1Subpage) {
   const activeSubpage = getStep1Subpage(activeStep1Subpage);
 
@@ -181,42 +181,6 @@ function renderStep1Stage(workspace, activeSubpage) {
       ${renderMethodVisual(activeSubpage)}
     </section>
   `;
-}
-
-function renderMethodVisual(visual, mode = "normal") {
-  const visualItems = (visual.visualItems || []).slice(0, 6);
-  const modeClass = mode === "fullscreen" ? "fullscreen-visual-slot fullscreen-visual-card" : "";
-
-  return `
-    <aside class="step1-visual-slot method-visual ${modeClass} method-visual--${escapeAttr(visual.visualKind || "generic")}" aria-label="${escapeAttr(visual.visual)} visual placeholder">
-      <div class="method-visual-map">
-        ${visualItems.map((item, index) => `
-          <span class="method-node ${getVisualTone(index)}">${escapeHtml(item)}</span>
-        `).join("")}
-      </div>
-      <div class="method-visual-caption">
-        <span>Method visual placeholder</span>
-        <strong>${escapeHtml(visual.visual)}</strong>
-        <small>${escapeHtml(getVisualCaption(visual.visualKind))}</small>
-      </div>
-    </aside>
-  `;
-}
-
-function getVisualTone(index) {
-  return ["is-blue", "is-green", "is-amber", "is-red", "is-teal", "is-neutral"][index % 6];
-}
-
-function getVisualCaption(visualKind) {
-  const captions = {
-    boundary: "Nested rectangles for R+1, R0/SIF, and R-1",
-    segmentation: "Alternative decomposition logics side by side",
-    criteria: "Customer buying criteria with weights and competitive position",
-    sixpack: "Six control variables around the System-in-Focus",
-    heatmap: "Colored scoring matrix with visible weak fields"
-  };
-
-  return captions[visualKind] || "Illustration · icon · photo · workshop canvas";
 }
 
 function renderStep1Progress(activeSubpage) {
@@ -577,6 +541,7 @@ function renderEvaluationSection(workspace) {
         ? emptyState("Add at least two segmentation options before evaluating.")
         : renderSegmentationEvaluationMatrix(workspace, rows, options, totals)}
       ${renderSegmentationDecisionFields(workspace, options)}
+      ${renderOperativeUnitsSection(workspace)}
     </section>
   `;
 }
@@ -593,6 +558,34 @@ function renderSegmentationDecisionFields(workspace, options) {
       </label>
       ${textarea("Decision rationale", "step1.decisionRationale", workspace.step1.decisionRationale)}
     </div>
+  `;
+}
+
+function renderOperativeUnitsSection(workspace) {
+  const units = workspace.step1.operativeUnits || [];
+  const selectedOption = workspace.step1.segmentationOptions.find((option) => option.id === workspace.step1.selectedSegmentationOptionId);
+
+  return `
+    <section class="nested-work-section operative-units-section">
+      ${tableHeader("Real Operative Units / S1", "add-operative-unit")}
+      <p class="section-note">
+        Translate the selected segmentation${selectedOption?.name ? ` (${escapeHtml(selectedOption.name)})` : ""} into the real operative units that Step II will assess.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Operative unit / S1</th><th>Scope or kind</th><th>Notes</th><th></th></tr></thead>
+          <tbody>${units.map((unit) => `
+            <tr>
+              <td>${cellInput("step1.operativeUnits", unit.id, "name", unit.name)}</td>
+              <td>${cellInput("step1.operativeUnits", unit.id, "description", unit.description)}</td>
+              <td>${cellInput("step1.operativeUnits", unit.id, "notes", unit.notes)}</td>
+              <td>${removeButton("step1.operativeUnits", unit.id)}</td>
+            </tr>
+          `).join("")}</tbody>
+        </table>
+      </div>
+      ${units.length === 0 ? emptyState("Add the real S1 units implied by the selected segmentation.") : ""}
+    </section>
   `;
 }
 
@@ -698,6 +691,7 @@ function renderFullscreenDecision(workspace) {
   return `
     <section class="work-section fullscreen-decision-section">
       ${renderSegmentationDecisionFields(workspace, workspace.step1.segmentationOptions)}
+      ${renderOperativeUnitsSection(workspace)}
     </section>
   `;
 }

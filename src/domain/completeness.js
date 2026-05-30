@@ -25,7 +25,9 @@ function evaluateStep1(workspace) {
   const warnings = [];
   const criteria = workspace.step1.keyBuyingCriteria;
   const segmentationOptions = workspace.step1.segmentationOptions;
+  const operativeUnits = workspace.step1.operativeUnits || [];
   const meaningfulOptions = segmentationOptions.filter((option) => option.name.trim() && option.description.trim());
+  const meaningfulUnits = operativeUnits.filter((unit) => unit.name.trim());
   const meaningfulCriteria = criteria.filter((criterion) => criterion.name.trim() && criterion.explanation.trim() && criterion.weight !== "");
   const completedSixPack = workspace.step1.strategicFields.filter((field) => field.variable.trim() && field.direction.trim());
   const evaluationRows = [...criteria, ...workspace.step1.strategicFields];
@@ -38,6 +40,7 @@ function evaluateStep1(workspace) {
     workspace.sif.purpose,
     workspace.sif.customers,
     ...segmentationOptions.flatMap((option) => [option.name, option.description]),
+    ...operativeUnits.flatMap((unit) => [unit.name, unit.description]),
     ...criteria.flatMap((criterion) => [criterion.name, criterion.explanation, criterion.weight]),
     ...workspace.step1.strategicFields.map((field) => field.direction),
     workspace.step1.decisionRationale
@@ -59,6 +62,7 @@ function evaluateStep1(workspace) {
   requireCount(matrixRowsComplete, evaluationRows.length, missing, "Complete the segmentation evaluation matrix.");
   requireText(workspace.step1.selectedSegmentationOptionId, missing, "Select the preferred segmentation option.");
   requireText(workspace.step1.decisionRationale, missing, "Document the decision rationale.");
+  requireCount(meaningfulUnits, 1, missing, "Define the real operative units / S1 from the selected segmentation.");
 
   if (criteria.length > 7) {
     warnings.push("Key buying criteria exceed the recommended maximum of seven.");
@@ -72,7 +76,7 @@ function evaluateStep1(workspace) {
     missing.push("Resolve duplicate scores in evaluation rows.");
   }
 
-  return stepResult("step1", missing, warnings, 8);
+  return stepResult("step1", missing, warnings, 9);
 }
 
 function evaluateStep2(workspace) {

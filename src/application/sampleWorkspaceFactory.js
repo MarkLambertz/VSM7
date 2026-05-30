@@ -2,6 +2,7 @@ import {
   createImplementationItem,
   createKeyBuyingCriterion,
   createMeeting,
+  createOperativeUnit,
   createRole,
   createSegmentationOption,
   createStrategicField,
@@ -9,7 +10,7 @@ import {
   createWorkspace,
   sixPackOfControl,
   syncAllocations
-} from "../domain/vsm.js";
+} from "../domain/vsm.js?v=20260530-step2-neutral";
 
 export function createSampleWorkspace() {
   const sample = createWorkspace();
@@ -26,6 +27,11 @@ export function createSampleWorkspace() {
   ];
   sample.step1.selectedSegmentationOptionId = sample.step1.segmentationOptions[1].id;
   sample.step1.decisionRationale = "Product portfolio segmentation keeps operative units closer to purchase-deciding customer value.";
+  sample.step1.operativeUnits = [
+    createOperativeUnit("Interior Systems", "Operative unit for cockpit and interior systems."),
+    createOperativeUnit("Software Platform", "Operative unit for embedded and platform software."),
+    createOperativeUnit("Service & Lifecycle", "Operative unit for service offers and lifecycle value.")
+  ];
 
   const criterion1 = createKeyBuyingCriterion();
   criterion1.name = "Time to market";
@@ -84,11 +90,15 @@ export function createSampleWorkspace() {
   sample.step1.evaluation.comments[criterion2.id] = "Less bottlenecks through product alignment.";
   sample.step1.evaluation.comments[sample.step1.strategicFields[2].id] = "Central function can realize synergies.";
 
-  sample.step2.horizontalAssessment.operativeUnitsAmount = "Medium";
-  sample.step2.horizontalAssessment.dissimilarity = "High";
-  sample.step2.horizontalAssessment.selfControl = "Adequate";
-  sample.step2.verticalAssessment.resourceBargain = "Adequate";
-  sample.step2.verticalAssessment.system2 = "Weak";
+  sample.step2.horizontalAssessment.operativeUnitsAmount = "50";
+  sample.step2.horizontalAssessment.dissimilarity = "50";
+  sample.step2.horizontalAssessment.selfControl = "50";
+  sample.step2.verticalAssessment.environmentalOverlaps = "50";
+  sample.step2.verticalAssessment.system3Star = "50";
+  sample.step2.verticalAssessment.operationalDependencies = "50";
+  sample.step2.verticalAssessment.resourceBargain = "50";
+  sample.step2.verticalAssessment.corporateIntervention = "50";
+  sample.step2.verticalAssessment.system2 = "50";
   sample.step2.conclusion = "The target segmentation is manageable if S2 coordination and resource bargaining are strengthened.";
   sample.step2.selectedOption = sample.step2.options[0].id;
 

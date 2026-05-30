@@ -83,6 +83,7 @@ export const sixPackOfControl = [
   "Profitability",
   "Liquidity / Cash Flow"
 ];
+const neutralVarietyValue = "50";
 
 export function createId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -138,22 +139,23 @@ export function createWorkspace() {
         comments: {}
       },
       selectedSegmentationOptionId: "",
-      decisionRationale: ""
+      decisionRationale: "",
+      operativeUnits: []
     },
     step2: {
       horizontalAssessment: {
-        operativeUnitsAmount: "",
-        dissimilarity: "",
-        selfControl: "",
+        operativeUnitsAmount: neutralVarietyValue,
+        dissimilarity: neutralVarietyValue,
+        selfControl: neutralVarietyValue,
         notes: ""
       },
       verticalAssessment: {
-        environmentalOverlaps: "",
-        system3Star: "",
-        operationalDependencies: "",
-        resourceBargain: "",
-        corporateIntervention: "",
-        system2: "",
+        environmentalOverlaps: neutralVarietyValue,
+        system3Star: neutralVarietyValue,
+        operationalDependencies: neutralVarietyValue,
+        resourceBargain: neutralVarietyValue,
+        corporateIntervention: neutralVarietyValue,
+        system2: neutralVarietyValue,
         notes: ""
       },
       options: [
@@ -208,6 +210,15 @@ export function createSegmentationOption(name = "", description = "") {
     name,
     description,
     decisionNotes: ""
+  };
+}
+
+export function createOperativeUnit(name = "", description = "") {
+  return {
+    id: createId("unit"),
+    name,
+    description,
+    notes: ""
   };
 }
 
@@ -350,6 +361,7 @@ export function ensureWorkspaceShape(candidate) {
   }
 
   ensureSixPackFields(merged);
+  normalizeStep2VarietyDefaults(merged);
 
   for (const taskId of taskIds) {
     if (!merged.step4.allocations[taskId]) {
@@ -368,6 +380,29 @@ export function ensureWorkspaceShape(candidate) {
   }
 
   return merged;
+}
+
+function normalizeStep2VarietyDefaults(workspace) {
+  const horizontalFields = ["operativeUnitsAmount", "dissimilarity", "selfControl"];
+  const verticalFields = ["environmentalOverlaps", "system3Star", "operationalDependencies", "resourceBargain", "corporateIntervention", "system2"];
+
+  for (const field of horizontalFields) {
+    workspace.step2.horizontalAssessment[field] = normalizeVarietyValue(workspace.step2.horizontalAssessment[field]);
+  }
+
+  for (const field of verticalFields) {
+    workspace.step2.verticalAssessment[field] = normalizeVarietyValue(workspace.step2.verticalAssessment[field]);
+  }
+}
+
+function normalizeVarietyValue(value) {
+  const numericValue = Number(value);
+
+  if (Number.isFinite(numericValue) && String(value).trim() !== "") {
+    return String(Math.max(0, Math.min(100, numericValue)));
+  }
+
+  return neutralVarietyValue;
 }
 
 function ensureSixPackFields(workspace) {

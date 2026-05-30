@@ -3,6 +3,7 @@ import {
   createImplementationItem,
   createKeyBuyingCriterion,
   createMeeting,
+  createOperativeUnit,
   createRecursionLevel,
   createRole,
   createSegmentationOption,
@@ -15,39 +16,41 @@ import {
   syncAllocations,
   taskSources,
   vsmSystems
-} from "../domain/vsm.js";
-import { evaluateCompleteness } from "../domain/completeness.js";
+} from "../domain/vsm.js?v=20260530-step2-neutral";
+import { evaluateCompleteness } from "../domain/completeness.js?v=20260530-step2-neutral";
 import {
+  deleteOrganization,
   deleteWorkspace,
   listWorkspaces,
   loadWorkspace,
   openWorkspace,
+  renameOrganization,
   renameWorkspace,
   replaceWorkspace,
   saveWorkspace
-} from "../application/workspaceService.js";
-import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js";
-import { createLocalStorageRepository } from "../infrastructure/localStorageRepository.js";
-import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js";
-import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js";
-import { renderProjectManagement } from "./projectManagement.js";
-import { renderStartPage } from "./startPage.js?v=20260527-buttons";
-import { renderOverview } from "./steps/overview.js";
-import { renderImplementation } from "./steps/implementation.js";
+} from "../application/workspaceService.js?v=20260530-step2-neutral";
+import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?v=20260530-step2-neutral";
+import { createLocalStorageRepository } from "../infrastructure/localStorageRepository.js?v=20260530-step2-neutral";
+import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js?v=20260530-step2-neutral";
+import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260530-step2-neutral";
+import { renderProjectManagement } from "./projectManagement.js?v=20260530-step2-neutral";
+import { renderStartPage } from "./startPage.js?v=20260530-step2-neutral";
+import { renderOverview } from "./steps/overview.js?v=20260530-step2-neutral";
+import { renderImplementation } from "./steps/implementation.js?v=20260530-step2-neutral";
 import {
   focusStepOrder,
   getGenericFocusStepTitle,
   getGenericFocusTileCount,
   hasGenericFocusMode,
   renderGenericFocusFullscreen
-} from "./steps/focusMode.js";
-import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js";
-import { renderStep2 } from "./steps/step2.js";
-import { renderStep3 } from "./steps/step3.js";
-import { renderStep4 } from "./steps/step4.js";
-import { renderStep5 } from "./steps/step5.js";
-import { renderStep6 } from "./steps/step6.js";
-import { renderStep7 } from "./steps/step7.js";
+} from "./steps/focusMode.js?v=20260530-step2-neutral";
+import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js?v=20260530-step2-neutral";
+import { renderStep2 } from "./steps/step2.js?v=20260530-step2-neutral";
+import { renderStep3 } from "./steps/step3.js?v=20260530-step2-neutral";
+import { renderStep4 } from "./steps/step4.js?v=20260530-step2-neutral";
+import { renderStep5 } from "./steps/step5.js?v=20260530-step2-neutral";
+import { renderStep6 } from "./steps/step6.js?v=20260530-step2-neutral";
+import { renderStep7 } from "./steps/step7.js?v=20260530-step2-neutral";
 
 const app = document.querySelector("#app");
 const repository = createLocalStorageRepository();
@@ -57,6 +60,7 @@ if (listWorkspaces(repository).length === 0) {
   saveWorkspace(repository, workspace);
 }
 let activeView = "start";
+let selectedOrganizationId = workspace.organization.id || "";
 let activeStep1Subpage = "sif";
 let isFocusFullscreen = false;
 let activeStep1FullscreenTile = 0;
@@ -105,12 +109,13 @@ function render() {
   document.body.classList.toggle("has-fullscreen-workshop", isFocusFullscreen);
   const completeness = evaluateCompleteness(workspace);
   const projects = listWorkspaces(repository);
+  selectedOrganizationId = normalizeSelectedOrganization(projects);
   const showStepNavigation = activeView !== "start" && activeView !== "projects";
 
   app.innerHTML = `
     <header class="topbar">
       <div class="brand-block">
-        <span class="brand-mark">VSM7</span>
+        ${renderBrandMark()}
         <div>
           <div class="eyebrow">Workshop workspace</div>
           <strong>${escapeHtml(workspace.project.name || "New VSM Project")}</strong>
@@ -140,6 +145,14 @@ function render() {
       </main>
     </div>
     ${renderFocusFullscreenLayer()}
+  `;
+}
+
+function renderBrandMark() {
+  return `
+    <span class="brand-mark" role="img" aria-label="VSM7 viable system diagram">
+      <img src="./src/presentation/assets/vsm-system-logo.png?v=20260530" alt="">
+    </span>
   `;
 }
 
@@ -304,7 +317,7 @@ function renderStepToken(step) {
 function renderActiveView(completeness, projects) {
   const views = {
     start: () => renderStartPage(workspace, projects),
-    projects: () => renderProjectManagement(workspace, projects),
+    projects: () => renderProjectManagement(workspace, projects, selectedOrganizationId),
     overview: () => renderOverview(workspace, completeness, stepDefinitions),
     step1: () => renderStep1(workspace, activeStep1Subpage),
     step2: () => renderStep2(workspace),
@@ -683,6 +696,7 @@ function handleAction(button) {
 
   if (action === "new-workspace") {
     workspace = replaceWorkspace(repository, createWorkspace());
+    selectedOrganizationId = workspace.organization.id || "";
     activeView = "start";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
@@ -693,6 +707,7 @@ function handleAction(button) {
 
   if (action === "load-sample") {
     workspace = replaceWorkspace(repository, createSampleWorkspace());
+    selectedOrganizationId = workspace.organization.id || "";
     activeView = "overview";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
@@ -702,7 +717,8 @@ function handleAction(button) {
   }
 
   if (action === "add-project") {
-    workspace = replaceWorkspace(repository, createProjectWorkspace());
+    workspace = replaceWorkspace(repository, createProjectWorkspace(selectedOrganizationId));
+    selectedOrganizationId = workspace.organization.id || "";
     activeView = "overview";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
@@ -713,6 +729,7 @@ function handleAction(button) {
 
   if (action === "add-organization") {
     workspace = replaceWorkspace(repository, createWorkspace());
+    selectedOrganizationId = workspace.organization.id || "";
     activeView = "projects";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
@@ -723,6 +740,7 @@ function handleAction(button) {
 
   if (action === "open-project") {
     workspace = openWorkspace(repository, button.dataset.projectId);
+    selectedOrganizationId = workspace.organization.id || "";
     activeView = "overview";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
@@ -732,30 +750,40 @@ function handleAction(button) {
   }
 
   if (action === "open-organization") {
-    const project = findLatestProjectForOrganization(button.dataset.organizationId, button.dataset.organizationName);
-    if (project) {
-      workspace = openWorkspace(repository, project.id);
-      activeView = "overview";
-      activeStep1Subpage = "sif";
-      isFocusFullscreen = false;
-      isCompletenessOpen = false;
-      render();
-    }
-    return;
-  }
-
-  if (action === "delete-project") {
-    workspace = deleteWorkspace(repository, button.dataset.projectId);
+    selectedOrganizationId = button.dataset.organizationId || button.dataset.organizationName || selectedOrganizationId;
     activeView = "projects";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
     isCompletenessOpen = false;
-
-    if (!listWorkspaces(repository).length) {
-      workspace = replaceWorkspace(repository, createWorkspace());
-    }
-
     render();
+    return;
+  }
+
+  if (action === "select-organization") {
+    selectedOrganizationId = button.dataset.organizationId || selectedOrganizationId;
+    activeView = "projects";
+    isCompletenessOpen = false;
+    render();
+    return;
+  }
+
+  if (action === "rename-project") {
+    renameProjectFromButton(button);
+    return;
+  }
+
+  if (action === "rename-organization") {
+    renameOrganizationFromButton(button);
+    return;
+  }
+
+  if (action === "delete-project") {
+    deleteProjectFromButton(button);
+    return;
+  }
+
+  if (action === "delete-organization") {
+    deleteOrganizationFromButton(button);
     return;
   }
 
@@ -804,6 +832,10 @@ function addItem(action) {
     "add-recursion-above": () => addRecursionLevel("above"),
     "add-recursion-below": () => addRecursionLevel("below"),
     "add-segmentation": () => workspace.step1.segmentationOptions.push(createSegmentationOption()),
+    "add-operative-unit": () => {
+      workspace.step1.operativeUnits ||= [];
+      workspace.step1.operativeUnits.push(createOperativeUnit());
+    },
     "add-criterion": () => workspace.step1.keyBuyingCriteria.push(createKeyBuyingCriterion()),
     "add-strategic-field": () => workspace.step1.strategicFields.push(createStrategicField()),
     "add-sct": () => {
@@ -927,20 +959,148 @@ function recursionRank(level) {
   return match ? -Number(match[1]) : 0;
 }
 
-function createProjectWorkspace() {
+function createProjectWorkspace(organizationId) {
   const nextWorkspace = createWorkspace();
-  nextWorkspace.organization = { ...workspace.organization };
+  const organization = findOrganizationForProjectCreation(organizationId);
+  nextWorkspace.organization = {
+    id: organization.id,
+    name: organization.name,
+    description: organization.description || ""
+  };
   return nextWorkspace;
 }
 
-function findLatestProjectForOrganization(organizationId, organizationName) {
-  return listWorkspaces(repository)
-    .filter((project) => (
-      project.organizationId === organizationId
-        || project.organizationName === organizationName
-        || project.organizationName === organizationId
-    ))
-    .sort((left, right) => String(right.updatedAt || "").localeCompare(String(left.updatedAt || "")))[0];
+function findOrganizationForProjectCreation(organizationId) {
+  if (!organizationId || projectBelongsToOrganization({
+    organizationId: workspace.organization.id,
+    organizationName: workspace.organization.name
+  }, organizationId)) {
+    return {
+      id: workspace.organization.id,
+      name: workspace.organization.name || "New Organization",
+      description: workspace.organization.description || ""
+    };
+  }
+
+  const project = listWorkspaces(repository).find((item) => projectBelongsToOrganization(item, organizationId));
+  return {
+    id: project?.organizationId || organizationId,
+    name: project?.organizationName || "New Organization",
+    description: ""
+  };
+}
+
+function normalizeSelectedOrganization(projects) {
+  if (projects.some((project) => projectBelongsToOrganization(project, selectedOrganizationId))) {
+    return selectedOrganizationId;
+  }
+
+  if (projects.some((project) => projectBelongsToOrganization(project, workspace.organization.id))) {
+    return workspace.organization.id;
+  }
+
+  const [firstProject] = projects;
+  return firstProject?.organizationId || firstProject?.organizationName || "";
+}
+
+function projectBelongsToOrganization(project, organizationId) {
+  return Boolean(organizationId) && (
+    project.organizationId === organizationId
+      || (!project.organizationId && project.organizationName === organizationId)
+      || project.organizationName === organizationId
+  );
+}
+
+function renameProjectFromButton(button) {
+  const projectId = button.dataset.projectId;
+  const currentName = button.dataset.projectName || "Untitled project";
+  const name = window.prompt("Rename project", currentName)?.trim();
+
+  if (!projectId || !name || name === currentName) {
+    return;
+  }
+
+  if (projectId === workspace.project.id) {
+    workspace.project.name = name;
+    saveNow();
+  } else {
+    renameWorkspace(repository, projectId, name);
+    setSaveStatus("Saved just now");
+  }
+
+  render();
+}
+
+function renameOrganizationFromButton(button) {
+  const organizationId = button.dataset.organizationId;
+  const currentName = button.dataset.organizationName || "Unnamed Organization";
+  const name = window.prompt("Rename organization", currentName)?.trim();
+
+  if (!organizationId || !name || name === currentName) {
+    return;
+  }
+
+  saveNow();
+  renameOrganization(repository, organizationId, name);
+
+  if (projectBelongsToOrganization({
+    organizationId: workspace.organization.id,
+    organizationName: currentName
+  }, organizationId)) {
+    workspace = openWorkspace(repository, workspace.project.id);
+  }
+
+  selectedOrganizationId = organizationId;
+  setSaveStatus("Saved just now");
+  render();
+}
+
+function deleteProjectFromButton(button) {
+  const projectId = button.dataset.projectId;
+  const projectName = button.dataset.projectName || "this project";
+
+  if (!projectId || !window.confirm(`Delete "${projectName}"? This cannot be undone.`)) {
+    return;
+  }
+
+  workspace = deleteWorkspace(repository, projectId);
+  activeView = "projects";
+  activeStep1Subpage = "sif";
+  isFocusFullscreen = false;
+  isCompletenessOpen = false;
+
+  if (!listWorkspaces(repository).length) {
+    workspace = replaceWorkspace(repository, createWorkspace());
+  }
+
+  selectedOrganizationId = workspace.organization.id || "";
+  setSaveStatus("Saved just now");
+  render();
+}
+
+function deleteOrganizationFromButton(button) {
+  const organizationId = button.dataset.organizationId;
+  const organizationName = button.dataset.organizationName || "this organization";
+  const projectCount = Number(button.dataset.projectCount || 0);
+  const projectText = `${projectCount} project${projectCount === 1 ? "" : "s"}`;
+
+  if (!organizationId || !window.confirm(`Delete "${organizationName}" and ${projectText}? This cannot be undone.`)) {
+    return;
+  }
+
+  workspace = deleteOrganization(repository, organizationId);
+  activeView = "projects";
+  activeStep1Subpage = "sif";
+  isFocusFullscreen = false;
+  isCompletenessOpen = false;
+
+  if (!listWorkspaces(repository).length) {
+    workspace = replaceWorkspace(repository, createWorkspace());
+  }
+
+  selectedOrganizationId = workspace.organization.id || "";
+  setSaveStatus("Saved just now");
+  render();
 }
 
 function scheduleSave() {

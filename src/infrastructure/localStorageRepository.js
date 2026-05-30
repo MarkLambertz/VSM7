@@ -40,12 +40,53 @@ export function createLocalStorageRepository() {
       workspace.project.updatedAt = new Date().toISOString();
       persistProject(workspace, { activate: localStorage.getItem(activeProjectKey) === projectId });
     },
+    renameOrganization(organizationId, name) {
+      const projects = readProjectIndex().filter((project) => projectBelongsToOrganization(project, organizationId));
+      const activeProjectId = localStorage.getItem(activeProjectKey);
+
+      for (const project of projects) {
+        const workspace = loadProject(project.id);
+        if (!workspace) {
+          continue;
+        }
+
+        workspace.organization ||= {};
+        workspace.organization.id ||= project.organizationId || organizationId;
+        workspace.organization.name = name;
+        workspace.project.updatedAt = new Date().toISOString();
+        persistProject(workspace, { activate: activeProjectId === project.id });
+      }
+    },
     deleteProject(projectId) {
       localStorage.removeItem(projectStorageKey(projectId));
       const nextIndex = readProjectIndex().filter((project) => project.id !== projectId);
       writeProjectIndex(nextIndex);
 
       if (localStorage.getItem(activeProjectKey) === projectId) {
+        const [nextProject] = nextIndex;
+        if (nextProject) {
+          localStorage.setItem(activeProjectKey, nextProject.id);
+        } else {
+          localStorage.removeItem(activeProjectKey);
+        }
+      }
+    },
+    deleteOrganization(organizationId) {
+      const projects = readProjectIndex();
+      const projectIdsToDelete = new Set(
+        projects
+          .filter((project) => projectBelongsToOrganization(project, organizationId))
+          .map((project) => project.id)
+      );
+
+      for (const projectId of projectIdsToDelete) {
+        localStorage.removeItem(projectStorageKey(projectId));
+      }
+
+      const nextIndex = projects.filter((project) => !projectIdsToDelete.has(project.id));
+      writeProjectIndex(nextIndex);
+
+      if (projectIdsToDelete.has(localStorage.getItem(activeProjectKey))) {
         const [nextProject] = nextIndex;
         if (nextProject) {
           localStorage.setItem(activeProjectKey, nextProject.id);
@@ -151,4 +192,10 @@ function projectMetadata(workspace) {
 
 function projectStorageKey(projectId) {
   return `${projectStoragePrefix}${projectId}`;
+}
+
+function projectBelongsToOrganization(project, organizationId) {
+  return project.organizationId === organizationId
+    || (!project.organizationId && project.organizationName === organizationId)
+    || project.organizationName === organizationId;
 }

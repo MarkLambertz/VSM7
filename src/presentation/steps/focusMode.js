@@ -1,4 +1,4 @@
-import { createAllocation } from "../../domain/vsm.js";
+import { createAllocation } from "../../domain/vsm.js?v=20260530-step2-neutral";
 import {
   allocationCheckbox,
   allocationInput,
@@ -8,11 +8,12 @@ import {
   escapeAttr,
   escapeHtml,
   removeButton,
-  selectField,
   tableHeader,
   taskMultiSelect,
   textarea
-} from "../shared/renderHelpers.js";
+} from "../shared/renderHelpers.js?v=20260530-step2-neutral";
+import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260530-step2-neutral";
+import { renderStep2Assessment } from "./step2.js?v=20260530-step2-neutral";
 
 const focusStepMetadata = {
   step2: {
@@ -217,71 +218,8 @@ function renderBriefContent(_workspace, metadata) {
           ${metadata.prompts.map((prompt) => `<li>${escapeHtml(prompt)}</li>`).join("")}
         </ul>
       </div>
-      ${renderMethodVisual(metadata)}
+      ${renderMethodVisual(metadata, "fullscreen")}
     </div>
-  `;
-}
-
-function renderMethodVisual(visual) {
-  const visualItems = (visual.visualItems || []).slice(0, 6);
-
-  return `
-    <aside class="step1-visual-slot method-visual fullscreen-visual-slot fullscreen-visual-card method-visual--${escapeAttr(visual.visualKind || "generic")}" aria-label="${escapeAttr(visual.visual)} visual placeholder">
-      <div class="method-visual-map">
-        ${visualItems.map((item, index) => `
-          <span class="method-node ${getVisualTone(index)}">${escapeHtml(item)}</span>
-        `).join("")}
-      </div>
-      <div class="method-visual-caption">
-        <span>Method visual placeholder</span>
-        <strong>${escapeHtml(visual.visual)}</strong>
-        <small>${escapeHtml(getVisualCaption(visual.visualKind))}</small>
-      </div>
-    </aside>
-  `;
-}
-
-function getVisualTone(index) {
-  return ["is-blue", "is-green", "is-amber", "is-red", "is-teal", "is-neutral"][index % 6];
-}
-
-function getVisualCaption(visualKind) {
-  const captions = {
-    variety: "Horizontal and vertical variety compared for overload risk",
-    sct: "Complexity drivers feeding the success-critical task spine",
-    accountability: "SCTs connected to recursion levels and accountable entities",
-    meetings: "S2-S5 meeting layers organized by VSM function",
-    channels: "Closed-loop robustness across the channel criteria",
-    roles: "Roles, entities, meetings, and SCTs connected",
-    roadmap: "Implementation epics staged across now, next, and later"
-  };
-
-  return captions[visualKind] || "Illustration · icon · photo · workshop canvas";
-}
-
-function renderStep2Assessment(workspace) {
-  return `
-    <section class="work-section">
-      <div class="section-heading">
-        <h2>Horizontal and Vertical Variety</h2>
-        <button class="ghost-button" data-action="export-step" data-step="step2">Download Outcome</button>
-      </div>
-      <div class="field-grid three">
-        ${selectField("Amount of operative units", "step2.horizontalAssessment.operativeUnitsAmount", workspace.step2.horizontalAssessment.operativeUnitsAmount, ["", "Small", "Medium", "Large"])}
-        ${selectField("Dissimilarity", "step2.horizontalAssessment.dissimilarity", workspace.step2.horizontalAssessment.dissimilarity, ["", "Low", "Medium", "High"])}
-        ${selectField("Self-control capability", "step2.horizontalAssessment.selfControl", workspace.step2.horizontalAssessment.selfControl, ["", "Weak", "Adequate", "Strong"])}
-      </div>
-      ${textarea("Horizontal assessment notes", "step2.horizontalAssessment.notes", workspace.step2.horizontalAssessment.notes)}
-      <div class="field-grid three">
-        ${selectField("Environmental overlaps", "step2.verticalAssessment.environmentalOverlaps", workspace.step2.verticalAssessment.environmentalOverlaps, ["", "Low", "Medium", "High"])}
-        ${selectField("System 3*", "step2.verticalAssessment.system3Star", workspace.step2.verticalAssessment.system3Star, ["", "Weak", "Adequate", "Strong"])}
-        ${selectField("Operational dependencies", "step2.verticalAssessment.operationalDependencies", workspace.step2.verticalAssessment.operationalDependencies, ["", "Low", "Medium", "High"])}
-        ${selectField("Resource bargain", "step2.verticalAssessment.resourceBargain", workspace.step2.verticalAssessment.resourceBargain, ["", "Weak", "Adequate", "Strong"])}
-        ${selectField("Corporate intervention", "step2.verticalAssessment.corporateIntervention", workspace.step2.verticalAssessment.corporateIntervention, ["", "Weak", "Adequate", "Strong"])}
-        ${selectField("System 2", "step2.verticalAssessment.system2", workspace.step2.verticalAssessment.system2, ["", "Weak", "Adequate", "Strong"])}
-      </div>
-      ${textarea("Vertical assessment notes", "step2.verticalAssessment.notes", workspace.step2.verticalAssessment.notes)}
-    </section>
   `;
 }
 

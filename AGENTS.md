@@ -149,8 +149,37 @@ Current step labels:
 ## Git And Verification
 
 - Check whether the current workspace is actually a git repository before claiming anything has been pushed.
-- This local working folder has previously not been a git repo; previous pushes used a temporary checkout.
 - Run `npm test` after behavior-relevant changes.
 - For frontend changes, verify in the browser when practical and check for layout overflow.
 - Do not claim a GitHub push succeeded unless the push command or GitHub connector confirms it.
 
+### GitHub Push Procedure
+
+The canonical local project folder is `/Users/mark/Documents/VSM7`. It has repeatedly been a plain project folder, not a git checkout. Do not waste time trying `git push` from that folder unless `git rev-parse --show-toplevel` proves it is a repository.
+
+Use this procedure for pushing to `MarkLambertz/VSM7`:
+
+1. Verify the local state first:
+   - Run `npm test`.
+   - Check the app still targets port `4173` via `start.command`.
+   - If browser verification is practical, open `http://localhost:4173/?v=<current-cache-version>`.
+2. Check GitHub CLI explicitly:
+   - Use `/opt/homebrew/bin/gh --version`.
+   - Use `/opt/homebrew/bin/gh auth status`.
+   - If the token is invalid, stop and ask the user to run:
+     `/opt/homebrew/bin/gh auth login -h github.com -s repo -w`
+3. If `/Users/mark/Documents/VSM7` is not a git repo, use a temporary checkout:
+   - Create a temp folder under `/private/tmp`, for example `/private/tmp/vsm7-push.<id>`.
+   - Clone the repo with `/opt/homebrew/bin/gh repo clone MarkLambertz/VSM7 <temp-folder>`.
+   - Mirror the local project into the temp checkout with `rsync`, excluding `.git`, `node_modules`, and system junk files.
+   - Inspect `git status -sb` in the temp checkout before committing.
+4. Commit and push from the temporary checkout:
+   - `git add -A`
+   - `git commit -m "<clear change summary>"`
+   - `git push origin main`
+5. Report the result:
+   - Mention the commit hash or GitHub confirmation.
+   - Mention tests run.
+   - If push is blocked by auth or network, say exactly which blocker occurred and do not imply it succeeded.
+
+Important: do not reintroduce a Node backend for normal app usage just to make pushing or persistence easier. VSM7 must remain static/browser-shareable; Node is only for development activities like tests.

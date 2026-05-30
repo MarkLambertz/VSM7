@@ -1,5 +1,5 @@
-import { stepDefinitions } from "../domain/vsm.js";
-import { evaluateCompleteness } from "../domain/completeness.js";
+import { stepDefinitions } from "../domain/vsm.js?v=20260530-step2-neutral";
+import { evaluateCompleteness } from "../domain/completeness.js?v=20260530-step2-neutral";
 
 export function exportProjectJson(workspace) {
   const name = safeFileName(workspace.project.name || "vsm-project");
@@ -86,6 +86,7 @@ function step1Doc(workspace) {
     ${section("Strategic Fields", strategicFieldsTable(workspace))}
     ${section("Segmentation Evaluation", segmentationEvaluationTable(workspace))}
     ${section("Decision Rationale", paragraph(workspace.step1.decisionRationale))}
+    ${section("Real Operative Units / S1", simpleTable(["Operative unit", "Scope or kind", "Notes"], (workspace.step1.operativeUnits || []).map((unit) => [unit.name, unit.description, unit.notes])))}
   `);
 }
 
@@ -95,6 +96,8 @@ function step2Doc(workspace) {
 
   return documentShell(workspace, `
     <h1>Step II: Manageability & Flattening</h1>
+    ${section("Selected Segmentation", selectedSegmentation(workspace))}
+    ${section("Operative Units / S1", simpleTable(["Operative unit", "Scope or kind", "Notes"], (workspace.step1.operativeUnits || []).map((unit) => [unit.name, unit.description, unit.notes])))}
     ${section("Horizontal Variety", simpleTable(["Dimension", "Assessment"], [
       ["Amount of operative units", horizontal.operativeUnitsAmount],
       ["Dissimilarity", horizontal.dissimilarity],

@@ -1,3 +1,5 @@
+import { renderMethodVisual } from "./methodVisuals.js?v=20260530-step2-neutral";
+
 export function stepHeader(token, title, description) {
   const visual = getStepVisual(token, title);
 
@@ -12,7 +14,7 @@ export function stepHeader(token, title, description) {
           <span><strong>Outcome</strong>Structured VSM artifact</span>
         </div>
       </div>
-      ${renderStepVisual(visual)}
+      ${renderMethodVisual(visual)}
     </section>
   `;
 }
@@ -69,27 +71,6 @@ function getStepVisual(token, title) {
     caption: "Illustration · icon · photo · workshop canvas",
     items: ["Focus", "Inputs", "Decisions", "Outcome"]
   };
-}
-
-function renderStepVisual(visual) {
-  return `
-    <aside class="step1-visual-slot method-visual method-visual--${escapeAttr(visual.kind)}" aria-label="${escapeAttr(visual.title)} visual placeholder">
-      <div class="method-visual-map">
-        ${visual.items.map((item, index) => `
-          <span class="method-node ${getVisualTone(index)}">${escapeHtml(item)}</span>
-        `).join("")}
-      </div>
-      <div class="method-visual-caption">
-        <span>Method visual placeholder</span>
-        <strong>${escapeHtml(visual.title)}</strong>
-        <small>${escapeHtml(visual.caption)}</small>
-      </div>
-    </aside>
-  `;
-}
-
-function getVisualTone(index) {
-  return ["is-blue", "is-green", "is-amber", "is-red", "is-teal", "is-neutral"][index % 6];
 }
 
 export function tableHeader(title, action) {

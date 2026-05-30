@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createWorkspace,
+  createOperativeUnit,
   createSegmentationOption,
   createKeyBuyingCriterion,
   createSuccessCriticalTask,
@@ -36,6 +37,7 @@ test("Step I recognizes segmentation and warns when criteria weights are incompl
   ];
   workspace.step1.selectedSegmentationOptionId = workspace.step1.segmentationOptions[1].id;
   workspace.step1.decisionRationale = "Product segmentation better reflects customer value.";
+  workspace.step1.operativeUnits = [createOperativeUnit("Product Line A", "One S1 unit.")];
 
   workspace.step1.keyBuyingCriteria = ["Time to market", "Integration", "Cost"].map((name, index) => {
     const criterion = createKeyBuyingCriterion();
@@ -73,6 +75,7 @@ test("Step I catches duplicate segmentation evaluation scores per row", () => {
   ];
   workspace.step1.selectedSegmentationOptionId = workspace.step1.segmentationOptions[1].id;
   workspace.step1.decisionRationale = "Product segmentation better reflects customer value.";
+  workspace.step1.operativeUnits = [createOperativeUnit("Product Line A", "One S1 unit.")];
   workspace.step1.keyBuyingCriteria = [createKeyBuyingCriterion(), createKeyBuyingCriterion(), createKeyBuyingCriterion()];
   workspace.step1.keyBuyingCriteria.forEach((criterion, index) => {
     criterion.name = `Criterion ${index + 1}`;
