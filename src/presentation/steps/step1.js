@@ -17,7 +17,10 @@ export const step1Subpages = [
     title: "Set the system boundary",
     focus: "Create a shared picture of the System-in-Focus and the recursion levels around it.",
     artifact: "Named System-in-Focus with purpose, stakeholders, and recursion context.",
-    visual: "Boundary sketch",
+    visual: "Boundary map",
+    visualKind: "boundary",
+    visualItems: ["R+1 parent system", "R0 System-in-Focus", "R-1 nested systems"],
+    coachNote: "Start with the recursion context and distinguish purpose-fulfilling operative units from support units. The org chart is evidence, not the answer.",
     prompts: ["What exactly is inside the System-in-Focus?", "Which parent and child systems frame the discussion?", "Which stakeholders must recognize themselves in the boundary?"]
   },
   {
@@ -26,7 +29,10 @@ export const step1Subpages = [
     title: "Open the segmentation space",
     focus: "Capture the plausible ways the business could be decomposed before evaluating them.",
     artifact: "Candidate segmentation options with decision notes.",
-    visual: "Segmentation map",
+    visual: "Segmentation option cards",
+    visualKind: "segmentation",
+    visualItems: ["Regional", "Product", "Customer", "Function"],
+    coachNote: "Make each option tangible: what operative units would exist, how would they be steered, and what customer value would this structure privilege?",
     prompts: ["Which segmentation logic is currently used?", "Which alternatives could create more effective management attention?", "What decision notes explain each option?"]
   },
   {
@@ -36,6 +42,9 @@ export const step1Subpages = [
     focus: "Translate customer choice and competitive pressure into weighted criteria.",
     artifact: "Weighted key buying criteria with relative position to competition.",
     visual: "Customer value lens",
+    visualKind: "criteria",
+    visualItems: ["Criterion", "Weight", "Competition", "Priority"],
+    coachNote: "Stay with the customer perspective. A short list of decisive buying criteria is stronger than a long catalogue of internal wishes.",
     prompts: ["Why do customers choose one offer over another?", "Which criteria truly decide the purchase?", "Do the weights add up to 100 percent?"]
   },
   {
@@ -45,6 +54,9 @@ export const step1Subpages = [
     focus: "Describe priorities, targets, and ambitions along the Six Pack of Control.",
     artifact: "Strategic fields of action with supporting links and files.",
     visual: "Six Pack compass",
+    visualKind: "sixpack",
+    visualItems: ["Market", "Innovation", "Productivity", "People", "Profit", "Cash"],
+    coachNote: "Focus on direction before precision. Capture the strategic ambition clearly enough that it can later shape SCTs, roles, and meetings.",
     prompts: ["What must change for each control variable?", "Which ambition needs top management attention?", "Which evidence or source material should stay connected?"]
   },
   {
@@ -54,6 +66,9 @@ export const step1Subpages = [
     focus: "Compare the options row by row and select the segmentation that best fits the system.",
     artifact: "Prioritized segmentation matrix and decision rationale.",
     visual: "Decision heatmap",
+    visualKind: "heatmap",
+    visualItems: ["Option A", "Option B", "Option C", "Weak fields", "Pattern"],
+    coachNote: "Use the numbers to reveal a pattern, not to outsource judgment. If two options are close, choose change only when the benefit is clear.",
     prompts: ["Where does each option clearly win or lose?", "Are weak fields visible enough for later SCT work?", "Can the group explain the selected option?"]
   }
 ];
@@ -117,18 +132,24 @@ export function renderStep1Fullscreen(workspace, activeStep1Subpage, activeTileI
         `).join("")}
       </div>
       <article class="step1-fullscreen-tile ${escapeAttr(tile.variant || "")}">
-        <div class="fullscreen-tile-header">
-          <div>
-            <p class="eyebrow">${escapeHtml(tile.kicker)}</p>
-            <h1>${escapeHtml(tile.title)}</h1>
-            <p>${escapeHtml(tile.description)}</p>
-          </div>
-          <span class="fullscreen-tile-counter">${safeIndex + 1} / ${tiles.length}</span>
-        </div>
+        ${tile.variant === "is-explanation" ? "" : renderFullscreenTileHeader(tile, safeIndex, tiles.length)}
         <div class="fullscreen-tile-body">
           ${tile.content}
         </div>
       </article>
+    </div>
+  `;
+}
+
+function renderFullscreenTileHeader(tile, safeIndex, tileCount) {
+  return `
+    <div class="fullscreen-tile-header">
+      <div>
+        <p class="eyebrow">${escapeHtml(tile.kicker)}</p>
+        <h1>${escapeHtml(tile.title)}</h1>
+        <p>${escapeHtml(tile.description)}</p>
+      </div>
+      <span class="fullscreen-tile-counter">${safeIndex + 1} / ${tileCount}</span>
     </div>
   `;
 }
@@ -157,19 +178,45 @@ function renderStep1Stage(workspace, activeSubpage) {
           <span><strong>Outcome</strong>${escapeHtml(activeSubpage.artifact)}</span>
         </div>
       </div>
-      <aside class="step1-visual-slot" aria-label="Visual placeholder">
-        <div class="visual-grid">
-          <span></span><span></span><span></span>
-          <span></span><span></span><span></span>
-        </div>
-        <div>
-          <span>Visual placeholder</span>
-          <strong>${escapeHtml(activeSubpage.visual)}</strong>
-          <small>Illustration · icon · photo · workshop canvas</small>
-        </div>
-      </aside>
+      ${renderMethodVisual(activeSubpage)}
     </section>
   `;
+}
+
+function renderMethodVisual(visual, mode = "normal") {
+  const visualItems = (visual.visualItems || []).slice(0, 6);
+  const modeClass = mode === "fullscreen" ? "fullscreen-visual-slot fullscreen-visual-card" : "";
+
+  return `
+    <aside class="step1-visual-slot method-visual ${modeClass} method-visual--${escapeAttr(visual.visualKind || "generic")}" aria-label="${escapeAttr(visual.visual)} visual placeholder">
+      <div class="method-visual-map">
+        ${visualItems.map((item, index) => `
+          <span class="method-node ${getVisualTone(index)}">${escapeHtml(item)}</span>
+        `).join("")}
+      </div>
+      <div class="method-visual-caption">
+        <span>Method visual placeholder</span>
+        <strong>${escapeHtml(visual.visual)}</strong>
+        <small>${escapeHtml(getVisualCaption(visual.visualKind))}</small>
+      </div>
+    </aside>
+  `;
+}
+
+function getVisualTone(index) {
+  return ["is-blue", "is-green", "is-amber", "is-red", "is-teal", "is-neutral"][index % 6];
+}
+
+function getVisualCaption(visualKind) {
+  const captions = {
+    boundary: "Nested rectangles for R+1, R0/SIF, and R-1",
+    segmentation: "Alternative decomposition logics side by side",
+    criteria: "Customer buying criteria with weights and competitive position",
+    sixpack: "Six control variables around the System-in-Focus",
+    heatmap: "Colored scoring matrix with visible weak fields"
+  };
+
+  return captions[visualKind] || "Illustration · icon · photo · workshop canvas";
 }
 
 function renderStep1Progress(activeSubpage) {
@@ -610,33 +657,24 @@ function createFullscreenTile(kicker, title, description, content, variant, shor
   return { kicker, title, description, content, variant, shortLabel };
 }
 
-function renderFullscreenBriefContent(workspace, subpage) {
-  const selectedOption = workspace.step1.segmentationOptions
-    .find((option) => option.id === workspace.step1.selectedSegmentationOptionId);
-
+function renderFullscreenBriefContent(_workspace, subpage) {
   return `
     <div class="fullscreen-brief-layout">
-      <div class="fullscreen-brief-copy">
-        <div class="stage-context-strip">
-          <span><strong>SIF</strong>${escapeHtml(workspace.sif.name || "Not named yet")}</span>
-          <span><strong>Selected segmentation</strong>${escapeHtml(selectedOption?.name || "Open decision")}</span>
-          <span><strong>Outcome</strong>${escapeHtml(subpage.artifact)}</span>
+      <div class="fullscreen-brief-copy workshop-brief-panel">
+        <span class="brief-index">${String(step1Subpages.findIndex((item) => item.id === subpage.id) + 1).padStart(2, "0")}</span>
+        <p class="eyebrow">Step I · Operative Units</p>
+        <h2>${escapeHtml(subpage.title)}</h2>
+        <p>${escapeHtml(subpage.focus)}</p>
+        <div class="brief-outcome">
+          <span>Workshop outcome</span>
+          <strong>${escapeHtml(subpage.artifact)}</strong>
         </div>
+        <p class="fullscreen-coach-note">${escapeHtml(subpage.coachNote)}</p>
         <ul class="brief-prompts fullscreen-prompts">
           ${subpage.prompts.map((prompt) => `<li>${escapeHtml(prompt)}</li>`).join("")}
         </ul>
       </div>
-      <aside class="step1-visual-slot fullscreen-visual-slot" aria-label="Visual placeholder">
-        <div class="visual-grid">
-          <span></span><span></span><span></span>
-          <span></span><span></span><span></span>
-        </div>
-        <div>
-          <span>Visual placeholder</span>
-          <strong>${escapeHtml(subpage.visual)}</strong>
-          <small>Illustration · icon · photo · workshop canvas</small>
-        </div>
-      </aside>
+      ${renderMethodVisual(subpage, "fullscreen")}
     </div>
   `;
 }

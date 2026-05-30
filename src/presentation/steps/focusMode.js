@@ -21,6 +21,9 @@ const focusStepMetadata = {
     description: "Evaluate horizontal and vertical variety using common wisdom and capture the selected remedy.",
     artifact: "Manageability assessment and selected remedy.",
     visual: "Variety balance",
+    visualKind: "variety",
+    visualItems: ["Horizontal variety", "Vertical variety", "Flattening risk", "Remedy"],
+    coachNote: "Use Ashby's law pragmatically: only variety can absorb variety. You do not need exact calculation, but the group must judge whether horizontal and vertical variety are in balance.",
     prompts: ["Is the System-in-Focus still manageable?", "Where does variety overload appear?", "Which remedy creates the most robust management model?"]
   },
   step3: {
@@ -28,7 +31,10 @@ const focusStepMetadata = {
     title: "Success-Critical Tasks",
     description: "Derive permanent organizational tasks from complexity drivers, overlaps, dependencies, and weak segmentation scores.",
     artifact: "Success-critical task register.",
-    visual: "Task spine",
+    visual: "SCT spine",
+    visualKind: "sct",
+    visualItems: ["Drivers", "Overlaps", "Dependencies", "Weak scores", "SCTs"],
+    coachNote: "SCTs are the permanent tasks that must be organized first. Derive them from complexity drivers, overlaps, dependencies, and weak segmentation scores.",
     prompts: ["Which issues require permanent management attention?", "Which SCTs are triggered by weak segmentation scores?", "Which tasks must later drive roles and meetings?"]
   },
   step4: {
@@ -37,6 +43,9 @@ const focusStepMetadata = {
     description: "Allocate success-critical tasks to recursion levels and accountable entities.",
     artifact: "Central/decentral accountability matrix.",
     visual: "Accountability map",
+    visualKind: "accountability",
+    visualItems: ["SCT", "R-1", "R0", "R+1", "Entity"],
+    coachNote: "Apply subsidiarity: allocate a task upward only when it cannot be done better at the next lower recursion level. Customer value comes before abstract synergy.",
     prompts: ["Where must each SCT be owned?", "Which allocations are partial or shared?", "Who is accountable in the System-in-Focus?"]
   },
   step5: {
@@ -45,6 +54,9 @@ const focusStepMetadata = {
     description: "Design the meeting and committee landscape across VSM systems.",
     artifact: "Meeting and committee landscape.",
     visual: "Meeting architecture",
+    visualKind: "meetings",
+    visualItems: ["S2", "S3", "S3*", "S4", "S5"],
+    coachNote: "Start with the current meeting landscape, but challenge every entity by its value contribution to SCTs and its VSM function.",
     prompts: ["Which meetings are needed for coordination, control, strategy, and policy?", "Which meetings should be kept or changed?", "Which SCTs must each meeting serve?"]
   },
   step6: {
@@ -52,7 +64,10 @@ const focusStepMetadata = {
     title: "Communication Channels",
     description: "Evaluate the robustness of communication loops through variety checks.",
     artifact: "Communication variety checks.",
-    visual: "Channel radar",
+    visual: "Channel robustness radar",
+    visualKind: "channels",
+    visualItems: ["Capacity", "Clarity", "Synchronicity", "Security"],
+    coachNote: "Think in closed loops, not linear messages. Diagnose only the channels in doubt, then test capacity, comprehensibility, synchronicity, and security.",
     prompts: ["Which loops are too weak for the required variety?", "Where do capacity or intelligibility gaps appear?", "Which communication channels must be strengthened?"]
   },
   step7: {
@@ -61,6 +76,9 @@ const focusStepMetadata = {
     description: "Represent roles, entities, reporting, and accountability based on the SCT spine.",
     artifact: "Roles, representation, and one-pager input.",
     visual: "Role constellation",
+    visualKind: "roles",
+    visualItems: ["Roles", "Entities", "Meetings", "SCTs", "RASIC"],
+    coachNote: "Representation is more than an org chart. Use the SCT spine and RASIC logic to define roles, entities, reporting lines, and decision authority.",
     prompts: ["Which roles or entities represent the system?", "How are SCTs embodied in roles and functions?", "What belongs in the target organization one-pager?"]
   },
   implementation: {
@@ -68,7 +86,10 @@ const focusStepMetadata = {
     title: "Target Organization Roadmap",
     description: "Turn the target picture into implementation items, owners, and timing.",
     artifact: "Transformation backlog.",
-    visual: "Roadmap board",
+    visual: "Transformation roadmap",
+    visualKind: "roadmap",
+    visualItems: ["Now", "Next", "Later", "Owners", "Dependencies"],
+    coachNote: "Translate the target picture into implementation epics, owners, milestones, and dependencies. Leadership support and a project team one step ahead are decisive.",
     prompts: ["Which steering challenges must be implemented first?", "Who owns each implementation item?", "Which dependencies or requirements block progress?"]
   }
 };
@@ -98,18 +119,24 @@ export function renderGenericFocusFullscreen(workspace, viewId, activeTileIndex,
         `).join("")}
       </div>
       <article class="step1-fullscreen-tile ${escapeAttr(tile.variant || "")}">
-        <div class="fullscreen-tile-header">
-          <div>
-            <p class="eyebrow">${escapeHtml(tile.kicker)}</p>
-            <h1>${escapeHtml(tile.title)}</h1>
-            <p>${escapeHtml(tile.description)}</p>
-          </div>
-          <span class="fullscreen-tile-counter">${safeIndex + 1} / ${tiles.length}</span>
-        </div>
+        ${tile.variant === "is-explanation" ? "" : renderFullscreenTileHeader(tile, safeIndex, tiles.length)}
         <div class="fullscreen-tile-body">
           ${tile.content}
         </div>
       </article>
+    </div>
+  `;
+}
+
+function renderFullscreenTileHeader(tile, safeIndex, tileCount) {
+  return `
+    <div class="fullscreen-tile-header">
+      <div>
+        <p class="eyebrow">${escapeHtml(tile.kicker)}</p>
+        <h1>${escapeHtml(tile.title)}</h1>
+        <p>${escapeHtml(tile.description)}</p>
+      </div>
+      <span class="fullscreen-tile-counter">${safeIndex + 1} / ${tileCount}</span>
     </div>
   `;
 }
@@ -173,35 +200,63 @@ function clampTileIndex(activeTileIndex, tileCount) {
   return Math.min(Math.max(Number(activeTileIndex) || 0, 0), Math.max(tileCount - 1, 0));
 }
 
-function renderBriefContent(workspace, metadata) {
-  const selectedOption = workspace.step1.segmentationOptions
-    .find((option) => option.id === workspace.step1.selectedSegmentationOptionId);
-
+function renderBriefContent(_workspace, metadata) {
   return `
     <div class="fullscreen-brief-layout">
-      <div class="fullscreen-brief-copy">
-        <div class="stage-context-strip">
-          <span><strong>SIF</strong>${escapeHtml(workspace.sif.name || "Not named yet")}</span>
-          <span><strong>Selected segmentation</strong>${escapeHtml(selectedOption?.name || "Open decision")}</span>
-          <span><strong>Outcome</strong>${escapeHtml(metadata.artifact)}</span>
+      <div class="fullscreen-brief-copy workshop-brief-panel">
+        <span class="brief-index">${escapeHtml(metadata.token === "Implementation" ? "Impl" : metadata.token.replace("Step ", ""))}</span>
+        <p class="eyebrow">${escapeHtml(metadata.token)}</p>
+        <h2>${escapeHtml(metadata.title)}</h2>
+        <p>${escapeHtml(metadata.description)}</p>
+        <div class="brief-outcome">
+          <span>Workshop outcome</span>
+          <strong>${escapeHtml(metadata.artifact)}</strong>
         </div>
+        <p class="fullscreen-coach-note">${escapeHtml(metadata.coachNote)}</p>
         <ul class="brief-prompts fullscreen-prompts">
           ${metadata.prompts.map((prompt) => `<li>${escapeHtml(prompt)}</li>`).join("")}
         </ul>
       </div>
-      <aside class="step1-visual-slot fullscreen-visual-slot" aria-label="Visual placeholder">
-        <div class="visual-grid">
-          <span></span><span></span><span></span>
-          <span></span><span></span><span></span>
-        </div>
-        <div>
-          <span>Visual placeholder</span>
-          <strong>${escapeHtml(metadata.visual)}</strong>
-          <small>Illustration · icon · photo · workshop canvas</small>
-        </div>
-      </aside>
+      ${renderMethodVisual(metadata)}
     </div>
   `;
+}
+
+function renderMethodVisual(visual) {
+  const visualItems = (visual.visualItems || []).slice(0, 6);
+
+  return `
+    <aside class="step1-visual-slot method-visual fullscreen-visual-slot fullscreen-visual-card method-visual--${escapeAttr(visual.visualKind || "generic")}" aria-label="${escapeAttr(visual.visual)} visual placeholder">
+      <div class="method-visual-map">
+        ${visualItems.map((item, index) => `
+          <span class="method-node ${getVisualTone(index)}">${escapeHtml(item)}</span>
+        `).join("")}
+      </div>
+      <div class="method-visual-caption">
+        <span>Method visual placeholder</span>
+        <strong>${escapeHtml(visual.visual)}</strong>
+        <small>${escapeHtml(getVisualCaption(visual.visualKind))}</small>
+      </div>
+    </aside>
+  `;
+}
+
+function getVisualTone(index) {
+  return ["is-blue", "is-green", "is-amber", "is-red", "is-teal", "is-neutral"][index % 6];
+}
+
+function getVisualCaption(visualKind) {
+  const captions = {
+    variety: "Horizontal and vertical variety compared for overload risk",
+    sct: "Complexity drivers feeding the success-critical task spine",
+    accountability: "SCTs connected to recursion levels and accountable entities",
+    meetings: "S2-S5 meeting layers organized by VSM function",
+    channels: "Closed-loop robustness across the channel criteria",
+    roles: "Roles, entities, meetings, and SCTs connected",
+    roadmap: "Implementation epics staged across now, next, and later"
+  };
+
+  return captions[visualKind] || "Illustration · icon · photo · workshop canvas";
 }
 
 function renderStep2Assessment(workspace) {

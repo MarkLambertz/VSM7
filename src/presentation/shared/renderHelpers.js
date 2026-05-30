@@ -1,13 +1,95 @@
 export function stepHeader(token, title, description) {
+  const visual = getStepVisual(token, title);
+
   return `
-    <section class="view-header">
-      <div>
+    <section class="step1-stage generic-step-stage" aria-label="${escapeAttr(title)} workshop focus">
+      <div class="step1-stage-copy">
         <p class="eyebrow">${escapeHtml(token)}</p>
         <h1>${escapeHtml(title)}</h1>
         <p>${escapeHtml(description)}</p>
+        <div class="stage-context-strip">
+          <span><strong>Focus</strong>Workshop capture</span>
+          <span><strong>Outcome</strong>Structured VSM artifact</span>
+        </div>
       </div>
+      ${renderStepVisual(visual)}
     </section>
   `;
+}
+
+function getStepVisual(token, title) {
+  const visuals = {
+    "Step II": {
+      title: "Variety balance",
+      kind: "variety",
+      caption: "Horizontal and vertical variety compared for overload risk",
+      items: ["Horizontal variety", "Vertical variety", "Flattening risk", "Remedy"]
+    },
+    "Step III": {
+      title: "SCT spine",
+      kind: "sct",
+      caption: "Complexity drivers feeding the success-critical task spine",
+      items: ["Drivers", "Overlaps", "Dependencies", "Weak scores", "SCTs"]
+    },
+    "Step IV": {
+      title: "Accountability map",
+      kind: "accountability",
+      caption: "SCTs connected to recursion levels and accountable entities",
+      items: ["SCT", "R-1", "R0", "R+1", "Entity"]
+    },
+    "Step V": {
+      title: "Meeting architecture",
+      kind: "meetings",
+      caption: "S2-S5 meeting layers organized by VSM function",
+      items: ["S2", "S3", "S3*", "S4", "S5"]
+    },
+    "Step VI": {
+      title: "Channel robustness radar",
+      kind: "channels",
+      caption: "Closed-loop robustness across the channel criteria",
+      items: ["Capacity", "Clarity", "Synchronicity", "Security"]
+    },
+    "Step VII": {
+      title: "Role constellation",
+      kind: "roles",
+      caption: "Roles, entities, meetings, and SCTs connected",
+      items: ["Roles", "Entities", "Meetings", "SCTs", "RASIC"]
+    },
+    Implementation: {
+      title: "Transformation roadmap",
+      kind: "roadmap",
+      caption: "Implementation epics staged across now, next, and later",
+      items: ["Now", "Next", "Later", "Owners", "Dependencies"]
+    }
+  };
+
+  return visuals[token] || {
+    title,
+    kind: "generic",
+    caption: "Illustration · icon · photo · workshop canvas",
+    items: ["Focus", "Inputs", "Decisions", "Outcome"]
+  };
+}
+
+function renderStepVisual(visual) {
+  return `
+    <aside class="step1-visual-slot method-visual method-visual--${escapeAttr(visual.kind)}" aria-label="${escapeAttr(visual.title)} visual placeholder">
+      <div class="method-visual-map">
+        ${visual.items.map((item, index) => `
+          <span class="method-node ${getVisualTone(index)}">${escapeHtml(item)}</span>
+        `).join("")}
+      </div>
+      <div class="method-visual-caption">
+        <span>Method visual placeholder</span>
+        <strong>${escapeHtml(visual.title)}</strong>
+        <small>${escapeHtml(visual.caption)}</small>
+      </div>
+    </aside>
+  `;
+}
+
+function getVisualTone(index) {
+  return ["is-blue", "is-green", "is-amber", "is-red", "is-teal", "is-neutral"][index % 6];
 }
 
 export function tableHeader(title, action) {
