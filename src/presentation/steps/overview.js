@@ -1,4 +1,4 @@
-import { escapeHtml, field, metric, textarea } from "../shared/renderHelpers.js?v=20260530-step2-neutral";
+import { escapeHtml, field, metric, textarea } from "../shared/renderHelpers.js";
 
 export function renderOverview(workspace, completeness, stepDefinitions) {
   return `

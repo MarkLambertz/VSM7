@@ -1,4 +1,4 @@
-import { cellInput, cellSelect, escapeHtml, stepHeader } from "../shared/renderHelpers.js?v=20260530-step2-neutral";
+import { cellInput, cellSelect, escapeHtml, stepHeader } from "../shared/renderHelpers.js";
 
 export function renderStep6(workspace) {
   return `

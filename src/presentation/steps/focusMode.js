@@ -1,4 +1,4 @@
-import { createAllocation } from "../../domain/vsm.js?v=20260530-step2-neutral";
+import { createAllocation, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js";
 import {
   allocationCheckbox,
   allocationInput,
@@ -11,21 +11,21 @@ import {
   tableHeader,
   taskMultiSelect,
   textarea
-} from "../shared/renderHelpers.js?v=20260530-step2-neutral";
-import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260530-step2-neutral";
-import { renderStep2Assessment } from "./step2.js?v=20260530-step2-neutral";
+} from "../shared/renderHelpers.js";
+import { renderMethodVisual } from "../shared/methodVisuals.js";
+import { renderStep2Assessment } from "./step2.js";
 
 const focusStepMetadata = {
   step2: {
     token: "Step II",
     title: "Manageability & Flattening",
-    description: "Evaluate horizontal and vertical variety using common wisdom and capture the selected remedy.",
-    artifact: "Manageability assessment and selected remedy.",
+    description: "Evaluate horizontal and vertical variety using common wisdom and capture manageability levers.",
+    artifact: "Manageability assessment and manageability levers.",
     visual: "Variety balance",
     visualKind: "variety",
-    visualItems: ["Horizontal variety", "Vertical variety", "Flattening risk", "Remedy"],
+    visualItems: ["Horizontal variety", "Vertical variety", "Flattening risk", "Levers"],
     coachNote: "Use Ashby's law pragmatically: only variety can absorb variety. You do not need exact calculation, but the group must judge whether horizontal and vertical variety are in balance.",
-    prompts: ["Is the System-in-Focus still manageable?", "Where does variety overload appear?", "Which remedy creates the most robust management model?"]
+    prompts: ["Is the System-in-Focus still manageable?", "Where does variety overload appear?", "Which lever creates the most robust management model?"]
   },
   step3: {
     token: "Step III",
@@ -67,8 +67,8 @@ const focusStepMetadata = {
     artifact: "Communication variety checks.",
     visual: "Channel robustness radar",
     visualKind: "channels",
-    visualItems: ["Capacity", "Clarity", "Synchronicity", "Security"],
-    coachNote: "Think in closed loops, not linear messages. Diagnose only the channels in doubt, then test capacity, comprehensibility, synchronicity, and security.",
+    visualItems: ["Capacity", "Intelligibility", "Synchronicity", "Security"],
+    coachNote: "Think in closed loops, not linear messages. Diagnose only the channels in doubt, then test capacity, intelligibility, synchronicity, and security.",
     prompts: ["Which loops are too weak for the required variety?", "Where do capacity or intelligibility gaps appear?", "Which communication channels must be strengthened?"]
   },
   step7: {
@@ -92,6 +92,25 @@ const focusStepMetadata = {
     visualItems: ["Now", "Next", "Later", "Owners", "Dependencies"],
     coachNote: "Translate the target picture into implementation epics, owners, milestones, and dependencies. Leadership support and a project team one step ahead are decisive.",
     prompts: ["Which steering challenges must be implemented first?", "Who owns each implementation item?", "Which dependencies or requirements block progress?"]
+  }
+};
+
+const complexityDriverExamples = {
+  environmentOperation: {
+    label: "Environment - Operation",
+    example: "Example: Many customer segments with different value expectations, product variants, local regulations, or service promises. Possible SCT signal: variant management, customer promise governance, or market interface steering."
+  },
+  operationManagement: {
+    label: "Operation - Management",
+    example: "Example: S1 units need different steering rhythms, decision rights, KPIs, or capability levels. Possible SCT signal: decision-rights design, escalation rules, capability building, or performance transparency."
+  },
+  environmentalOverlaps: {
+    label: "Environmental overlaps",
+    example: "Example: Several S1s share customers, suppliers, brand, channels, technology, or architecture. Possible SCT signal: shared customer interface, platform standards, or supplier strategy."
+  },
+  operationalDependencies: {
+    label: "Operational dependencies",
+    example: "Example: S1s depend on common resources, production assets, platforms, experts, or delivery capacity. Possible SCT signal: resource bargain, dependency resolution cadence, or shared capacity planning."
   }
 };
 
@@ -165,7 +184,7 @@ function getGenericFocusTiles(workspace, viewId, context) {
   const workTiles = {
     step2: () => [
       createTile("Assessment", "Horizontal and Vertical Variety", "Capture the variety assessment for the System-in-Focus.", renderStep2Assessment(workspace), "is-form", "Assess", metadata.title),
-      createTile("Remedies", "Manageability Remedies", "Compare remedy options and capture the selected conclusion.", renderStep2Remedies(workspace), "is-table", "Remedy", metadata.title)
+      createTile("Levers", "How to master steering challenges", "Compare steering levers and capture the selected manageability levers.", renderStep2Remedies(workspace), "is-table", "Levers", metadata.title)
     ],
     step3: () => [
       createTile("Hints", "SCT Hints", "Use weak segmentation scores as signals for top-management attention.", renderManagementAttentionHints(workspace), "is-form", "Hints", metadata.title),
@@ -226,12 +245,10 @@ function renderBriefContent(_workspace, metadata) {
 function renderStep2Remedies(workspace) {
   return `
     <section class="work-section">
-      <div class="section-heading">
-        <h2>Manageability Remedies</h2>
-      </div>
+      ${tableHeader("How to master steering challenges", "add-manageability-option")}
       <div class="table-wrap wide">
         <table>
-          <thead><tr><th>Chosen</th><th>Option</th><th>Time to effect</th><th>Robustness</th><th>Pros</th><th>Cons</th><th>Challenges</th></tr></thead>
+          <thead><tr><th>Chosen</th><th>Option</th><th>Time to effect</th><th>Robustness</th><th>Pros</th><th>Cons</th><th>Challenges</th><th></th></tr></thead>
           <tbody>${workspace.step2.options.map((item) => `
             <tr>
               <td><input type="radio" name="selectedManageability" data-path="step2.selectedOption" value="${escapeAttr(item.id)}" ${workspace.step2.selectedOption === item.id ? "checked" : ""}></td>
@@ -241,65 +258,56 @@ function renderStep2Remedies(workspace) {
               <td>${cellInput("step2.options", item.id, "pros", item.pros)}</td>
               <td>${cellInput("step2.options", item.id, "cons", item.cons)}</td>
               <td>${cellInput("step2.options", item.id, "challenges", item.challenges)}</td>
+              <td>${removeButton("step2.options", item.id)}</td>
             </tr>
           `).join("")}</tbody>
         </table>
       </div>
-      ${textarea("Conclusion", "step2.conclusion", workspace.step2.conclusion)}
+      ${textarea("Manageability Levers", "step2.conclusion", workspace.step2.conclusion)}
     </section>
   `;
 }
 
 function renderManagementAttentionHints(workspace) {
   const selectedOption = workspace.step1.segmentationOptions.find((option) => option.id === workspace.step1.selectedSegmentationOptionId);
-  if (!selectedOption) {
-    return `<section class="work-section attention-hints">${emptyState("Select a segmentation option in Step I to see SCT hints.")}</section>`;
-  }
-
-  const hints = getWeakScoreHints(workspace, selectedOption.id);
+  const hints = selectedOption ? getWeakSegmentationSignals(workspace, selectedOption.id) : [];
+  const leverSignals = getManageabilityLeverSignals(workspace);
 
   return `
     <section class="work-section attention-hints">
       <div class="section-heading">
-        <h2>SCT Hints from Selected Segmentation</h2>
+        <h2>SCT Input Signals</h2>
       </div>
-      <p class="section-note">Weak scores for ${escapeHtml(selectedOption.name || "the selected segmentation")} indicate fields that may need top-level management attention.</p>
-      ${hints.length > 0
-        ? `<div class="hint-list">${hints.map((hint) => `
-          <div class="hint-pill">
-            <strong>${escapeHtml(hint.group)}</strong>
-            <span>${escapeHtml(hint.label)}</span>
-            <small>Score ${escapeHtml(hint.score)}</small>
-          </div>
-        `).join("")}</div>`
-        : emptyState("No weak scores are visible for the selected segmentation option yet.")}
+      <p class="section-note">Use weak segmentation scores and Step II manageability levers as source material for success-critical tasks.</p>
+      <div class="nested-work-section">
+        <h3>From selected segmentation</h3>
+        ${selectedOption
+          ? `<p class="section-note">Weak scores for ${escapeHtml(selectedOption.name || "the selected segmentation")} indicate fields that may need top-level management attention.</p>`
+          : ""}
+        ${hints.length > 0
+          ? `<div class="hint-list">${hints.map((hint) => `
+            <div class="hint-pill">
+              <strong>${escapeHtml(hint.group)}</strong>
+              <span>${escapeHtml(hint.label)}</span>
+              <small>Score ${escapeHtml(hint.score)}</small>
+            </div>
+          `).join("")}</div>`
+          : emptyState(selectedOption ? "No red, orange, or yellow scores are visible for the selected segmentation option yet." : "Select a segmentation option in Step I to see segmentation-based SCT hints.")}
+      </div>
+      <div class="nested-work-section">
+        <h3>From manageability levers</h3>
+        ${leverSignals.length > 0
+          ? `<div class="hint-list">${leverSignals.map((signal) => `
+            <div class="hint-pill">
+              <strong>${escapeHtml(signal.title)}</strong>
+              <span>${escapeHtml(signal.detail)}</span>
+              <small>${escapeHtml(signal.meta)}</small>
+            </div>
+          `).join("")}</div>`
+          : emptyState("Capture manageability levers in Step II to use them as SCT source material.")}
+      </div>
     </section>
   `;
-}
-
-function getWeakScoreHints(workspace, selectedOptionId) {
-  const maxScore = workspace.step1.segmentationOptions.length + 1;
-  const threshold = Math.max(1, Math.floor(maxScore / 2));
-  const rows = [
-    ...workspace.step1.keyBuyingCriteria.map((criterion, index) => ({
-      id: criterion.id,
-      group: "Key Buying Criteria",
-      label: criterion.name || `Criterion ${index + 1}`
-    })),
-    ...workspace.step1.strategicFields.map((field) => ({
-      id: field.id,
-      group: field.variable,
-      label: field.direction || "Strategic ambition not described yet"
-    }))
-  ];
-
-  return rows
-    .map((row) => ({
-      ...row,
-      score: Number(workspace.step1.evaluation?.scores?.[row.id]?.[selectedOptionId] || 0)
-    }))
-    .filter((row) => row.score > 0 && row.score <= threshold)
-    .sort((left, right) => left.score - right.score);
 }
 
 function renderStep3Drivers(workspace) {
@@ -310,12 +318,28 @@ function renderStep3Drivers(workspace) {
         <button class="ghost-button" data-action="export-step" data-step="step3">Download Outcome</button>
       </div>
       <div class="field-grid two">
-        ${textarea("Environment - Operation", "step3.complexityDrivers.environmentOperation", workspace.step3.complexityDrivers.environmentOperation)}
-        ${textarea("Operation - Management", "step3.complexityDrivers.operationManagement", workspace.step3.complexityDrivers.operationManagement)}
-        ${textarea("Environmental overlaps", "step3.complexityDrivers.environmentalOverlaps", workspace.step3.complexityDrivers.environmentalOverlaps)}
-        ${textarea("Operational dependencies", "step3.complexityDrivers.operationalDependencies", workspace.step3.complexityDrivers.operationalDependencies)}
+        ${driverTextarea("environmentOperation", workspace.step3.complexityDrivers.environmentOperation)}
+        ${driverTextarea("operationManagement", workspace.step3.complexityDrivers.operationManagement)}
+        ${driverTextarea("environmentalOverlaps", workspace.step3.complexityDrivers.environmentalOverlaps)}
+        ${driverTextarea("operationalDependencies", workspace.step3.complexityDrivers.operationalDependencies)}
       </div>
     </section>
+  `;
+}
+
+function driverTextarea(key, value) {
+  const guidance = complexityDriverExamples[key];
+
+  return `
+    <label class="field complexity-driver-field">
+      <span>${escapeHtml(guidance.label)}</span>
+      <textarea
+        data-path="${escapeAttr(`step3.complexityDrivers.${key}`)}"
+        rows="4"
+        placeholder="${escapeAttr(guidance.example)}"
+      >${escapeHtml(value)}</textarea>
+      <small>${escapeHtml(guidance.example)}</small>
+    </label>
   `;
 }
 
@@ -325,11 +349,10 @@ function renderStep3Register(workspace, taskSources, vsmSystems) {
       ${tableHeader("Success-Critical Task Register", "add-sct")}
       <div class="table-wrap wide evaluation-wrap">
         <table>
-          <thead><tr><th>Priority</th><th>System</th><th>Task</th><th>Explanation</th><th>Source</th><th>KPI / Metric</th><th>Required artifact</th><th></th></tr></thead>
+          <thead><tr><th>Priority</th><th>Task (Mandatory)</th><th>Description (Mandatory)</th><th>Source</th><th>KPI/Success Metric</th><th>Required Artifact</th><th></th></tr></thead>
           <tbody>${workspace.step3.successCriticalTasks.map((task) => `
             <tr>
               <td>${cellSelect("step3.successCriticalTasks", task.id, "priority", task.priority, ["A", "B", "C"])}</td>
-              <td>${cellSelect("step3.successCriticalTasks", task.id, "system", task.system, vsmSystems)}</td>
               <td>${cellInput("step3.successCriticalTasks", task.id, "title", task.title)}</td>
               <td>${cellInput("step3.successCriticalTasks", task.id, "explanation", task.explanation)}</td>
               <td>${cellSelect("step3.successCriticalTasks", task.id, "source", task.source, taskSources)}</td>

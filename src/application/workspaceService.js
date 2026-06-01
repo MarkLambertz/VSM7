@@ -1,4 +1,4 @@
-import { ensureWorkspaceShape, syncAllocations } from "../domain/vsm.js?v=20260530-step2-neutral";
+import { ensureWorkspaceShape, syncAllocations } from "../domain/vsm.js";
 
 export function loadWorkspace(repository) {
   return ensureWorkspaceShape(repository.load());

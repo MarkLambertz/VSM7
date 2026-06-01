@@ -2,6 +2,7 @@ import {
   createAllocation,
   createImplementationItem,
   createKeyBuyingCriterion,
+  createManageabilityOption,
   createMeeting,
   createOperativeUnit,
   createRecursionLevel,
@@ -12,12 +13,15 @@ import {
   createStrategicLink,
   createSuccessCriticalTask,
   createWorkspace,
+  evaluateStep2Variety,
+  markStep2SliderAssessed,
+  resetStep2SlidersToNeutral,
   stepDefinitions,
   syncAllocations,
   taskSources,
   vsmSystems
-} from "../domain/vsm.js?v=20260530-step2-neutral";
-import { evaluateCompleteness } from "../domain/completeness.js?v=20260530-step2-neutral";
+} from "../domain/vsm.js";
+import { evaluateCompleteness } from "../domain/completeness.js";
 import {
   deleteOrganization,
   deleteWorkspace,
@@ -28,29 +32,29 @@ import {
   renameWorkspace,
   replaceWorkspace,
   saveWorkspace
-} from "../application/workspaceService.js?v=20260530-step2-neutral";
-import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?v=20260530-step2-neutral";
-import { createLocalStorageRepository } from "../infrastructure/localStorageRepository.js?v=20260530-step2-neutral";
-import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js?v=20260530-step2-neutral";
-import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260530-step2-neutral";
-import { renderProjectManagement } from "./projectManagement.js?v=20260530-step2-neutral";
-import { renderStartPage } from "./startPage.js?v=20260530-step2-neutral";
-import { renderOverview } from "./steps/overview.js?v=20260530-step2-neutral";
-import { renderImplementation } from "./steps/implementation.js?v=20260530-step2-neutral";
+} from "../application/workspaceService.js";
+import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js";
+import { createLocalStorageRepository } from "../infrastructure/localStorageRepository.js";
+import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js";
+import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js";
+import { renderProjectManagement } from "./projectManagement.js";
+import { renderStartPage } from "./startPage.js";
+import { renderOverview } from "./steps/overview.js";
+import { renderImplementation } from "./steps/implementation.js";
 import {
   focusStepOrder,
   getGenericFocusStepTitle,
   getGenericFocusTileCount,
   hasGenericFocusMode,
   renderGenericFocusFullscreen
-} from "./steps/focusMode.js?v=20260530-step2-neutral";
-import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js?v=20260530-step2-neutral";
-import { renderStep2 } from "./steps/step2.js?v=20260530-step2-neutral";
-import { renderStep3 } from "./steps/step3.js?v=20260530-step2-neutral";
-import { renderStep4 } from "./steps/step4.js?v=20260530-step2-neutral";
-import { renderStep5 } from "./steps/step5.js?v=20260530-step2-neutral";
-import { renderStep6 } from "./steps/step6.js?v=20260530-step2-neutral";
-import { renderStep7 } from "./steps/step7.js?v=20260530-step2-neutral";
+} from "./steps/focusMode.js";
+import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js";
+import { renderStep2 } from "./steps/step2.js";
+import { renderStep3 } from "./steps/step3.js";
+import { renderStep4 } from "./steps/step4.js";
+import { renderStep5 } from "./steps/step5.js";
+import { renderStep6 } from "./steps/step6.js";
+import { renderStep7 } from "./steps/step7.js";
 
 const app = document.querySelector("#app");
 const repository = createLocalStorageRepository();
@@ -75,6 +79,7 @@ render();
 
 app.addEventListener("input", (event) => {
   void handleInput(event.target);
+  updateVarietyPreview(event.target);
   scheduleSave();
 });
 
@@ -129,11 +134,8 @@ function render() {
       <div class="topbar-actions">
         ${renderSaveIndicator()}
         ${renderCompletenessTrigger(completeness)}
-        <button class="ghost-button ${activeView === "start" ? "is-active" : ""}" data-action="navigate" data-view="start">Start</button>
-        <button class="ghost-button ${activeView === "projects" ? "is-active" : ""}" data-action="navigate" data-view="projects">Projects</button>
-        <button class="ghost-button" data-action="export-project-report">Report</button>
-        <button class="ghost-button" data-action="export-project-json">Archive</button>
         ${renderTopbarFocusButton()}
+        ${renderTopbarMenu()}
       </div>
       ${isCompletenessOpen ? renderCompletenessLayer(completeness) : ""}
     </header>
@@ -145,6 +147,20 @@ function render() {
       </main>
     </div>
     ${renderFocusFullscreenLayer()}
+  `;
+}
+
+function renderTopbarMenu() {
+  return `
+    <details class="topbar-menu">
+      <summary class="ghost-button" role="button" aria-label="Open workspace menu">More</summary>
+      <div class="topbar-menu-panel">
+        <button class="ghost-button ${activeView === "start" ? "is-active" : ""}" data-action="navigate" data-view="start">Start</button>
+        <button class="ghost-button ${activeView === "projects" ? "is-active" : ""}" data-action="navigate" data-view="projects">Projects</button>
+        <button class="ghost-button" data-action="export-project-report">Report</button>
+        <button class="ghost-button" data-action="export-project-json">Archive</button>
+      </div>
+    </details>
   `;
 }
 
@@ -520,6 +536,9 @@ async function handleInput(target) {
   if (target.dataset.path) {
     const value = target.type === "checkbox" ? target.checked : target.value;
     setPath(workspace, target.dataset.path, value);
+    if (target.dataset.varietyDriver) {
+      markStep2SliderAssessed(workspace, target.dataset.path);
+    }
   }
 
   if (target.dataset.collection && target.dataset.id && target.dataset.field) {
@@ -694,6 +713,21 @@ function handleAction(button) {
     return;
   }
 
+  if (action === "reset-variety-slider" && button.dataset.path) {
+    setPath(workspace, button.dataset.path, "50");
+    markStep2SliderAssessed(workspace, button.dataset.path);
+    saveNow();
+    render();
+    return;
+  }
+
+  if (action === "reset-step2-sliders") {
+    resetStep2SlidersToNeutral(workspace);
+    saveNow();
+    render();
+    return;
+  }
+
   if (action === "new-workspace") {
     workspace = replaceWorkspace(repository, createWorkspace());
     selectedOrganizationId = workspace.organization.id || "";
@@ -838,6 +872,7 @@ function addItem(action) {
     },
     "add-criterion": () => workspace.step1.keyBuyingCriteria.push(createKeyBuyingCriterion()),
     "add-strategic-field": () => workspace.step1.strategicFields.push(createStrategicField()),
+    "add-manageability-option": () => workspace.step2.options.push(createManageabilityOption()),
     "add-sct": () => {
       const task = createSuccessCriticalTask();
       workspace.step3.successCriticalTasks.push(task);
@@ -1111,8 +1146,16 @@ function scheduleSave() {
 
 function saveNow() {
   window.clearTimeout(saveTimer);
-  saveWorkspace(repository, workspace);
-  setSaveStatus("Saved just now");
+  try {
+    saveWorkspace(repository, workspace);
+    setSaveStatus("Saved just now");
+  } catch (error) {
+    console.error(error);
+    const message = error?.name === "StorageQuotaError"
+      ? "Storage limit reached"
+      : "Save failed";
+    setSaveStatus(message);
+  }
 }
 
 function setSaveStatus(status) {
@@ -1122,6 +1165,29 @@ function setSaveStatus(status) {
     indicator.textContent = status;
     indicator.classList.toggle("is-saving", status.toLowerCase().startsWith("saving"));
     indicator.classList.toggle("is-saved", status.toLowerCase().startsWith("saved"));
+  }
+}
+
+function updateVarietyPreview(target) {
+  if (!(target instanceof HTMLInputElement) || !target.dataset.varietyDriver) {
+    return;
+  }
+
+  const diagnostics = evaluateStep2Variety(workspace);
+  const horizontalGauge = document.querySelector("[data-horizontal-variety-gauge]");
+  const verticalGauge = document.querySelector("[data-vertical-variety-gauge]");
+  const fitGauge = document.querySelector("[data-variety-fit-gauge]");
+
+  if (horizontalGauge) {
+    horizontalGauge.style.setProperty("--variety-pressure", `${diagnostics.horizontalPressure}%`);
+  }
+
+  if (verticalGauge) {
+    verticalGauge.style.setProperty("--vertical-variety", `${diagnostics.verticalFit}%`);
+  }
+
+  if (fitGauge) {
+    fitGauge.style.setProperty("--variety-fit-position", `${diagnostics.fitPosition}%`);
   }
 }
 
@@ -1239,6 +1305,10 @@ function removeFromCollection(collectionPath, id) {
   if (collectionPath === "step1.keyBuyingCriteria" || collectionPath === "step1.strategicFields") {
     delete workspace.step1.evaluation.scores[id];
     delete workspace.step1.evaluation.comments[id];
+  }
+
+  if (collectionPath === "step2.options" && workspace.step2.selectedOption === id) {
+    workspace.step2.selectedOption = "";
   }
 
   if (collectionPath === "step3.successCriticalTasks") {

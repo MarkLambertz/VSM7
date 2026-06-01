@@ -9,10 +9,12 @@ import {
   createMeeting,
   createRole,
   sixPackOfControl,
-  syncAllocations
+  syncAllocations,
+  evaluateStep2Variety,
+  markStep2SliderAssessed
 } from "../src/domain/vsm.js";
 import { evaluateCompleteness } from "../src/domain/completeness.js";
-import { toCsv } from "../src/infrastructure/exporters.js";
+import { buildProjectReport, buildStepOutcome, toCsv } from "../src/infrastructure/exporters.js";
 
 test("empty workspace surfaces core Step I and SCT gaps", () => {
   const workspace = createWorkspace();
@@ -99,6 +101,66 @@ test("Step I catches duplicate segmentation evaluation scores per row", () => {
   assert.ok(step1.missing.includes("Resolve duplicate scores in evaluation rows."));
 });
 
+test("Step II variety patterns generate fit interpretation and SCT signals", () => {
+  const workspace = createWorkspace();
+  workspace.step1.segmentationOptions = [
+    createSegmentationOption("Business Models", "Segment by business model.")
+  ];
+  workspace.step1.selectedSegmentationOptionId = workspace.step1.segmentationOptions[0].id;
+  workspace.step1.operativeUnits = [
+    createOperativeUnit("B2C-SaaS"),
+    createOperativeUnit("B2B-SaaS"),
+    createOperativeUnit("OEM-SaaS"),
+    createOperativeUnit("Platform")
+  ];
+  workspace.step2.horizontalAssessment.operativeUnitsAmount = "90";
+  workspace.step2.horizontalAssessment.dissimilarity = "85";
+  workspace.step2.horizontalAssessment.selfControl = "20";
+  workspace.step2.verticalAssessment.environmentalOverlaps = "80";
+  workspace.step2.verticalAssessment.operationalDependencies = "85";
+  workspace.step2.verticalAssessment.system3Star = "40";
+  workspace.step2.verticalAssessment.resourceBargain = "35";
+  workspace.step2.verticalAssessment.corporateIntervention = "30";
+  workspace.step2.verticalAssessment.system2 = "45";
+
+  const result = evaluateStep2Variety(workspace);
+
+  assert.equal(result.horizontalPressure, 85);
+  assert.ok(result.fitGap < -20);
+  assert.ok(result.interpretationCards.some((card) => card.title === "Variety fit gap"));
+  assert.ok(result.interpretationCards.some((card) => card.question.includes("bundling")));
+  assert.ok(result.sctSignals.some((signal) => signal.includes("interfaces")));
+});
+
+test("Step II completeness requires explicit slider assessment, not untouched neutral defaults", () => {
+  const workspace = createWorkspace();
+  workspace.step2.conclusion = "Neutral looks acceptable after discussion.";
+
+  let step2 = evaluateCompleteness(workspace).byStep.find((step) => step.stepId === "step2");
+  assert.ok(step2.missing.includes("Step II not assessed yet: confirm neutral slider positions or adjust them after discussion."));
+  assert.ok(!step2.missing.includes("Assess environmental overlaps."));
+  assert.ok(step2.score < 30);
+
+  markStep2SliderAssessed(workspace, "step2.horizontalAssessment.operativeUnitsAmount");
+  step2 = evaluateCompleteness(workspace).byStep.find((step) => step.stepId === "step2");
+  assert.ok(step2.missing.includes("Assess environmental overlaps."));
+  assert.ok(step2.missing.includes("Assess corporate intervention."));
+
+  [
+    "step2.horizontalAssessment.dissimilarity",
+    "step2.horizontalAssessment.selfControl",
+    "step2.verticalAssessment.environmentalOverlaps",
+    "step2.verticalAssessment.system3Star",
+    "step2.verticalAssessment.operationalDependencies",
+    "step2.verticalAssessment.resourceBargain",
+    "step2.verticalAssessment.corporateIntervention",
+    "step2.verticalAssessment.system2"
+  ].forEach((path) => markStep2SliderAssessed(workspace, path));
+
+  step2 = evaluateCompleteness(workspace).byStep.find((step) => step.stepId === "step2");
+  assert.equal(step2.missing.length, 0);
+});
+
 test("allocation completeness follows the SCT spine", () => {
   const workspace = createWorkspace();
   const task = createSuccessCriticalTask();
@@ -156,4 +218,32 @@ test("CSV helper quotes cells safely", () => {
   ]);
 
   assert.equal(csv, "Task,Explanation\n\"Plan, align\",\"Needs \"\"care\"\"\"");
+});
+
+test("CSV helper handles null, undefined, newline, and non-array rows safely", () => {
+  const csv = toCsv([
+    ["Empty", null, undefined],
+    ["Line break", "first\nsecond"],
+    "loose value"
+  ]);
+
+  assert.equal(csv, "Empty,,\nLine break,\"first\nsecond\"\nloose value");
+});
+
+test("export builders produce safe artifacts for sparse workspaces", () => {
+  const workspace = createWorkspace();
+  workspace.project.name = "Sparse / Project";
+
+  const report = buildProjectReport(workspace);
+  const step1 = buildStepOutcome(workspace, "step1");
+  const step2 = buildStepOutcome(workspace, "step2");
+  const step7 = buildStepOutcome(workspace, "step7");
+
+  assert.equal(report.filename, "sparse-project-report.doc");
+  assert.match(report.content, /Completeness Assistant/);
+  assert.match(step1.content, /Real Operative Units \/ S1/);
+  assert.match(step2.content, /Horizontal Variety/);
+  assert.match(step7.content, /Representation/);
+  assert.doesNotMatch(`${report.content}${step1.content}${step2.content}${step7.content}`, />undefined</);
+  assert.equal(buildStepOutcome(workspace, "unknown"), null);
 });

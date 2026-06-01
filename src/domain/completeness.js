@@ -1,3 +1,5 @@
+import { isStep2SliderAssessed, step2HorizontalVarietyFields, step2VerticalVarietyFields } from "./vsm.js";
+
 export function evaluateCompleteness(workspace) {
   const byStep = [
     evaluateStep1(workspace),
@@ -82,23 +84,42 @@ function evaluateStep1(workspace) {
 function evaluateStep2(workspace) {
   const missing = [];
   const warnings = [];
-  const horizontal = workspace.step2.horizontalAssessment;
-  const vertical = workspace.step2.verticalAssessment;
+  const sliderChecks = [
+    ...step2HorizontalVarietyFields.map((field) => ["horizontalAssessment", field, step2SliderMessages[field]]),
+    ...step2VerticalVarietyFields.map((field) => ["verticalAssessment", field, step2SliderMessages[field]])
+  ];
+  const assessedSliderCount = sliderChecks.filter(([group, field]) => isStep2SliderAssessed(workspace, group, field)).length;
 
-  requireText(horizontal.operativeUnitsAmount, missing, "Assess the amount of operative units.");
-  requireText(horizontal.dissimilarity, missing, "Assess the dissimilarity of operative units.");
-  requireText(horizontal.selfControl, missing, "Assess the self-control capability of operative units.");
-  requireText(vertical.resourceBargain, missing, "Assess resource bargain and accountability.");
-  requireText(vertical.system2, missing, "Assess System 2 coordination strength.");
-  requireText(workspace.step2.conclusion, missing, "Write the manageability conclusion.");
-
-  const selected = workspace.step2.selectedOption;
-  if (!selected) {
-    warnings.push("No preferred manageability remedy has been selected yet.");
+  if (assessedSliderCount === 0) {
+    missing.push("Step II not assessed yet: confirm neutral slider positions or adjust them after discussion.");
+    return hardOpenStep("step2", missing, warnings);
+  } else {
+    sliderChecks.forEach(([group, field, message]) => requireSliderAssessment(workspace, group, field, missing, message));
   }
 
-  return stepResult("step2", missing, warnings, 6);
+  requireCount(workspace.step2.options.filter((option) => String(option.name || "").trim()), 1, missing, "Add at least one manageability lever.");
+  requireText(workspace.step2.conclusion, missing, "Capture manageability levers.");
+
+  const selected = workspace.step2.selectedOption;
+  const selectedExists = workspace.step2.options.some((option) => option.id === selected);
+  if (!selected || !selectedExists) {
+    warnings.push("No preferred manageability lever has been selected yet.");
+  }
+
+  return stepResult("step2", missing, warnings, 10);
 }
+
+const step2SliderMessages = {
+  operativeUnitsAmount: "Assess the amount of operative units.",
+  dissimilarity: "Assess the dissimilarity of operative units.",
+  selfControl: "Assess the self-control capability of operative units.",
+  environmentalOverlaps: "Assess environmental overlaps.",
+  system3Star: "Assess System 3* real-life information.",
+  operationalDependencies: "Assess operational dependencies.",
+  resourceBargain: "Assess resource bargain and accountability.",
+  corporateIntervention: "Assess corporate intervention.",
+  system2: "Assess System 2 coordination strength."
+};
 
 function evaluateStep3(workspace) {
   const missing = [];
@@ -283,6 +304,12 @@ function stepResult(stepId, missing, warnings, expectedSignals) {
 
 function requireText(value, missing, message) {
   if (!String(value || "").trim()) {
+    missing.push(message);
+  }
+}
+
+function requireSliderAssessment(workspace, assessmentGroup, field, missing, message) {
+  if (!isStep2SliderAssessed(workspace, assessmentGroup, field)) {
     missing.push(message);
   }
 }

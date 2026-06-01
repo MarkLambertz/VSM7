@@ -145,7 +145,7 @@ function renderVarietyVisual() {
       <span class="visual-balance-stand"></span>
       <span class="visual-balance-base"></span>
       <div class="visual-balance-pan is-amber"><strong>Vertical</strong><small>management variety</small></div>
-      <div class="visual-remedy-triangle"><strong>Remedy</strong><small>reduce · absorb · recurse</small></div>
+      <div class="visual-remedy-triangle"><strong>Levers</strong><small>reduce · absorb · recurse</small></div>
     </div>
   `;
 }
@@ -199,7 +199,7 @@ function renderChannelsVisual() {
     <div class="visual-channel-loop">
       <div class="visual-loop-ring"><span>Loop</span></div>
       <div class="visual-channel-radar">
-        ${["Capacity", "Clarity", "Timing", "Security"].map((item, index) => `
+        ${["Capacity", "Intelligibility", "Synchronicity", "Security"].map((item, index) => `
           <span class="is-${toneName(index)}">${escapeHtml(item)}</span>
         `).join("")}
       </div>

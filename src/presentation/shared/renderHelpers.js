@@ -1,4 +1,4 @@
-import { renderMethodVisual } from "./methodVisuals.js?v=20260530-step2-neutral";
+import { renderMethodVisual } from "./methodVisuals.js";
 
 export function stepHeader(token, title, description) {
   const visual = getStepVisual(token, title);
@@ -49,7 +49,7 @@ function getStepVisual(token, title) {
       title: "Channel robustness radar",
       kind: "channels",
       caption: "Closed-loop robustness across the channel criteria",
-      items: ["Capacity", "Clarity", "Synchronicity", "Security"]
+      items: ["Capacity", "Intelligibility", "Synchronicity", "Security"]
     },
     "Step VII": {
       title: "Role constellation",

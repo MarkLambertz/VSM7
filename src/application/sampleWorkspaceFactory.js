@@ -8,9 +8,10 @@ import {
   createStrategicField,
   createSuccessCriticalTask,
   createWorkspace,
+  markAllStep2SlidersAssessed,
   sixPackOfControl,
   syncAllocations
-} from "../domain/vsm.js?v=20260530-step2-neutral";
+} from "../domain/vsm.js";
 
 export function createSampleWorkspace() {
   const sample = createWorkspace();
@@ -99,6 +100,7 @@ export function createSampleWorkspace() {
   sample.step2.verticalAssessment.resourceBargain = "50";
   sample.step2.verticalAssessment.corporateIntervention = "50";
   sample.step2.verticalAssessment.system2 = "50";
+  markAllStep2SlidersAssessed(sample);
   sample.step2.conclusion = "The target segmentation is manageable if S2 coordination and resource bargaining are strengthened.";
   sample.step2.selectedOption = sample.step2.options[0].id;
 

@@ -1,4 +1,4 @@
-import { cellInput, cellSelect, escapeAttr, removeButton, stepHeader, tableHeader, taskMultiSelect } from "../shared/renderHelpers.js?v=20260530-step2-neutral";
+import { cellInput, cellSelect, escapeAttr, removeButton, stepHeader, tableHeader, taskMultiSelect } from "../shared/renderHelpers.js";
 
 export function renderStep5(workspace) {
   return `

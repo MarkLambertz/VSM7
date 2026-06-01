@@ -3,6 +3,13 @@ const activeProjectKey = "vsm-workshop-active-project:v1";
 const projectIndexKey = "vsm-workshop-project-index:v1";
 const projectStoragePrefix = "vsm-workshop-project:v1:";
 
+export class StorageQuotaError extends Error {
+  constructor() {
+    super("The workspace is too large for browser storage.");
+    this.name = "StorageQuotaError";
+  }
+}
+
 export function createLocalStorageRepository() {
   return {
     load() {
@@ -130,11 +137,19 @@ function migrateLegacyWorkspace() {
 }
 
 function persistProject(workspace, { activate }) {
-  localStorage.setItem(projectStorageKey(workspace.project.id), JSON.stringify(workspace));
-  upsertProjectMetadata(workspace);
+  try {
+    localStorage.setItem(projectStorageKey(workspace.project.id), JSON.stringify(workspace));
+    upsertProjectMetadata(workspace);
 
-  if (activate) {
-    localStorage.setItem(activeProjectKey, workspace.project.id);
+    if (activate) {
+      localStorage.setItem(activeProjectKey, workspace.project.id);
+    }
+  } catch (error) {
+    if (isStorageQuotaError(error)) {
+      throw new StorageQuotaError();
+    }
+
+    throw error;
   }
 }
 
@@ -198,4 +213,11 @@ function projectBelongsToOrganization(project, organizationId) {
   return project.organizationId === organizationId
     || (!project.organizationId && project.organizationName === organizationId)
     || project.organizationName === organizationId;
+}
+
+function isStorageQuotaError(error) {
+  return error?.name === "QuotaExceededError"
+    || error?.name === "NS_ERROR_DOM_QUOTA_REACHED"
+    || error?.code === 22
+    || error?.code === 1014;
 }

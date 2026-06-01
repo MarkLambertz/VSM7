@@ -1,4 +1,4 @@
-import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260530-step2-neutral";
+import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js";
 
 export function renderProjectManagement(workspace, projects, selectedOrganizationId) {
   const organizations = groupOrganizations(projects);

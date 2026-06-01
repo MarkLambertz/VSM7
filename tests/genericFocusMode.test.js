@@ -23,6 +23,33 @@ test("generic focus mode renders explanation and work tiles", () => {
   assert.equal(getGenericFocusTileCount(workspace, "step2", context), 3);
   assert.match(renderGenericFocusFullscreen(workspace, "step2", 0, context), /Manageability &amp; Flattening/);
   assert.match(renderGenericFocusFullscreen(workspace, "step2", 1, context), /Horizontal and Vertical Variety/);
+  assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /How to master steering challenges/);
+  assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /Manageability Levers/);
+  assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /add-manageability-option/);
+  assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /remove-item/);
+});
+
+test("Step II focus mode renders S1 circles and a color-only variety pressure indicator", () => {
+  const workspace = createSampleWorkspace();
+  workspace.step2.horizontalAssessment.operativeUnitsAmount = "90";
+  workspace.step2.horizontalAssessment.dissimilarity = "80";
+  workspace.step2.horizontalAssessment.selfControl = "20";
+  workspace.step2.verticalAssessment.environmentalOverlaps = "60";
+  workspace.step2.verticalAssessment.system3Star = "70";
+  workspace.step2.verticalAssessment.operationalDependencies = "80";
+  workspace.step2.verticalAssessment.resourceBargain = "50";
+  workspace.step2.verticalAssessment.corporateIntervention = "40";
+  workspace.step2.verticalAssessment.system2 = "90";
+  const html = renderGenericFocusFullscreen(workspace, "step2", 1, context);
+
+  assert.match(html, /s1-unit-circle/);
+  assert.match(html, /data-horizontal-variety-gauge/);
+  assert.match(html, /--variety-pressure: 83%/);
+  assert.match(html, /data-vertical-variety-gauge/);
+  assert.match(html, /--vertical-variety: 46%/);
+  assert.match(html, /data-variety-fit-gauge/);
+  assert.match(html, /Computed pattern support/);
+  assert.doesNotMatch(html, /Low|Moderate|High|Critical/);
 });
 
 test("generic focus mode renders matrix-style work tiles", () => {
@@ -31,4 +58,14 @@ test("generic focus mode renders matrix-style work tiles", () => {
   assert.equal(getGenericFocusTileCount(workspace, "step4", context), 2);
   assert.match(renderGenericFocusFullscreen(workspace, "step4", 1, context), /Central\/Decentral Accountability/);
   assert.match(renderGenericFocusFullscreen(workspace, "implementation", 1, context), /Transformation Backlog/);
+});
+
+test("Step III focus mode exposes manageability levers as SCT input signals", () => {
+  const workspace = createSampleWorkspace();
+  const html = renderGenericFocusFullscreen(workspace, "step3", 1, context);
+
+  assert.ok(taskSources.includes("Manageability Lever"));
+  assert.match(html, /SCT Input Signals/);
+  assert.match(html, /From manageability levers/);
+  assert.match(html, /Step II synthesis/);
 });

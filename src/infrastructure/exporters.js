@@ -1,12 +1,26 @@
-import { stepDefinitions } from "../domain/vsm.js?v=20260530-step2-neutral";
-import { evaluateCompleteness } from "../domain/completeness.js?v=20260530-step2-neutral";
+import { stepDefinitions } from "../domain/vsm.js";
+import { evaluateCompleteness } from "../domain/completeness.js";
 
 export function exportProjectJson(workspace) {
-  const name = safeFileName(workspace.project.name || "vsm-project");
-  downloadBlob(`${name}.json`, JSON.stringify(workspace, null, 2), "application/json");
+  const artifact = buildProjectJson(workspace);
+  downloadBlob(artifact.filename, artifact.content, artifact.mimeType);
 }
 
 export function exportProjectReport(workspace) {
+  const artifact = buildProjectReport(workspace);
+  downloadBlob(artifact.filename, artifact.content, artifact.mimeType);
+}
+
+export function buildProjectJson(workspace) {
+  const name = safeFileName(workspace.project.name || "vsm-project");
+  return {
+    filename: `${name}.json`,
+    content: JSON.stringify(workspace, null, 2),
+    mimeType: "application/json"
+  };
+}
+
+export function buildProjectReport(workspace) {
   const name = safeFileName(workspace.project.name || "vsm-project");
   const completeness = evaluateCompleteness(workspace);
   const html = documentShell(workspace, `
@@ -22,54 +36,96 @@ export function exportProjectReport(workspace) {
     ${section("Completeness Assistant", completenessList(completeness))}
   `);
 
-  downloadBlob(`${name}-report.doc`, html, "application/msword");
+  return {
+    filename: `${name}-report.doc`,
+    content: html,
+    mimeType: "application/msword"
+  };
 }
 
 export function exportStepOutcome(workspace, stepId) {
+  const artifact = buildStepOutcome(workspace, stepId);
+  if (!artifact) {
+    return;
+  }
+
+  downloadBlob(artifact.filename, artifact.content, artifact.mimeType);
+}
+
+export function buildStepOutcome(workspace, stepId) {
   const name = safeFileName(`${workspace.project.name}-${stepId}`);
 
   if (stepId === "step1") {
-    downloadBlob(`${name}-operative-units.doc`, step1Doc(workspace), "application/msword");
-    return;
+    return {
+      filename: `${name}-operative-units.doc`,
+      content: step1Doc(workspace),
+      mimeType: "application/msword"
+    };
   }
 
   if (stepId === "step2") {
-    downloadBlob(`${name}-manageability.doc`, step2Doc(workspace), "application/msword");
-    return;
+    return {
+      filename: `${name}-manageability.doc`,
+      content: step2Doc(workspace),
+      mimeType: "application/msword"
+    };
   }
 
   if (stepId === "step3") {
-    downloadBlob(`${name}-success-critical-tasks.xls`, excelShell(taskTable(workspace)), "application/vnd.ms-excel");
-    return;
+    return {
+      filename: `${name}-success-critical-tasks.xls`,
+      content: excelShell(taskTable(workspace)),
+      mimeType: "application/vnd.ms-excel"
+    };
   }
 
   if (stepId === "step4") {
-    downloadBlob(`${name}-accountability-matrix.xls`, excelShell(allocationTable(workspace)), "application/vnd.ms-excel");
-    return;
+    return {
+      filename: `${name}-accountability-matrix.xls`,
+      content: excelShell(allocationTable(workspace)),
+      mimeType: "application/vnd.ms-excel"
+    };
   }
 
   if (stepId === "step5") {
-    downloadBlob(`${name}-meeting-landscape.xls`, excelShell(meetingTable(workspace)), "application/vnd.ms-excel");
-    return;
+    return {
+      filename: `${name}-meeting-landscape.xls`,
+      content: excelShell(meetingTable(workspace)),
+      mimeType: "application/vnd.ms-excel"
+    };
   }
 
   if (stepId === "step6") {
-    downloadBlob(`${name}-communication-checks.xls`, excelShell(channelTable(workspace)), "application/vnd.ms-excel");
-    return;
+    return {
+      filename: `${name}-communication-checks.xls`,
+      content: excelShell(channelTable(workspace)),
+      mimeType: "application/vnd.ms-excel"
+    };
   }
 
   if (stepId === "step7") {
-    downloadBlob(`${name}-representation.doc`, step7Doc(workspace), "application/msword");
-    return;
+    return {
+      filename: `${name}-representation.doc`,
+      content: step7Doc(workspace),
+      mimeType: "application/msword"
+    };
   }
 
   if (stepId === "implementation") {
-    downloadBlob(`${name}-implementation-backlog.xls`, excelShell(implementationTable(workspace)), "application/vnd.ms-excel");
+    return {
+      filename: `${name}-implementation-backlog.xls`,
+      content: excelShell(implementationTable(workspace)),
+      mimeType: "application/vnd.ms-excel"
+    };
   }
+
+  return null;
 }
 
 export function toCsv(rows) {
-  return rows.map((row) => row.map(csvCell).join(",")).join("\n");
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => (Array.isArray(row) ? row : [row]).map(csvCell).join(","))
+    .join("\n");
 }
 
 function step1Doc(workspace) {
@@ -113,8 +169,8 @@ function step2Doc(workspace) {
       ["System 2", vertical.system2],
       ["Notes", vertical.notes]
     ]))}
-    ${section("Remedies", simpleTable(["Option", "Time to effect", "Robustness", "Pros", "Cons", "Challenges"], workspace.step2.options.map((option) => [option.name, option.timeToEffect, option.robustness, option.pros, option.cons, option.challenges])))}
-    ${section("Conclusion", paragraph(workspace.step2.conclusion))}
+    ${section("How to master steering challenges", simpleTable(["Option", "Time to effect", "Robustness", "Pros", "Cons", "Challenges"], workspace.step2.options.map((option) => [option.name, option.timeToEffect, option.robustness, option.pros, option.cons, option.challenges])))}
+    ${section("Manageability Levers", paragraph(workspace.step2.conclusion))}
   `);
 }
 
@@ -201,11 +257,9 @@ function segmentationEvaluationTable(workspace) {
 
 function taskTable(workspace) {
   return simpleTable(
-    ["Priority", "System", "No.", "Success-critical Task", "Explanation", "Source", "KPI / Metric", "Required Artifact"],
-    workspace.step3.successCriticalTasks.map((task, index) => [
+    ["Priority", "Task", "Description", "Source", "KPI/Success Metric", "Required Artifact"],
+    workspace.step3.successCriticalTasks.map((task) => [
       task.priority,
-      task.system,
-      String(index + 1),
       task.title,
       task.explanation,
       task.source,

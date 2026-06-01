@@ -8,8 +8,8 @@ import {
   removeButton,
   tableHeader,
   textarea
-} from "../shared/renderHelpers.js?v=20260530-step2-neutral";
-import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260530-step2-neutral";
+} from "../shared/renderHelpers.js";
+import { renderMethodVisual } from "../shared/methodVisuals.js";
 
 export const step1Subpages = [
   {
@@ -269,10 +269,10 @@ function renderRecursionSection(workspace) {
           <h2>Recursion Levels</h2>
           <p class="section-note inline">Levels are fixed. Add organizations on an existing level, or extend one level above or below.</p>
         </div>
-        <div class="header-actions">
-          <button class="ghost-button" data-action="add-recursion-above">One level above (${escapeHtml(nextRecursionLevel(workspace, "above"))})</button>
-          <button class="ghost-button" data-action="add-recursion-below">One level below (${escapeHtml(nextRecursionLevel(workspace, "below"))})</button>
-        </div>
+      </div>
+      <div class="recursion-extension-actions">
+        <button class="ghost-button small" data-action="add-recursion-above">+ Level above (${escapeHtml(nextRecursionLevel(workspace, "above"))})</button>
+        <button class="ghost-button small" data-action="add-recursion-below">+ Level below (${escapeHtml(nextRecursionLevel(workspace, "below"))})</button>
       </div>
       <div class="table-wrap">
         <table>
