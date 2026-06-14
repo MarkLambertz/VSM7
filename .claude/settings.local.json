@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test *)",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "Bash(npx --yes serve --version)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

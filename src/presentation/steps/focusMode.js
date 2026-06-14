@@ -1,4 +1,4 @@
-import { createAllocation, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js";
+import { createAllocation, formatSctNumber, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js?v=20260613-manual-step-status";
 import {
   allocationCheckbox,
   allocationInput,
@@ -11,16 +11,17 @@ import {
   tableHeader,
   taskMultiSelect,
   textarea
-} from "../shared/renderHelpers.js";
+} from "../shared/renderHelpers.js?v=20260613-hero-cleanup";
 import { renderMethodVisual } from "../shared/methodVisuals.js";
-import { renderStep2Assessment } from "./step2.js";
+import { renderStep2Assessment, renderStep2Remedies } from "./step2.js?v=20260613-sct-tool-method2";
+import { renderStep3Register } from "./step3.js?v=20260613-stable-sct-viewport";
 
 const focusStepMetadata = {
   step2: {
     token: "Step II",
     title: "Manageability & Flattening",
     description: "Evaluate horizontal and vertical variety using common wisdom and capture manageability levers.",
-    artifact: "Manageability assessment and manageability levers.",
+    artifact: "Steerability Assessment.",
     visual: "Variety balance",
     visualKind: "variety",
     visualItems: ["Horizontal variety", "Vertical variety", "Flattening risk", "Levers"],
@@ -189,7 +190,13 @@ function getGenericFocusTiles(workspace, viewId, context) {
     step3: () => [
       createTile("Hints", "SCT Hints", "Use weak segmentation scores as signals for top-management attention.", renderManagementAttentionHints(workspace), "is-form", "Hints", metadata.title),
       createTile("Drivers", "Complexity Drivers", "Capture the drivers, overlaps, and dependencies that explain required SCTs.", renderStep3Drivers(workspace), "is-form", "Drivers", metadata.title),
-      createTile("SCT Register", "Success-Critical Task Register", "Build the canonical register that later drives allocation, meetings, and roles.", renderStep3Register(workspace, context.taskSources, context.vsmSystems), "is-matrix", "SCTs", metadata.title)
+      createTile("SCT Register", "Success-Critical Task Register", "Build the canonical register that later drives allocation, meetings, and roles.", renderStep3Register(workspace, context.taskSources, {
+        fullscreen: true,
+        selectedSctId: context.selectedSctId,
+        selectedSctMergeIds: context.selectedSctMergeIds,
+        sctPriorityFilter: context.sctPriorityFilter,
+        sctSourceFilter: context.sctSourceFilter
+      }), "is-matrix", "SCTs", metadata.title)
     ],
     step4: () => [
       createTile("Accountability", "Central/Decentral Accountability", "Allocate every SCT to the right recursion level and accountable entity.", renderStep4Accountability(workspace), "is-matrix", "Matrix", metadata.title)
@@ -242,32 +249,6 @@ function renderBriefContent(_workspace, metadata) {
   `;
 }
 
-function renderStep2Remedies(workspace) {
-  return `
-    <section class="work-section">
-      ${tableHeader("How to master steering challenges", "add-manageability-option")}
-      <div class="table-wrap wide">
-        <table>
-          <thead><tr><th>Chosen</th><th>Option</th><th>Time to effect</th><th>Robustness</th><th>Pros</th><th>Cons</th><th>Challenges</th><th></th></tr></thead>
-          <tbody>${workspace.step2.options.map((item) => `
-            <tr>
-              <td><input type="radio" name="selectedManageability" data-path="step2.selectedOption" value="${escapeAttr(item.id)}" ${workspace.step2.selectedOption === item.id ? "checked" : ""}></td>
-              <td>${cellInput("step2.options", item.id, "name", item.name)}</td>
-              <td>${cellInput("step2.options", item.id, "timeToEffect", item.timeToEffect)}</td>
-              <td>${cellInput("step2.options", item.id, "robustness", item.robustness)}</td>
-              <td>${cellInput("step2.options", item.id, "pros", item.pros)}</td>
-              <td>${cellInput("step2.options", item.id, "cons", item.cons)}</td>
-              <td>${cellInput("step2.options", item.id, "challenges", item.challenges)}</td>
-              <td>${removeButton("step2.options", item.id)}</td>
-            </tr>
-          `).join("")}</tbody>
-        </table>
-      </div>
-      ${textarea("Manageability Levers", "step2.conclusion", workspace.step2.conclusion)}
-    </section>
-  `;
-}
-
 function renderManagementAttentionHints(workspace) {
   const selectedOption = workspace.step1.segmentationOptions.find((option) => option.id === workspace.step1.selectedSegmentationOptionId);
   const hints = selectedOption ? getWeakSegmentationSignals(workspace, selectedOption.id) : [];
@@ -278,7 +259,7 @@ function renderManagementAttentionHints(workspace) {
       <div class="section-heading">
         <h2>SCT Input Signals</h2>
       </div>
-      <p class="section-note">Use weak segmentation scores and Step II manageability levers as source material for success-critical tasks.</p>
+      <p class="section-note">Use weak segmentation scores and selected Step II manageability levers as source material for success-critical tasks.</p>
       <div class="nested-work-section">
         <h3>From selected segmentation</h3>
         ${selectedOption
@@ -304,7 +285,7 @@ function renderManagementAttentionHints(workspace) {
               <small>${escapeHtml(signal.meta)}</small>
             </div>
           `).join("")}</div>`
-          : emptyState("Capture manageability levers in Step II to use them as SCT source material.")}
+          : emptyState("Select one or more manageability levers in Step II to use them as SCT source material.")}
       </div>
     </section>
   `;
@@ -343,30 +324,6 @@ function driverTextarea(key, value) {
   `;
 }
 
-function renderStep3Register(workspace, taskSources, vsmSystems) {
-  return `
-    <section class="work-section fullscreen-matrix-section">
-      ${tableHeader("Success-Critical Task Register", "add-sct")}
-      <div class="table-wrap wide evaluation-wrap">
-        <table>
-          <thead><tr><th>Priority</th><th>Task (Mandatory)</th><th>Description (Mandatory)</th><th>Source</th><th>KPI/Success Metric</th><th>Required Artifact</th><th></th></tr></thead>
-          <tbody>${workspace.step3.successCriticalTasks.map((task) => `
-            <tr>
-              <td>${cellSelect("step3.successCriticalTasks", task.id, "priority", task.priority, ["A", "B", "C"])}</td>
-              <td>${cellInput("step3.successCriticalTasks", task.id, "title", task.title)}</td>
-              <td>${cellInput("step3.successCriticalTasks", task.id, "explanation", task.explanation)}</td>
-              <td>${cellSelect("step3.successCriticalTasks", task.id, "source", task.source, taskSources)}</td>
-              <td>${cellInput("step3.successCriticalTasks", task.id, "kpi", task.kpi)}</td>
-              <td>${cellInput("step3.successCriticalTasks", task.id, "requiredArtifacts", task.requiredArtifacts)}</td>
-              <td>${removeButton("step3.successCriticalTasks", task.id)}</td>
-            </tr>
-          `).join("")}</tbody>
-        </table>
-      </div>
-    </section>
-  `;
-}
-
 function renderStep4Accountability(workspace) {
   return `
     <section class="work-section fullscreen-matrix-section">
@@ -376,11 +333,12 @@ function renderStep4Accountability(workspace) {
       </div>
       <div class="table-wrap wide evaluation-wrap">
         <table>
-          <thead><tr><th>Priority</th><th>System</th><th>SCT</th><th>R-1</th><th>R0</th><th>R+1</th><th>Accountable entity</th><th>Rationale</th><th>Partial allocation notes</th></tr></thead>
+          <thead><tr><th>SCT ID</th><th>Priority</th><th>System</th><th>SCT</th><th>R-1</th><th>R0</th><th>R+1</th><th>Accountable entity</th><th>Rationale</th><th>Partial allocation notes</th></tr></thead>
           <tbody>${workspace.step3.successCriticalTasks.map((task) => {
             const allocation = workspace.step4.allocations[task.id] || createAllocation(task.id);
             return `
               <tr>
+                <td><strong>${escapeHtml(formatSctNumber(task.number))}</strong></td>
                 <td>${escapeHtml(task.priority)}</td>
                 <td>${escapeHtml(task.system)}</td>
                 <td><strong>${escapeHtml(task.title || "Untitled SCT")}</strong><small>${escapeHtml(task.explanation)}</small></td>

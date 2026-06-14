@@ -24,8 +24,10 @@ test("generic focus mode renders explanation and work tiles", () => {
   assert.match(renderGenericFocusFullscreen(workspace, "step2", 0, context), /Manageability &amp; Flattening/);
   assert.match(renderGenericFocusFullscreen(workspace, "step2", 1, context), /Horizontal and Vertical Variety/);
   assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /How to master steering challenges/);
-  assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /Manageability Levers/);
+  assert.doesNotMatch(renderGenericFocusFullscreen(workspace, "step2", 2, context), /Manageability Levers/);
   assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /add-manageability-option/);
+  assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /toggle-manageability-option/);
+  assert.doesNotMatch(renderGenericFocusFullscreen(workspace, "step2", 2, context), /type="radio"/);
   assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /remove-item/);
 });
 
@@ -67,5 +69,42 @@ test("Step III focus mode exposes manageability levers as SCT input signals", ()
   assert.ok(taskSources.includes("Manageability Lever"));
   assert.match(html, /SCT Input Signals/);
   assert.match(html, /From manageability levers/);
-  assert.match(html, /Step II synthesis/);
+  assert.match(html, /Strengthen control functions/);
+  assert.match(html, /Selected manageability lever/);
+  assert.doesNotMatch(html, /Reduce or compress S1/);
+});
+
+test("Step III focus register exposes split and merge selection actions", () => {
+  const workspace = createSampleWorkspace();
+  const taskId = workspace.step3.successCriticalTasks[0].id;
+  const html = renderGenericFocusFullscreen(workspace, "step3", 3, {
+    ...context,
+    selectedSctId: "",
+    selectedSctMergeIds: [taskId]
+  });
+
+  assert.match(html, /Split selected/);
+  assert.doesNotMatch(html, /data-action="split-selected-sct" disabled/);
+  assert.match(html, /data-action="merge-selected-scts" disabled/);
+});
+
+test("Step III focus register applies Priority and Source filters", () => {
+  const workspace = createSampleWorkspace();
+  const [matchingTask, hiddenTask] = workspace.step3.successCriticalTasks;
+  matchingTask.priority = "A";
+  matchingTask.source = "Workshop Decision";
+  hiddenTask.priority = "B";
+  hiddenTask.source = "Manageability Lever";
+
+  const html = renderGenericFocusFullscreen(workspace, "step3", 3, {
+    ...context,
+    sctPriorityFilter: "B",
+    sctSourceFilter: "Manageability Lever"
+  });
+
+  assert.match(html, /Priority B/);
+  assert.match(html, /Manageability Lever/);
+  assert.match(html, /1 of 2 SCTs/);
+  assert.match(html, new RegExp(hiddenTask.title));
+  assert.doesNotMatch(html, new RegExp(matchingTask.title));
 });

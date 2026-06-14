@@ -15,7 +15,7 @@ export const stepDefinitions = [
     id: "step2",
     label: "Step II: Manageability",
     shortLabel: "II",
-    output: "Manageability assessment"
+    output: "Steerability Assessment"
   },
   {
     id: "step3",
@@ -53,6 +53,17 @@ export const stepDefinitions = [
     shortLabel: "Impl",
     output: "Transformation backlog"
   }
+];
+
+export const workflowStepOrder = [
+  "step1",
+  "step2",
+  "step3",
+  "step4",
+  "step5",
+  "step6",
+  "step7",
+  "implementation"
 ];
 
 export const vsmSystems = ["1", "2", "3", "3*", "4", "5"];
@@ -175,7 +186,7 @@ export function createWorkspace() {
         createManageabilityOption("Add management level")
       ],
       conclusion: "",
-      selectedOption: ""
+      selectedOptionIds: []
     },
     step3: {
       complexityDrivers: {
@@ -184,6 +195,7 @@ export function createWorkspace() {
         environmentalOverlaps: "",
         operationalDependencies: ""
       },
+      nextSctNumber: 1,
       successCriticalTasks: []
     },
     step4: {
@@ -202,6 +214,9 @@ export function createWorkspace() {
     },
     implementation: {
       items: []
+    },
+    workflow: {
+      completedSteps: createStepCompletionState()
     }
   };
 }
@@ -335,17 +350,138 @@ export function createManageabilityOption(name = "") {
   };
 }
 
-export function createSuccessCriticalTask() {
+export function createSuccessCriticalTask(number = 0) {
   return {
     id: createId("sct"),
+    number: normalizePositiveInteger(number),
     priority: "A",
     system: "3",
     title: "",
     explanation: "",
     source: "Workshop Decision",
     kpi: "",
-    requiredArtifacts: ""
+    requiredArtifacts: "",
+    toolOrMethodologicalApproach: ""
   };
+}
+
+export function createNumberedSuccessCriticalTask(workspace) {
+  const nextNumber = Math.max(
+    normalizePositiveInteger(workspace?.step3?.nextSctNumber) || 1,
+    highestSctNumber(workspace) + 1
+  );
+  workspace.step3.nextSctNumber = nextNumber + 1;
+  return createSuccessCriticalTask(nextNumber);
+}
+
+export function formatSctNumber(number) {
+  const normalized = normalizePositiveInteger(number);
+  return normalized ? `SCT-${String(normalized).padStart(3, "0")}` : "SCT";
+}
+
+export function splitSuccessCriticalTask(workspace, taskId) {
+  const source = workspace?.step3?.successCriticalTasks?.find((task) => task.id === taskId);
+  if (!source) {
+    return null;
+  }
+
+  const splitTask = {
+    ...createNumberedSuccessCriticalTask(workspace),
+    priority: source.priority,
+    system: source.system,
+    title: source.title ? `${source.title} (split)` : "Split SCT",
+    explanation: source.explanation,
+    source: source.source,
+    kpi: source.kpi,
+    requiredArtifacts: source.requiredArtifacts,
+    toolOrMethodologicalApproach: source.toolOrMethodologicalApproach
+  };
+
+  workspace.step3.successCriticalTasks.push(splitTask);
+  workspace.step4.allocations[splitTask.id] = createAllocation(splitTask.id);
+  return splitTask;
+}
+
+export function mergeSuccessCriticalTasks(workspace, taskIds) {
+  const selectedIds = new Set(Array.isArray(taskIds) ? taskIds : []);
+  const selectedTasks = workspace?.step3?.successCriticalTasks
+    ?.filter((task) => selectedIds.has(task.id))
+    .sort((left, right) => left.number - right.number) || [];
+
+  if (selectedTasks.length < 2) {
+    return null;
+  }
+
+  const [survivor, ...removedTasks] = selectedTasks;
+  const removedIds = new Set(removedTasks.map((task) => task.id));
+  survivor.priority = strongestPriority(selectedTasks.map((task) => task.priority));
+  survivor.title = combineText(selectedTasks.map((task) => task.title), " / ");
+  survivor.explanation = combineText(selectedTasks.map((task) => task.explanation));
+  survivor.source = commonValue(selectedTasks.map((task) => task.source)) || "Workshop Decision";
+  survivor.kpi = combineText(selectedTasks.map((task) => task.kpi));
+  survivor.requiredArtifacts = combineText(selectedTasks.map((task) => task.requiredArtifacts));
+  survivor.toolOrMethodologicalApproach = combineText(selectedTasks.map((task) => task.toolOrMethodologicalApproach));
+  workspace.step4.allocations[survivor.id] = mergeAllocations(workspace, selectedTasks, survivor.id);
+  workspace.step3.successCriticalTasks = workspace.step3.successCriticalTasks.filter((task) => !removedIds.has(task.id));
+
+  for (const removedId of removedIds) {
+    delete workspace.step4.allocations[removedId];
+  }
+
+  for (const item of [...workspace.step5.meetings, ...workspace.step7.roles]) {
+    const linkedTaskIds = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : [];
+    if (linkedTaskIds.some((id) => selectedIds.has(id))) {
+      item.linkedTaskIds = [...new Set([
+        ...linkedTaskIds.filter((id) => !removedIds.has(id)),
+        survivor.id
+      ])];
+    }
+  }
+
+  return survivor;
+}
+
+export function createStepCompletionState() {
+  return Object.fromEntries(workflowStepOrder.map((stepId) => [stepId, false]));
+}
+
+export function isStepComplete(workspace, stepId) {
+  return workflowStepOrder.includes(stepId)
+    && workspace?.workflow?.completedSteps?.[stepId] === true;
+}
+
+export function canCompleteStep(workspace, stepId) {
+  const stepIndex = workflowStepOrder.indexOf(stepId);
+  if (stepIndex < 0) {
+    return false;
+  }
+
+  return stepIndex === 0 || isStepComplete(workspace, workflowStepOrder[stepIndex - 1]);
+}
+
+export function setStepCompletion(workspace, stepId, completed) {
+  const stepIndex = workflowStepOrder.indexOf(stepId);
+  if (stepIndex < 0) {
+    return false;
+  }
+
+  workspace.workflow ||= {};
+  workspace.workflow.completedSteps ||= createStepCompletionState();
+
+  if (completed) {
+    if (!canCompleteStep(workspace, stepId)) {
+      return false;
+    }
+
+    workspace.workflow.completedSteps[stepId] = true;
+    return true;
+  }
+
+  for (const downstreamStepId of workflowStepOrder.slice(stepIndex)) {
+    workspace.workflow.completedSteps[downstreamStepId] = false;
+  }
+
+  return true;
 }
 
 export function createAllocation(taskId) {
@@ -415,6 +551,8 @@ export function createImplementationItem() {
 export function ensureWorkspaceShape(candidate) {
   const base = createWorkspace();
   const merged = mergeDeep(base, candidate || {});
+  normalizeSuccessCriticalTasks(merged);
+  normalizeStepCompletion(merged);
   const taskIds = new Set(merged.step3.successCriticalTasks.map((task) => task.id));
 
   if (!merged.step1.evaluation) {
@@ -422,6 +560,7 @@ export function ensureWorkspaceShape(candidate) {
   }
 
   ensureSixPackFields(merged);
+  normalizeStep2SelectedOptions(merged, candidate?.step2);
   normalizeStep2VarietyDefaults(merged, candidate || {});
 
   for (const taskId of taskIds) {
@@ -441,6 +580,112 @@ export function ensureWorkspaceShape(candidate) {
   }
 
   return merged;
+}
+
+function normalizeSuccessCriticalTasks(workspace) {
+  const usedNumbers = new Set();
+  let nextAvailableNumber = 1;
+
+  workspace.step3.successCriticalTasks = workspace.step3.successCriticalTasks.map((task) => {
+    const normalizedTask = {
+      ...createSuccessCriticalTask(),
+      ...(isPlainObject(task) ? task : {})
+    };
+    const savedNumber = normalizePositiveInteger(normalizedTask.number);
+
+    if (savedNumber && !usedNumbers.has(savedNumber)) {
+      normalizedTask.number = savedNumber;
+      usedNumbers.add(savedNumber);
+      nextAvailableNumber = Math.max(nextAvailableNumber, savedNumber + 1);
+      return normalizedTask;
+    }
+
+    while (usedNumbers.has(nextAvailableNumber)) {
+      nextAvailableNumber += 1;
+    }
+
+    normalizedTask.number = nextAvailableNumber;
+    usedNumbers.add(nextAvailableNumber);
+    nextAvailableNumber += 1;
+    return normalizedTask;
+  });
+
+  workspace.step3.nextSctNumber = Math.max(
+    normalizePositiveInteger(workspace.step3.nextSctNumber) || 1,
+    nextAvailableNumber
+  );
+}
+
+function normalizeStepCompletion(workspace) {
+  const saved = workspace?.workflow?.completedSteps;
+  const normalized = createStepCompletionState();
+  let precedingStepsComplete = true;
+
+  for (const stepId of workflowStepOrder) {
+    normalized[stepId] = precedingStepsComplete && saved?.[stepId] === true;
+    precedingStepsComplete = normalized[stepId];
+  }
+
+  workspace.workflow = {
+    ...(isPlainObject(workspace.workflow) ? workspace.workflow : {}),
+    completedSteps: normalized
+  };
+}
+
+function highestSctNumber(workspace) {
+  return Math.max(
+    0,
+    ...(Array.isArray(workspace?.step3?.successCriticalTasks)
+      ? workspace.step3.successCriticalTasks.map((task) => normalizePositiveInteger(task?.number))
+      : [])
+  );
+}
+
+function mergeAllocations(workspace, tasks, survivorId) {
+  const allocations = tasks.map((task) => workspace.step4.allocations[task.id] || createAllocation(task.id));
+  return {
+    taskId: survivorId,
+    levels: {
+      "R-1": allocations.some((allocation) => allocation.levels?.["R-1"]),
+      R0: allocations.some((allocation) => allocation.levels?.R0),
+      "R+1": allocations.some((allocation) => allocation.levels?.["R+1"])
+    },
+    accountableEntity: combineText(allocations.map((allocation) => allocation.accountableEntity)),
+    rationale: combineText(allocations.map((allocation) => allocation.rationale)),
+    partialAllocationNotes: combineText(allocations.map((allocation) => allocation.partialAllocationNotes))
+  };
+}
+
+function combineText(values, separator = "\n\n") {
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].join(separator);
+}
+
+function commonValue(values) {
+  const unique = [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+  return unique.length === 1 ? unique[0] : "";
+}
+
+function strongestPriority(values) {
+  return [...values].sort((left, right) => ["A", "B", "C"].indexOf(left) - ["A", "B", "C"].indexOf(right))[0] || "A";
+}
+
+function normalizePositiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : 0;
+}
+
+function normalizeStep2SelectedOptions(workspace, savedStep2 = {}) {
+  const optionIds = new Set(workspace.step2.options.map((option) => option.id));
+  const savedIds = Array.isArray(savedStep2?.selectedOptionIds)
+    ? savedStep2.selectedOptionIds
+    : savedStep2?.selectedOption
+      ? [savedStep2.selectedOption]
+      : workspace.step2.selectedOptionIds;
+
+  workspace.step2.selectedOptionIds = [...new Set(Array.isArray(savedIds) ? savedIds : [])]
+    .filter((id) => optionIds.has(id));
+
+  delete workspace.step2.selectedOption;
 }
 
 function normalizeStep2VarietyDefaults(workspace, sourceWorkspace = {}) {
@@ -494,7 +739,7 @@ function hasLegacyStep2AssessmentContent(workspace) {
     horizontal.notes,
     vertical.notes,
     workspace.step2.conclusion,
-    workspace.step2.selectedOption,
+    ...(workspace.step2.selectedOptionIds || []),
     ...leverContent
   ].some((value) => String(value || "").trim());
 }
@@ -601,14 +846,10 @@ export function evaluateStep2Variety(workspace) {
 
 export function getManageabilityLeverSignals(workspace) {
   const options = Array.isArray(workspace?.step2?.options) ? workspace.step2.options : [];
-  const selectedOptionId = workspace?.step2?.selectedOption || "";
-  const selected = options.find((option) => option.id === selectedOptionId);
-  const orderedOptions = [
-    selected,
-    ...options.filter((option) => option && option.id !== selectedOptionId)
-  ].filter(Boolean);
+  const selectedOptionIds = new Set(Array.isArray(workspace?.step2?.selectedOptionIds) ? workspace.step2.selectedOptionIds : []);
 
-  const optionSignals = orderedOptions
+  return options
+    .filter((option) => selectedOptionIds.has(option.id))
     .filter((option) => [
       option.name,
       option.timeToEffect,
@@ -622,20 +863,8 @@ export function getManageabilityLeverSignals(workspace) {
       title: option.name || "Unnamed manageability lever",
       detail: firstText(option.challenges, option.pros, option.cons, option.robustness, option.timeToEffect)
         || "Check whether this lever should become a success-critical task.",
-      meta: option.id === selectedOptionId ? "Chosen lever" : "Lever option"
+      meta: "Selected manageability lever"
     }));
-
-  const leverSummary = String(workspace?.step2?.conclusion || "").trim();
-  const summarySignal = leverSummary
-    ? [{
-        id: "manageability-levers",
-        title: "Manageability Levers",
-        detail: leverSummary,
-        meta: "Step II synthesis"
-      }]
-    : [];
-
-  return [...summarySignal, ...optionSignals];
 }
 
 export function getWeakSegmentationSignals(workspace, selectedOptionId = workspace?.step1?.selectedSegmentationOptionId) {

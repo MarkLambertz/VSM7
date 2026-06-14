@@ -11,17 +11,22 @@ import {
   createStrategicFile,
   createStrategicField,
   createStrategicLink,
-  createSuccessCriticalTask,
+  createNumberedSuccessCriticalTask,
   createWorkspace,
+  canCompleteStep,
   evaluateStep2Variety,
+  isStepComplete,
   markStep2SliderAssessed,
+  mergeSuccessCriticalTasks,
   resetStep2SlidersToNeutral,
+  setStepCompletion,
+  splitSuccessCriticalTask,
   stepDefinitions,
   syncAllocations,
   taskSources,
-  vsmSystems
-} from "../domain/vsm.js";
-import { evaluateCompleteness } from "../domain/completeness.js";
+  vsmSystems,
+  workflowStepOrder
+} from "../domain/vsm.js?v=20260613-manual-step-status";
 import {
   deleteOrganization,
   deleteWorkspace,
@@ -32,29 +37,32 @@ import {
   renameWorkspace,
   replaceWorkspace,
   saveWorkspace
-} from "../application/workspaceService.js";
-import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js";
+} from "../application/workspaceService.js?v=20260613-manual-step-status";
+import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?v=20260613-manual-step-status";
 import { createLocalStorageRepository } from "../infrastructure/localStorageRepository.js";
-import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js";
-import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js";
+import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js?v=20260613-manual-step-status";
+import { renderRenameDialog } from "./renameDialog.js?v=20260613-sct-tool-method2";
+import { destructiveActionMessage } from "./shared/destructiveActions.js?v=20260613-manual-step-status";
+import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260613-hero-cleanup";
 import { renderProjectManagement } from "./projectManagement.js";
+import { applySkinPreference, defaultSkin, readSkinPreference } from "./skinSettings.js";
 import { renderStartPage } from "./startPage.js";
-import { renderOverview } from "./steps/overview.js";
-import { renderImplementation } from "./steps/implementation.js";
+import { renderOverview } from "./steps/overview.js?v=20260613-sct-tool-method2";
+import { renderImplementation } from "./steps/implementation.js?v=20260613-hero-cleanup";
 import {
   focusStepOrder,
   getGenericFocusStepTitle,
   getGenericFocusTileCount,
   hasGenericFocusMode,
   renderGenericFocusFullscreen
-} from "./steps/focusMode.js";
-import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js";
-import { renderStep2 } from "./steps/step2.js";
-import { renderStep3 } from "./steps/step3.js";
-import { renderStep4 } from "./steps/step4.js";
-import { renderStep5 } from "./steps/step5.js";
-import { renderStep6 } from "./steps/step6.js";
-import { renderStep7 } from "./steps/step7.js";
+} from "./steps/focusMode.js?v=20260613-stable-sct-viewport";
+import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js?v=20260613-hero-cleanup";
+import { renderStep2 } from "./steps/step2.js?v=20260613-hero-cleanup";
+import { filterScts, renderStep3 } from "./steps/step3.js?v=20260613-stable-sct-viewport";
+import { renderStep4 } from "./steps/step4.js?v=20260613-hero-cleanup";
+import { renderStep5 } from "./steps/step5.js?v=20260613-hero-cleanup";
+import { renderStep6 } from "./steps/step6.js?v=20260613-hero-cleanup";
+import { renderStep7 } from "./steps/step7.js?v=20260613-hero-cleanup";
 
 const app = document.querySelector("#app");
 const repository = createLocalStorageRepository();
@@ -69,8 +77,14 @@ let activeStep1Subpage = "sif";
 let isFocusFullscreen = false;
 let activeStep1FullscreenTile = 0;
 let activeGenericFocusTile = 0;
-let isCompletenessOpen = false;
+let selectedSctId = "";
+let selectedSctMergeIds = new Set();
+let sctPriorityFilter = "";
+let sctSourceFilter = "";
+let isSettingsOpen = false;
+let renameTarget = null;
 let isNavCollapsed = false;
+let activeSkin = applySkinPreference(readSkinPreference());
 let saveStatus = "Saved";
 let saveTimer = null;
 let lastAction = { button: null, at: 0 };
@@ -79,19 +93,38 @@ render();
 
 app.addEventListener("input", (event) => {
   void handleInput(event.target);
+  if (event.target instanceof HTMLElement && event.target.dataset.renameDraft !== undefined) {
+    return;
+  }
   updateVarietyPreview(event.target);
+  updateCharacterCounter(event.target);
   scheduleSave();
 });
 
 app.addEventListener("change", async (event) => {
+  if (event.target instanceof HTMLElement && event.target.dataset.sctFilter) {
+    updateSctFilter(event.target.dataset.sctFilter, event.target.value);
+    renderAfterInPlaceAction();
+    return;
+  }
+
   await handleInput(event.target);
+  if (event.target instanceof HTMLElement && event.target.dataset.renameDraft !== undefined) {
+    return;
+  }
   saveNow();
-  render();
+  renderAfterInPlaceAction(selectedSctId);
 });
 
 app.addEventListener("click", dispatchAction);
 
 app.addEventListener("keydown", (event) => {
+  if (renameTarget && event.key === "Enter" && event.target instanceof HTMLElement && event.target.dataset.renameDraft !== undefined) {
+    event.preventDefault();
+    confirmRename();
+    return;
+  }
+
   if (event.key !== "Enter" && event.key !== " ") {
     return;
   }
@@ -100,7 +133,18 @@ app.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (!isFocusFullscreen || event.key !== "Escape") {
+  if (event.key !== "Escape") {
+    return;
+  }
+
+  if (renameTarget) {
+    event.preventDefault();
+    renameTarget = null;
+    render();
+    return;
+  }
+
+  if (!isFocusFullscreen) {
     return;
   }
 
@@ -111,8 +155,12 @@ document.addEventListener("keydown", (event) => {
 
 function render() {
   syncAllocations(workspace);
+  const taskIds = new Set(workspace.step3.successCriticalTasks.map((task) => task.id));
+  selectedSctMergeIds = new Set([...selectedSctMergeIds].filter((taskId) => taskIds.has(taskId)));
+  if (selectedSctId && !workspace.step3.successCriticalTasks.some((task) => task.id === selectedSctId)) {
+    selectedSctId = "";
+  }
   document.body.classList.toggle("has-fullscreen-workshop", isFocusFullscreen);
-  const completeness = evaluateCompleteness(workspace);
   const projects = listWorkspaces(repository);
   selectedOrganizationId = normalizeSelectedOrganization(projects);
   const showStepNavigation = activeView !== "start" && activeView !== "projects";
@@ -121,10 +169,7 @@ function render() {
     <header class="topbar">
       <div class="brand-block">
         ${renderBrandMark()}
-        <div>
-          <div class="eyebrow">Workshop workspace</div>
-          <strong>${escapeHtml(workspace.project.name || "New VSM Project")}</strong>
-        </div>
+        <strong class="brand-name">VSM7</strong>
       </div>
       <div class="topbar-context">
         ${headerContextItem("Organization", workspace.organization.name || "New Organization")}
@@ -133,21 +178,79 @@ function render() {
       </div>
       <div class="topbar-actions">
         ${renderSaveIndicator()}
-        ${renderCompletenessTrigger(completeness)}
         ${renderTopbarFocusButton()}
         ${renderTopbarMenu()}
+        ${renderSettingsTrigger()}
       </div>
-      ${isCompletenessOpen ? renderCompletenessLayer(completeness) : ""}
+      ${isSettingsOpen ? renderSettingsLayer() : ""}
     </header>
     <div class="workspace-layout ${showStepNavigation ? "" : "no-rail"} ${isNavCollapsed ? "nav-collapsed" : ""}">
-      ${showStepNavigation ? renderNavigation(completeness) : ""}
+      ${showStepNavigation ? renderNavigation() : ""}
       <main class="main-surface">
-        ${renderActiveView(completeness, projects)}
+        ${renderActiveView(projects)}
         ${renderFlowFooter()}
       </main>
     </div>
     ${renderFocusFullscreenLayer()}
+    ${renderRenameDialog(renameTarget)}
   `;
+}
+
+function renderPreservingViewport(anchorSctId = "") {
+  const scrollPosition = { x: window.scrollX, y: window.scrollY };
+  const preservedScrollRegions = capturePreservedScrollRegions();
+  const anchorTop = findSctRow(anchorSctId)?.getBoundingClientRect().top;
+  render();
+
+  restorePreservedScrollRegions(preservedScrollRegions);
+  window.scrollTo(scrollPosition.x, scrollPosition.y);
+  window.requestAnimationFrame(() => {
+    restorePreservedScrollRegions(preservedScrollRegions);
+    const renderedAnchor = findSctRow(anchorSctId);
+    const anchorOffset = renderedAnchor && Number.isFinite(anchorTop)
+      ? renderedAnchor.getBoundingClientRect().top - anchorTop
+      : 0;
+    window.scrollTo(scrollPosition.x, scrollPosition.y + anchorOffset);
+  });
+}
+
+function renderAfterInPlaceAction(anchorSctId = "") {
+  if (isFocusFullscreen) {
+    render();
+  } else {
+    renderPreservingViewport(anchorSctId);
+  }
+}
+
+function capturePreservedScrollRegions() {
+  return [...document.querySelectorAll("[data-preserve-scroll]")].map((element, index) => ({
+    key: element.dataset.preserveScroll,
+    index,
+    left: element.scrollLeft,
+    top: element.scrollTop
+  }));
+}
+
+function restorePreservedScrollRegions(regions) {
+  const elements = [...document.querySelectorAll("[data-preserve-scroll]")];
+  regions.forEach((region) => {
+    const element = elements.find((candidate, index) => (
+      candidate.dataset.preserveScroll === region.key && index === region.index
+    ));
+    if (element) {
+      element.scrollLeft = region.left;
+      element.scrollTop = region.top;
+    }
+  });
+}
+
+function findSctRow(taskId) {
+  if (!taskId) {
+    return null;
+  }
+
+  return [...document.querySelectorAll(".sct-compact-row")]
+    .find((row) => row.dataset.sctId === taskId) || null;
 }
 
 function renderTopbarMenu() {
@@ -161,6 +264,65 @@ function renderTopbarMenu() {
         <button class="ghost-button" data-action="export-project-json">Archive</button>
       </div>
     </details>
+  `;
+}
+
+function renderSettingsTrigger() {
+  return `
+    <button
+      class="topbar-settings-button ${isSettingsOpen ? "is-active" : ""}"
+      data-action="toggle-settings"
+      title="Interface settings"
+      aria-label="Open interface settings"
+      aria-expanded="${isSettingsOpen ? "true" : "false"}"
+    >
+      <span aria-hidden="true">⚙</span>
+    </button>
+  `;
+}
+
+function renderSettingsLayer() {
+  return `
+    <section class="settings-layer" aria-label="Interface settings">
+      <div class="settings-layer-header">
+        <div>
+          <p class="eyebrow">Interface settings</p>
+          <h2>Choose your VSM7 skin</h2>
+        </div>
+        <button class="icon-button" data-action="close-settings" title="Close" aria-label="Close interface settings">x</button>
+      </div>
+      <div class="skin-choice-grid" role="radiogroup" aria-label="VSM7 interface skin">
+        ${renderSkinChoice("workshop", "Workshop", "Bright, calm, facilitation-first")}
+        ${renderSkinChoice("command-deck", "Command Deck", "High-contrast, segmented, focused")}
+      </div>
+      <div class="settings-layer-footer">
+        <span>Applied across VSM7</span>
+        <button class="ghost-button small" data-action="reset-skin">Reset default</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderSkinChoice(skin, name, description) {
+  const isActive = activeSkin === skin;
+
+  return `
+    <button
+      class="skin-choice skin-choice-${skin} ${isActive ? "is-active" : ""}"
+      data-action="select-skin"
+      data-skin="${skin}"
+      role="radio"
+      aria-checked="${isActive ? "true" : "false"}"
+    >
+      <span class="skin-preview" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+      </span>
+      <span class="skin-choice-copy">
+        <strong>${name}</strong>
+        <small>${description}</small>
+      </span>
+      <span class="skin-choice-check" aria-hidden="true">${isActive ? "✓" : ""}</span>
+    </button>
   `;
 }
 
@@ -235,7 +397,14 @@ function clampFocusTile(tileIndex, tileCount) {
 }
 
 function getGenericFocusContext() {
-  return { taskSources, vsmSystems };
+  return {
+    taskSources,
+    vsmSystems,
+    selectedSctId,
+    selectedSctMergeIds: [...selectedSctMergeIds],
+    sctPriorityFilter,
+    sctSourceFilter
+  };
 }
 
 function canMoveStep1Fullscreen(direction, tileIndex, tileCount) {
@@ -279,27 +448,28 @@ function renderSaveIndicator() {
   return `<span class="save-indicator ${saveStatus.toLowerCase().startsWith("saved") ? "is-saved" : "is-saving"}" data-save-indicator>${escapeHtml(saveStatus)}</span>`;
 }
 
-function renderNavigation(completeness) {
-  const scores = new Map(completeness.byStep.map((step) => [step.stepId, step.score]));
-
+function renderNavigation() {
   return `
     <nav class="step-rail ${isNavCollapsed ? "is-collapsed" : ""}" aria-label="VSM steps">
-      ${stepDefinitions.map((step) => `
+      ${stepDefinitions.map((step) => {
+        const isComplete = step.id !== "overview" && isStepComplete(workspace, step.id);
+        return `
         <button
-          class="step-button ${step.id === "overview" ? "is-home" : ""} ${activeView === step.id ? "is-active" : ""}"
+          class="step-button ${step.id === "overview" ? "is-home" : ""} ${activeView === step.id ? "is-active" : ""} ${isComplete ? "is-complete" : ""}"
           data-action="navigate"
           data-view="${step.id === "overview" ? "start" : step.id}"
-          aria-label="${escapeAttr(step.id === "overview" ? "Home" : navLabel(step))}"
+          aria-label="${escapeAttr(step.id === "overview" ? "Home" : `${navLabel(step)}${isComplete ? ", done" : ""}`)}"
         >
           ${renderStepToken(step)}
           ${step.id === "overview" ? "" : `
             <span>
               <strong>${escapeHtml(navLabel(step))}</strong>
             </span>
+            <span class="step-complete-check" aria-hidden="true">${isComplete ? "✓" : ""}</span>
           `}
-          ${step.id === "overview" ? "" : `<span class="step-score">${scores.get(step.id) ?? 0}%</span>`}
         </button>
-      `).join("")}
+      `;
+      }).join("")}
       <button class="step-rail-toggle" data-action="toggle-nav">${isNavCollapsed ? "Expand" : "Collapse"}</button>
     </nav>
   `;
@@ -330,14 +500,19 @@ function renderStepToken(step) {
   return `<span class="step-token">${escapeHtml(step.shortLabel)}</span>`;
 }
 
-function renderActiveView(completeness, projects) {
+function renderActiveView(projects) {
   const views = {
     start: () => renderStartPage(workspace, projects),
     projects: () => renderProjectManagement(workspace, projects, selectedOrganizationId),
-    overview: () => renderOverview(workspace, completeness, stepDefinitions),
+    overview: () => renderOverview(workspace),
     step1: () => renderStep1(workspace, activeStep1Subpage),
     step2: () => renderStep2(workspace),
-    step3: () => renderStep3(workspace, taskSources, vsmSystems),
+    step3: () => renderStep3(workspace, taskSources, vsmSystems, {
+      selectedSctId: isFocusFullscreen ? "" : selectedSctId,
+      selectedSctMergeIds: [...selectedSctMergeIds],
+      sctPriorityFilter,
+      sctSourceFilter
+    }),
     step4: () => renderStep4(workspace),
     step5: () => renderStep5(workspace),
     step6: () => renderStep6(workspace),
@@ -385,21 +560,51 @@ function navLabel(step) {
 
 function renderFlowFooter() {
   const nextAction = getNextAction();
-  if (!nextAction) {
+  const isWorkflowStep = workflowStepOrder.includes(activeView);
+  if (!nextAction && !isWorkflowStep) {
     return "";
   }
 
   return `
     <section class="flow-footer">
-      <button
-        class="primary-button"
-        data-action="${escapeAttr(nextAction.action)}"
-        ${nextAction.view ? `data-view="${escapeAttr(nextAction.view)}"` : ""}
-        ${nextAction.subpage ? `data-subpage="${escapeAttr(nextAction.subpage)}"` : ""}
-      >
-        ${escapeHtml(nextAction.label)}
-      </button>
+      ${isWorkflowStep ? renderStepCompletionControl(activeView) : ""}
+      ${nextAction ? `
+        <button
+          class="primary-button"
+          data-action="${escapeAttr(nextAction.action)}"
+          ${nextAction.view ? `data-view="${escapeAttr(nextAction.view)}"` : ""}
+          ${nextAction.subpage ? `data-subpage="${escapeAttr(nextAction.subpage)}"` : ""}
+        >
+          ${escapeHtml(nextAction.label)}
+        </button>
+      ` : ""}
     </section>
+  `;
+}
+
+function renderStepCompletionControl(stepId) {
+  const isComplete = isStepComplete(workspace, stepId);
+  const canComplete = isComplete || canCompleteStep(workspace, stepId);
+  const stepIndex = workflowStepOrder.indexOf(stepId);
+  const previousStep = stepIndex > 0
+    ? stepDefinitions.find((step) => step.id === workflowStepOrder[stepIndex - 1])
+    : null;
+
+  return `
+    <div class="step-completion-control">
+      <button
+        class="step-completion-button ${isComplete ? "is-complete" : ""}"
+        data-action="toggle-step-complete"
+        data-step="${escapeAttr(stepId)}"
+        aria-pressed="${isComplete ? "true" : "false"}"
+        title="${escapeAttr(isComplete ? "Unmark this step and all following steps" : "Mark this step done")}"
+        ${canComplete ? "" : "disabled"}
+      >
+        <span class="step-completion-button-check" aria-hidden="true">${isComplete ? "✓" : ""}</span>
+        ${isComplete ? "Step done" : "Mark step done"}
+      </button>
+      ${canComplete ? "" : `<small>Mark ${escapeHtml(previousStep ? navLabel(previousStep) : "the previous step")} done first.</small>`}
+    </div>
   `;
 }
 
@@ -430,71 +635,13 @@ function getNextAction() {
   return nextByView[activeView] ? { action: "navigate", ...nextByView[activeView] } : null;
 }
 
-function renderCompletenessTrigger(completeness) {
-  const activeStep = completeness.byStep.find((step) => step.stepId === activeView);
-  const score = activeStep ? activeStep.score : completeness.score;
-
-  return `
-    <button
-      class="completeness-trigger"
-      data-action="toggle-completeness"
-      aria-expanded="${isCompletenessOpen ? "true" : "false"}"
-    >
-      <span>Check</span>
-      <strong>${score}%</strong>
-    </button>
-  `;
-}
-
-function renderCompletenessLayer(completeness) {
-  const activeStep = completeness.byStep.find((step) => step.stepId === activeView);
-  const activeNotes = activeStep
-    ? [...activeStep.missing, ...activeStep.warnings]
-    : completeness.blockers.slice(0, 5).map((item) => item.message);
-
-  return `
-    <section class="completeness-layer" aria-label="Completeness Check per Step">
-      <div class="completeness-layer-header">
-        <div>
-          <p class="eyebrow">Completeness Check</p>
-          <h2>${activeStep ? escapeHtml(stepLabel(activeStep.stepId)) : "Project"} ${activeStep ? `${activeStep.score}%` : `${completeness.score}%`}</h2>
-        </div>
-        <button class="icon-button" data-action="close-completeness" title="Close">x</button>
-      </div>
-      <div class="completeness-summary">
-        <strong>${completeness.score}%</strong>
-        <span>Overall project completeness</span>
-      </div>
-      <div class="completeness-step-list">
-        ${completeness.byStep.map((step) => renderCompletenessStep(step)).join("")}
-      </div>
-      <ul class="completeness-notes">
-        ${activeNotes.length > 0
-          ? activeNotes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")
-          : "<li>No open completeness notes for this view.</li>"}
-      </ul>
-    </section>
-  `;
-}
-
-function renderCompletenessStep(step) {
-  const openItems = step.missing.length + step.warnings.length;
-
-  return `
-    <button class="completeness-step ${activeView === step.stepId ? "is-active" : ""}" data-action="navigate" data-view="${escapeAttr(step.stepId)}">
-      <span>${escapeHtml(stepLabel(step.stepId))}</span>
-      <small>${openItems === 0 ? "Complete for now" : `${openItems} open item${openItems === 1 ? "" : "s"}`}</small>
-      <strong>${step.score}%</strong>
-    </button>
-  `;
-}
-
-function stepLabel(stepId, field = "label") {
-  return stepDefinitions.find((step) => step.id === stepId)?.[field] || stepId;
-}
-
 async function handleInput(target) {
   if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  if (target.dataset.renameDraft !== undefined && renameTarget) {
+    renameTarget.draftName = target.value;
     return;
   }
 
@@ -607,21 +754,43 @@ function dispatchAction(event) {
 
 function handleAction(button) {
   const action = button.dataset.action;
+  const confirmationMessage = destructiveActionMessage({
+    action,
+    collection: button.dataset.collection,
+    itemName: button.dataset.projectName || button.dataset.organizationName,
+    projectCount: button.dataset.projectCount
+  });
 
-  if (action === "toggle-completeness") {
-    isCompletenessOpen = !isCompletenessOpen;
+  if (confirmationMessage && !window.confirm(confirmationMessage)) {
+    return;
+  }
+
+  if (action === "toggle-settings") {
+    isSettingsOpen = !isSettingsOpen;
+    render();
+    return;
+  }
+
+  if (action === "close-settings") {
+    isSettingsOpen = false;
+    render();
+    return;
+  }
+
+  if (action === "select-skin") {
+    activeSkin = applySkinPreference(button.dataset.skin);
+    render();
+    return;
+  }
+
+  if (action === "reset-skin") {
+    activeSkin = applySkinPreference(defaultSkin);
     render();
     return;
   }
 
   if (action === "toggle-nav") {
     isNavCollapsed = !isNavCollapsed;
-    render();
-    return;
-  }
-
-  if (action === "close-completeness") {
-    isCompletenessOpen = false;
     render();
     return;
   }
@@ -635,7 +804,7 @@ function handleAction(button) {
 
   if (action === "navigate") {
     activeView = button.dataset.view || "overview";
-    isCompletenessOpen = false;
+    isSettingsOpen = false;
     if (activeView !== "step1" && !hasGenericFocusMode(activeView)) {
       isFocusFullscreen = false;
     }
@@ -646,7 +815,7 @@ function handleAction(button) {
   if (action === "step1-fullscreen-open") {
     activeStep1FullscreenTile = 0;
     isFocusFullscreen = true;
-    isCompletenessOpen = false;
+    isSettingsOpen = false;
     render();
     return;
   }
@@ -672,7 +841,7 @@ function handleAction(button) {
   if (action === "focus-fullscreen-open") {
     activeGenericFocusTile = 0;
     isFocusFullscreen = true;
-    isCompletenessOpen = false;
+    isSettingsOpen = false;
     render();
     return;
   }
@@ -728,13 +897,117 @@ function handleAction(button) {
     return;
   }
 
+  if (action === "toggle-manageability-option") {
+    toggleManageabilityOption(button.dataset.optionId);
+    saveNow();
+    render();
+    return;
+  }
+
+  if (action === "toggle-step-complete") {
+    const stepId = button.dataset.step;
+    setStepCompletion(workspace, stepId, !isStepComplete(workspace, stepId));
+    saveNow();
+    renderAfterInPlaceAction();
+    return;
+  }
+
+  if (action === "toggle-sct-merge-selection") {
+    const taskId = button.dataset.sctId;
+    selectedSctMergeIds.has(taskId)
+      ? selectedSctMergeIds.delete(taskId)
+      : selectedSctMergeIds.add(taskId);
+    renderAfterInPlaceAction(taskId);
+    return;
+  }
+
+  if (action === "clear-sct-filters") {
+    sctPriorityFilter = "";
+    sctSourceFilter = "";
+    selectedSctMergeIds.clear();
+    renderAfterInPlaceAction();
+    return;
+  }
+
+  if (action === "merge-selected-scts") {
+    const survivor = mergeSuccessCriticalTasks(workspace, [...selectedSctMergeIds]);
+    if (!survivor) {
+      return;
+    }
+
+    selectedSctMergeIds.clear();
+    selectedSctId = survivor.id;
+    saveNow();
+    renderAfterInPlaceAction(survivor.id);
+    return;
+  }
+
+  if (action === "split-selected-sct") {
+    const [taskId] = [...selectedSctMergeIds];
+    if (selectedSctMergeIds.size !== 1 || !taskId) {
+      return;
+    }
+
+    const splitTask = splitSuccessCriticalTask(workspace, taskId);
+    if (!splitTask) {
+      return;
+    }
+
+    selectedSctMergeIds.clear();
+    selectedSctId = splitTask.id;
+    saveNow();
+    renderAfterInPlaceAction(taskId);
+    return;
+  }
+
+  if (action === "split-sct") {
+    const taskId = button.dataset.sctId;
+    const splitTask = splitSuccessCriticalTask(workspace, taskId);
+    if (!splitTask) {
+      return;
+    }
+
+    selectedSctMergeIds.clear();
+    selectedSctId = splitTask.id;
+    saveNow();
+    renderAfterInPlaceAction(taskId);
+    return;
+  }
+
+  if (action === "open-sct-inspector") {
+    selectedSctId = button.dataset.sctId || "";
+    renderAfterInPlaceAction(selectedSctId);
+    return;
+  }
+
+  if (action === "close-sct-inspector") {
+    const closingSctId = selectedSctId;
+    selectedSctId = "";
+    renderAfterInPlaceAction(closingSctId);
+    return;
+  }
+
+  if (action === "add-sct") {
+    const task = createNumberedSuccessCriticalTask(workspace);
+    workspace.step3.successCriticalTasks.push(task);
+    workspace.step4.allocations[task.id] = createAllocation(task.id);
+    selectedSctId = task.id;
+    selectedSctMergeIds.clear();
+    saveNow();
+    if (isFocusFullscreen) {
+      render();
+    } else {
+      renderPreservingViewport();
+    }
+    return;
+  }
+
   if (action === "new-workspace") {
     workspace = replaceWorkspace(repository, createWorkspace());
     selectedOrganizationId = workspace.organization.id || "";
     activeView = "start";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
-    isCompletenessOpen = false;
     render();
     return;
   }
@@ -745,7 +1018,6 @@ function handleAction(button) {
     activeView = "overview";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
-    isCompletenessOpen = false;
     render();
     return;
   }
@@ -756,7 +1028,6 @@ function handleAction(button) {
     activeView = "overview";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
-    isCompletenessOpen = false;
     render();
     return;
   }
@@ -767,7 +1038,6 @@ function handleAction(button) {
     activeView = "projects";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
-    isCompletenessOpen = false;
     render();
     return;
   }
@@ -778,7 +1048,6 @@ function handleAction(button) {
     activeView = "overview";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
-    isCompletenessOpen = false;
     render();
     return;
   }
@@ -788,7 +1057,6 @@ function handleAction(button) {
     activeView = "projects";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
-    isCompletenessOpen = false;
     render();
     return;
   }
@@ -796,18 +1064,28 @@ function handleAction(button) {
   if (action === "select-organization") {
     selectedOrganizationId = button.dataset.organizationId || selectedOrganizationId;
     activeView = "projects";
-    isCompletenessOpen = false;
     render();
     return;
   }
 
   if (action === "rename-project") {
-    renameProjectFromButton(button);
+    openRenameDialog(button, "project");
     return;
   }
 
   if (action === "rename-organization") {
-    renameOrganizationFromButton(button);
+    openRenameDialog(button, "organization");
+    return;
+  }
+
+  if (action === "cancel-rename") {
+    renameTarget = null;
+    render();
+    return;
+  }
+
+  if (action === "confirm-rename") {
+    confirmRename();
     return;
   }
 
@@ -824,7 +1102,7 @@ function handleAction(button) {
   if (action === "remove-item") {
     removeFromCollection(button.dataset.collection, button.dataset.id);
     saveNow();
-    render();
+    renderAfterInPlaceAction();
     return;
   }
 
@@ -845,20 +1123,40 @@ function handleAction(button) {
   if (action === "remove-strategic-link") {
     removeStrategicLink(button.dataset.fieldId, button.dataset.linkId);
     saveNow();
-    render();
+    renderAfterInPlaceAction();
     return;
   }
 
   if (action === "remove-strategic-file") {
     removeStrategicFile(button.dataset.fieldId, button.dataset.fileId);
     saveNow();
-    render();
+    renderAfterInPlaceAction();
     return;
   }
 
   addItem(action);
   saveNow();
   render();
+}
+
+function updateSctFilter(filterName, value) {
+  if (filterName === "priority") {
+    sctPriorityFilter = value;
+  }
+
+  if (filterName === "source") {
+    sctSourceFilter = value;
+  }
+
+  const visibleTaskIds = new Set(
+    filterScts(workspace.step3.successCriticalTasks, sctPriorityFilter, sctSourceFilter)
+      .map((task) => task.id)
+  );
+  selectedSctMergeIds = new Set([...selectedSctMergeIds].filter((taskId) => visibleTaskIds.has(taskId)));
+
+  if (selectedSctId && !visibleTaskIds.has(selectedSctId)) {
+    selectedSctId = "";
+  }
 }
 
 function addItem(action) {
@@ -873,17 +1171,23 @@ function addItem(action) {
     "add-criterion": () => workspace.step1.keyBuyingCriteria.push(createKeyBuyingCriterion()),
     "add-strategic-field": () => workspace.step1.strategicFields.push(createStrategicField()),
     "add-manageability-option": () => workspace.step2.options.push(createManageabilityOption()),
-    "add-sct": () => {
-      const task = createSuccessCriticalTask();
-      workspace.step3.successCriticalTasks.push(task);
-      workspace.step4.allocations[task.id] = createAllocation(task.id);
-    },
     "add-meeting": () => workspace.step5.meetings.push(createMeeting()),
     "add-role": () => workspace.step7.roles.push(createRole()),
     "add-implementation": () => workspace.implementation.items.push(createImplementationItem())
   };
 
   additions[action]?.();
+}
+
+function toggleManageabilityOption(optionId) {
+  if (!optionId || !workspace.step2.options.some((option) => option.id === optionId)) {
+    return;
+  }
+
+  workspace.step2.selectedOptionIds ||= [];
+  workspace.step2.selectedOptionIds = workspace.step2.selectedOptionIds.includes(optionId)
+    ? workspace.step2.selectedOptionIds.filter((id) => id !== optionId)
+    : [...workspace.step2.selectedOptionIds, optionId];
 }
 
 function addRecursionLevel(direction) {
@@ -1046,55 +1350,84 @@ function projectBelongsToOrganization(project, organizationId) {
   );
 }
 
-function renameProjectFromButton(button) {
-  const projectId = button.dataset.projectId;
-  const currentName = button.dataset.projectName || "Untitled project";
-  const name = window.prompt("Rename project", currentName)?.trim();
+function openRenameDialog(button, type) {
+  const isOrganization = type === "organization";
+  const id = isOrganization ? button.dataset.organizationId : button.dataset.projectId;
+  const currentName = isOrganization
+    ? button.dataset.organizationName || "Unnamed Organization"
+    : button.dataset.projectName || "Untitled project";
 
-  if (!projectId || !name || name === currentName) {
+  if (!id) {
     return;
   }
 
-  if (projectId === workspace.project.id) {
-    workspace.project.name = name;
-    saveNow();
+  renameTarget = {
+    type,
+    id,
+    currentName,
+    draftName: currentName
+  };
+  isSettingsOpen = false;
+  render();
+
+  window.requestAnimationFrame(() => {
+    const input = document.querySelector("[data-rename-draft]");
+    if (input instanceof HTMLInputElement) {
+      input.focus();
+      input.select();
+    }
+  });
+}
+
+function confirmRename() {
+  if (!renameTarget) {
+    return;
+  }
+
+  const { type, id, currentName } = renameTarget;
+  const name = String(renameTarget.draftName || "").trim();
+
+  if (!name) {
+    return;
+  }
+
+  if (name === currentName) {
+    renameTarget = null;
+    render();
+    return;
+  }
+
+  if (type === "project") {
+    if (id === workspace.project.id) {
+      workspace.project.name = name;
+      saveNow();
+    } else {
+      renameWorkspace(repository, id, name);
+      setSaveStatus("Saved just now");
+    }
   } else {
-    renameWorkspace(repository, projectId, name);
+    saveNow();
+    renameOrganization(repository, id, name);
+
+    if (projectBelongsToOrganization({
+      organizationId: workspace.organization.id,
+      organizationName: currentName
+    }, id)) {
+      workspace = openWorkspace(repository, workspace.project.id);
+    }
+
+    selectedOrganizationId = id;
     setSaveStatus("Saved just now");
   }
 
-  render();
-}
-
-function renameOrganizationFromButton(button) {
-  const organizationId = button.dataset.organizationId;
-  const currentName = button.dataset.organizationName || "Unnamed Organization";
-  const name = window.prompt("Rename organization", currentName)?.trim();
-
-  if (!organizationId || !name || name === currentName) {
-    return;
-  }
-
-  saveNow();
-  renameOrganization(repository, organizationId, name);
-
-  if (projectBelongsToOrganization({
-    organizationId: workspace.organization.id,
-    organizationName: currentName
-  }, organizationId)) {
-    workspace = openWorkspace(repository, workspace.project.id);
-  }
-
-  selectedOrganizationId = organizationId;
-  setSaveStatus("Saved just now");
+  renameTarget = null;
   render();
 }
 
 function deleteProjectFromButton(button) {
   const projectId = button.dataset.projectId;
-  const projectName = button.dataset.projectName || "this project";
 
-  if (!projectId || !window.confirm(`Delete "${projectName}"? This cannot be undone.`)) {
+  if (!projectId) {
     return;
   }
 
@@ -1102,7 +1435,6 @@ function deleteProjectFromButton(button) {
   activeView = "projects";
   activeStep1Subpage = "sif";
   isFocusFullscreen = false;
-  isCompletenessOpen = false;
 
   if (!listWorkspaces(repository).length) {
     workspace = replaceWorkspace(repository, createWorkspace());
@@ -1115,11 +1447,8 @@ function deleteProjectFromButton(button) {
 
 function deleteOrganizationFromButton(button) {
   const organizationId = button.dataset.organizationId;
-  const organizationName = button.dataset.organizationName || "this organization";
-  const projectCount = Number(button.dataset.projectCount || 0);
-  const projectText = `${projectCount} project${projectCount === 1 ? "" : "s"}`;
 
-  if (!organizationId || !window.confirm(`Delete "${organizationName}" and ${projectText}? This cannot be undone.`)) {
+  if (!organizationId) {
     return;
   }
 
@@ -1127,7 +1456,6 @@ function deleteOrganizationFromButton(button) {
   activeView = "projects";
   activeStep1Subpage = "sif";
   isFocusFullscreen = false;
-  isCompletenessOpen = false;
 
   if (!listWorkspaces(repository).length) {
     workspace = replaceWorkspace(repository, createWorkspace());
@@ -1189,6 +1517,20 @@ function updateVarietyPreview(target) {
   if (fitGauge) {
     fitGauge.style.setProperty("--variety-fit-position", `${diagnostics.fitPosition}%`);
   }
+}
+
+function updateCharacterCounter(target) {
+  if (!(target instanceof HTMLTextAreaElement) || !target.dataset.characterCount) {
+    return;
+  }
+
+  const counter = target.closest(".sct-inspector")?.querySelector("[data-character-counter]");
+  if (!counter) {
+    return;
+  }
+
+  counter.textContent = `${target.value.length} / 1000`;
+  counter.classList.toggle("is-near-limit", target.value.length >= 900);
 }
 
 function setPath(target, path, value) {
@@ -1307,11 +1649,15 @@ function removeFromCollection(collectionPath, id) {
     delete workspace.step1.evaluation.comments[id];
   }
 
-  if (collectionPath === "step2.options" && workspace.step2.selectedOption === id) {
-    workspace.step2.selectedOption = "";
+  if (collectionPath === "step2.options") {
+    workspace.step2.selectedOptionIds = (workspace.step2.selectedOptionIds || []).filter((optionId) => optionId !== id);
   }
 
   if (collectionPath === "step3.successCriticalTasks") {
+    selectedSctMergeIds.delete(id);
+    if (selectedSctId === id) {
+      selectedSctId = "";
+    }
     delete workspace.step4.allocations[id];
     removeTaskReferences(id);
   }

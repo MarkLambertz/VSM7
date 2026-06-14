@@ -2,7 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createSampleWorkspace } from "../src/application/sampleWorkspaceFactory.js";
 import { createRecursionLevel } from "../src/domain/vsm.js";
-import { getStep1FullscreenTileCount, renderStep1Fullscreen } from "../src/presentation/steps/step1.js";
+import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen } from "../src/presentation/steps/step1.js";
+
+test("Step I normal hero stays focused without context chips", () => {
+  const html = renderStep1(createSampleWorkspace(), "sif");
+
+  assert.doesNotMatch(html, /stage-context-strip/);
+  assert.doesNotMatch(html, /Selected segmentation/);
+});
 
 test("Step I fullscreen mode splits SIF into explanation, SIF, and recursion tiles", () => {
   const workspace = createSampleWorkspace();

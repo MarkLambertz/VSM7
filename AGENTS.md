@@ -34,7 +34,7 @@ The app must not feel like a naked data collector or generic SAP/Bootstrap templ
 ## Architecture Principles
 
 - Keep the existing clean architecture direction:
-  - `src/domain`: VSM entities, policies, and completeness logic.
+  - `src/domain`: VSM entities, policies, and method logic.
   - `src/application`: workspace orchestration.
   - `src/infrastructure`: browser persistence and exports.
   - `src/presentation`: UI rendering and interaction.
@@ -42,7 +42,7 @@ The app must not feel like a naked data collector or generic SAP/Bootstrap templ
 - Preserve a Solid/onion architecture mindset and avoid mixing domain rules into UI rendering when they belong in domain/application code.
 - Use DDD language from the product: organization, project, System-in-Focus, recursion level, segmentation option, SCT, accountability, meeting, channel, representation.
 - Keep code DRY, but do not add abstractions before they reduce real duplication or clarify boundaries.
-- Add or update tests when domain behavior, completeness logic, scoring rules, or data-shaping changes.
+- Add or update tests when domain behavior, method rules, scoring rules, or data-shaping changes.
 
 ## UX Direction
 
@@ -58,6 +58,7 @@ The app must not feel like a naked data collector or generic SAP/Bootstrap templ
   - Facilitation mode: presentation-grade fullscreen tiles.
 - Fullscreen/focus mode should let users move across tiles and across steps without pressing Escape.
 - Escape must exit fullscreen/focus mode.
+- In normal view, in-place actions such as opening, editing, adding, splitting, merging, or closing an SCT must preserve the user's viewport and relevant internal scroll positions. Do not make facilitators find their place again after a local action.
 - Fullscreen explanation tiles should generally contain:
   - big title,
   - one strong explanation sentence,
@@ -68,10 +69,20 @@ The app must not feel like a naked data collector or generic SAP/Bootstrap templ
 - Left navigation belongs only when a project is open, not on the start page.
 - Keep buttons compact and button-like. Avoid oversized button heights.
 - Use `VSM7` as the app/product logo text.
+- Preserve viewport continuity for in-place capture actions in normal view. Adding, editing, selecting, or removing rows must not unexpectedly jump the facilitator back to the top of the page. Fullscreen/focus mode may use its own navigation behavior.
+- Require an explicit confirmation immediately before every destructive action, from deleting an SCT or supporting attachment to deleting a project or organization. Name the affected artifact or scope in the dialogue when available.
 
 ## Visual Language
 
 Use method-specific visual placeholders rather than generic decoration. They should help the facilitator explain what happens in the current VSM step.
+
+VSM7 supports interface skins:
+
+- `Workshop` is the calm, bright default.
+- `Command Deck` is the high-contrast, segmented alternative.
+- Keep skin preferences separate from organizations, projects, and VSM method data.
+- Apply skins through shared presentation tokens and targeted CSS overrides; do not duplicate page markup per skin.
+- Skin changes must affect the interface only. Exports, method scoring, and canonical workshop data must remain unchanged.
 
 Consistent color grammar:
 
@@ -94,11 +105,46 @@ Suggested visual placeholders:
 ## VSM Method Boundaries
 
 - The app is for VSM experts; do not over-explain basic theory in the UI.
-- The completeness assistant is a service for completeness, not a challenge or grading mechanism.
+- Do not calculate, display, or export step or project completeness percentages. VSM workshop experts decide when a step is sufficiently complete.
 - Business and support functions should be treated the same in the app. The user is responsible for applying virtual S1 theory correctly.
-- SCTs are central. They later drive roles, meetings, agendas, accountability, and representation.
+- SCTs are the canonical backbone of the steering-system design. They later drive organizational contributions, VSM-system allocation, communication, processes, roles, meetings, agendas, accountability, and representation.
 - Step VII includes hierarchy/representation derivation, but it is only one part of the full seven-step VSM process.
 - Implementation support is in scope through backlog, roadmap, owners, milestones, dependencies, and follow-up artifacts.
+
+## SCT Canonical Backbone
+
+Treat every Success-Critical Task as one persistent canonical entity that is referenced and enriched throughout the later VSM steps. Never create disconnected copies of an SCT for each step.
+
+The SCT lifecycle answers progressively richer steering questions:
+
+- Step III defines the SCT: **What must permanently be done?**
+- Step IV decomposes the SCT into contributions by recursion level and organizational unit: **Where are contributions required?**
+- Step V allocates VSM system numbers to those contributions: **Which steering function performs each contribution?**
+- Step VI connects contributions through communication channels and later E2E process routes: **How must information and work flow?**
+- Step VII allocates roles, responsibilities, and RASIC relationships: **Who is accountable and involved?**
+
+Important modeling boundaries:
+
+- Introduce an `SCT Contribution` concept that references:
+  - the canonical SCT,
+  - a recursion-level entry,
+  - the organizational unit represented by that entry,
+  - a free-text contribution description,
+  - and later enrichments such as VSM system number, channels, roles, RASIC, meetings, and processes.
+- Step IV must reuse the actual recursion structure and organizational units defined in Step I. Do not show only generic `R-1`, `R0`, and `R+1` columns.
+- Each SCT/organizational-unit intersection needs a free-text field to describe that unit's contribution. An empty field means no contribution has been identified yet.
+- Allocate the VSM system number in Step V per SCT contribution, not only once for the entire SCT. The same SCT can represent different VSM systems at different recursion levels.
+- Step V analysis should make visible:
+  - whether all VSM systems are sufficiently covered,
+  - and how the proportion of tasks per VSM system differs across recursion levels.
+- Step VI has two distinct scopes:
+  - variety checks between VSM systems,
+  - and a later robustness check for E2E processes based on SCTs and their contributions, inspired by a Flight Levels flight-route simulation.
+- Step VII enriches the same SCTs and contributions with roles and RASIC accountability. Meeting landscapes and organizational charts are additional Step VII derivations, not replacements for SCT-based accountability.
+- Renaming or moving a Step I organizational unit must preserve its downstream SCT contributions through stable references.
+- Deleting a referenced organizational unit must never silently delete downstream SCT contributions. Require explicit confirmation and preserve or clearly flag affected contribution data.
+
+This coherent model should support later analysis of missing contributions, missing VSM-system coverage, task distribution by recursion level, over-centralization, missing communication routes, E2E process robustness, and SCTs without clear accountability.
 
 ## Step I Specifics
 

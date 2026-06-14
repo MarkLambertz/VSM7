@@ -8,7 +8,7 @@ import {
   isStep2SliderAssessed,
   resetStep2SlidersToNeutral
 } from "../src/domain/vsm.js";
-import { renderStep2Assessment } from "../src/presentation/steps/step2.js";
+import { renderStep2, renderStep2Assessment } from "../src/presentation/steps/step2.js";
 
 function workspaceWithStep2({ horizontal = {}, vertical = {}, unitCount = 3 } = {}) {
   const workspace = createWorkspace();
@@ -259,6 +259,14 @@ test("Step II 20 rendered assessment exposes all nine sliders and computed gauge
   assert.match(html, /--vertical-variety: 46%/);
   assert.match(html, /--variety-fit-position: 40%/);
   assert.match(html, /pattern reading/);
+});
+
+test("Step II normal hero stays focused without context chips", () => {
+  const html = renderStep2(createWorkspace());
+
+  assert.doesNotMatch(html, /stage-context-strip/);
+  assert.doesNotMatch(html, /Workshop capture/);
+  assert.doesNotMatch(html, /Structured VSM artifact/);
 });
 
 test("Step II 21 reset all sliders returns assessment to neutral middle position", () => {

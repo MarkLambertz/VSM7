@@ -27,13 +27,12 @@ This slice focuses on the canonical VSM data model and the SCT-centered flow:
 - Step III: success-critical tasks
 - Step IV: central/decentral allocation and accountability
 - Step V-VII: structured capture for meetings, communication checks, representation, and implementation
-- Completeness assistant
 - Downloadable Word/Excel-compatible outcomes plus project JSON
 - Browser localStorage persistence for workshop/project data
 
 ## Architecture
 
-- `src/domain`: VSM entities, factory functions, and completeness policies
+- `src/domain`: VSM entities, factory functions, and method policies
 - `src/application`: workspace repository coordination
 - `src/infrastructure`: browser localStorage and export adapters
 - `src/presentation`: browser UI

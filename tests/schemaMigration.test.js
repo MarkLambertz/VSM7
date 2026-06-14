@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  createSuccessCriticalTask,
   ensureWorkspaceShape,
   isStep2SliderAssessed
 } from "../src/domain/vsm.js";
@@ -92,9 +91,16 @@ test("workspace shape repair treats legacy Step II conclusions as assessed neutr
 });
 
 test("workspace shape repair keeps allocations synchronized with migrated SCTs", () => {
-  const task = createSuccessCriticalTask();
-  task.id = "task-legacy";
-  task.title = "Legacy SCT";
+  const task = {
+    id: "task-legacy",
+    priority: "A",
+    system: "3",
+    title: "Legacy SCT",
+    explanation: "",
+    source: "Workshop Decision",
+    kpi: "",
+    requiredArtifacts: ""
+  };
 
   const workspace = ensureWorkspaceShape({
     step3: {
@@ -112,4 +118,28 @@ test("workspace shape repair keeps allocations synchronized with migrated SCTs",
 
   assert.ok(workspace.step4.allocations["task-legacy"]);
   assert.equal(workspace.step4.allocations.stale, undefined);
+  assert.equal(workspace.step3.successCriticalTasks[0].toolOrMethodologicalApproach, "");
+  assert.equal(workspace.step3.successCriticalTasks[0].number, 1);
+});
+
+test("workspace shape repair migrates the legacy single Step II selection", () => {
+  const workspace = ensureWorkspaceShape({
+    step2: {
+      options: [
+        {
+          id: "legacy-lever",
+          name: "Strengthen control functions",
+          timeToEffect: "",
+          robustness: "",
+          pros: "",
+          cons: "",
+          challenges: ""
+        }
+      ],
+      selectedOption: "legacy-lever"
+    }
+  });
+
+  assert.deepEqual(workspace.step2.selectedOptionIds, ["legacy-lever"]);
+  assert.equal("selectedOption" in workspace.step2, false);
 });

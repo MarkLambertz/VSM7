@@ -1,5 +1,4 @@
-import { stepDefinitions } from "../domain/vsm.js";
-import { evaluateCompleteness } from "../domain/completeness.js";
+import { formatSctNumber } from "../domain/vsm.js?v=20260613-manual-step-status";
 
 export function exportProjectJson(workspace) {
   const artifact = buildProjectJson(workspace);
@@ -22,18 +21,15 @@ export function buildProjectJson(workspace) {
 
 export function buildProjectReport(workspace) {
   const name = safeFileName(workspace.project.name || "vsm-project");
-  const completeness = evaluateCompleteness(workspace);
   const html = documentShell(workspace, `
     <h1>${escapeHtml(workspace.project.name)}</h1>
     <p><strong>Organization:</strong> ${escapeHtml(workspace.organization.name)}</p>
     <p><strong>System-in-Focus:</strong> ${escapeHtml(workspace.sif.name || "Open")}</p>
-    <p><strong>Completeness:</strong> ${completeness.score}%</p>
     ${section("Purpose", paragraph(workspace.sif.purpose))}
     ${section("Customers / Stakeholders", paragraph(workspace.sif.customers))}
     ${section("Selected Segmentation", selectedSegmentation(workspace))}
     ${section("Success-Critical Tasks", taskTable(workspace))}
     ${section("Central / Decentral Accountability", allocationTable(workspace))}
-    ${section("Completeness Assistant", completenessList(completeness))}
   `);
 
   return {
@@ -169,8 +165,7 @@ function step2Doc(workspace) {
       ["System 2", vertical.system2],
       ["Notes", vertical.notes]
     ]))}
-    ${section("How to master steering challenges", simpleTable(["Option", "Time to effect", "Robustness", "Pros", "Cons", "Challenges"], workspace.step2.options.map((option) => [option.name, option.timeToEffect, option.robustness, option.pros, option.cons, option.challenges])))}
-    ${section("Manageability Levers", paragraph(workspace.step2.conclusion))}
+    ${section("How to master steering challenges", simpleTable(["Selected", "Option", "Time to effect", "Robustness", "Pros", "Cons", "Challenges"], workspace.step2.options.map((option) => [(workspace.step2.selectedOptionIds || []).includes(option.id) ? "Yes" : "", option.name, option.timeToEffect, option.robustness, option.pros, option.cons, option.challenges])))}
   `);
 }
 
@@ -257,27 +252,29 @@ function segmentationEvaluationTable(workspace) {
 
 function taskTable(workspace) {
   return simpleTable(
-    ["Priority", "Task", "Description", "Source", "KPI/Success Metric", "Required Artifact"],
+    ["SCT ID", "Priority", "Task", "Description", "Source", "KPI/Success Metric", "Required Artifact", "Tool or Methodological Approach"],
     workspace.step3.successCriticalTasks.map((task) => [
+      formatSctNumber(task.number),
       task.priority,
       task.title,
       task.explanation,
       task.source,
       task.kpi,
-      task.requiredArtifacts
+      task.requiredArtifacts,
+      task.toolOrMethodologicalApproach
     ])
   );
 }
 
 function allocationTable(workspace) {
   return simpleTable(
-    ["Priority", "System", "No.", "Success-critical Task", "R-1", "R0", "R+1", "Accountable Entity", "Rationale", "Partial Allocation Notes"],
-    workspace.step3.successCriticalTasks.map((task, index) => {
+    ["SCT ID", "Priority", "System", "Success-critical Task", "R-1", "R0", "R+1", "Accountable Entity", "Rationale", "Partial Allocation Notes"],
+    workspace.step3.successCriticalTasks.map((task) => {
       const allocation = workspace.step4.allocations[task.id];
       return [
+        formatSctNumber(task.number),
         task.priority,
         task.system,
-        String(index + 1),
         task.title,
         allocation?.levels["R-1"] ? "X" : "",
         allocation?.levels.R0 ? "X" : "",
@@ -340,20 +337,6 @@ function implementationTable(workspace) {
     ["Challenge", "Dependency / Requirement", "Responsible", "Due Date", "Status"],
     workspace.implementation.items.map((item) => [item.challenge, item.requirement, item.responsible, item.dueDate, item.status])
   );
-}
-
-function completenessList(completeness) {
-  const rows = completeness.byStep.map((step) => {
-    const definition = stepDefinitions.find((item) => item.id === step.stepId);
-    return [
-      definition?.label || step.stepId,
-      `${step.score}%`,
-      step.missing.join("; "),
-      step.warnings.join("; ")
-    ];
-  });
-
-  return simpleTable(["Step", "Score", "Open Items", "Service Notes"], rows);
 }
 
 function linkedTaskTitles(workspace, ids) {

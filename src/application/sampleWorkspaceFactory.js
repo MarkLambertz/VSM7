@@ -3,15 +3,15 @@ import {
   createKeyBuyingCriterion,
   createMeeting,
   createOperativeUnit,
+  createNumberedSuccessCriticalTask,
   createRole,
   createSegmentationOption,
   createStrategicField,
-  createSuccessCriticalTask,
   createWorkspace,
   markAllStep2SlidersAssessed,
   sixPackOfControl,
   syncAllocations
-} from "../domain/vsm.js";
+} from "../domain/vsm.js?v=20260613-manual-step-status";
 
 export function createSampleWorkspace() {
   const sample = createWorkspace();
@@ -101,10 +101,9 @@ export function createSampleWorkspace() {
   sample.step2.verticalAssessment.corporateIntervention = "50";
   sample.step2.verticalAssessment.system2 = "50";
   markAllStep2SlidersAssessed(sample);
-  sample.step2.conclusion = "The target segmentation is manageable if S2 coordination and resource bargaining are strengthened.";
-  sample.step2.selectedOption = sample.step2.options[0].id;
+  sample.step2.selectedOptionIds = [sample.step2.options[0].id];
 
-  const task1 = createSuccessCriticalTask();
+  const task1 = createNumberedSuccessCriticalTask(sample);
   task1.priority = "A";
   task1.system = "4";
   task1.title = "Maintain coherent portfolio strategy";
@@ -112,7 +111,7 @@ export function createSampleWorkspace() {
   task1.source = "Environment-Operation";
   task1.kpi = "Portfolio fit, revenue share in target segments";
 
-  const task2 = createSuccessCriticalTask();
+  const task2 = createNumberedSuccessCriticalTask(sample);
   task2.priority = "A";
   task2.system = "3";
   task2.title = "Allocate critical engineering capacity";

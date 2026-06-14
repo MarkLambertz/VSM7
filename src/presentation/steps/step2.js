@@ -1,30 +1,49 @@
-import { evaluateStep2Variety } from "../../domain/vsm.js";
-import { cellInput, escapeAttr, escapeHtml, removeButton, stepHeader, tableHeader, textarea } from "../shared/renderHelpers.js";
+import { evaluateStep2Variety } from "../../domain/vsm.js?v=20260613-sct-tool-method2";
+import { cellInput, escapeAttr, escapeHtml, removeButton, stepHeader, tableHeader, textarea } from "../shared/renderHelpers.js?v=20260613-hero-cleanup";
 
 export function renderStep2(workspace) {
   return `
     ${stepHeader("Step II", "Manageability & Flattening", "Evaluate horizontal and vertical variety using common wisdom and capture manageability levers.")}
     ${renderStep2Assessment(workspace)}
+    ${renderStep2Remedies(workspace)}
+  `;
+}
+
+export function renderStep2Remedies(workspace) {
+  const selectedOptionIds = new Set(workspace.step2.selectedOptionIds || []);
+
+  return `
     <section class="work-section">
-      ${tableHeader("How to master steering challenges", "add-manageability-option")}
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Chosen</th><th>Option</th><th>Time to effect</th><th>Robustness</th><th>Pros</th><th>Cons</th><th>Challenges</th><th></th></tr></thead>
-          <tbody>${workspace.step2.options.map((item) => `
-            <tr>
-              <td><input type="radio" name="selectedManageability" data-path="step2.selectedOption" value="${escapeAttr(item.id)}" ${workspace.step2.selectedOption === item.id ? "checked" : ""}></td>
-              <td>${cellInput("step2.options", item.id, "name", item.name)}</td>
-              <td>${cellInput("step2.options", item.id, "timeToEffect", item.timeToEffect)}</td>
-              <td>${cellInput("step2.options", item.id, "robustness", item.robustness)}</td>
-              <td>${cellInput("step2.options", item.id, "pros", item.pros)}</td>
-              <td>${cellInput("step2.options", item.id, "cons", item.cons)}</td>
-              <td>${cellInput("step2.options", item.id, "challenges", item.challenges)}</td>
-              <td>${removeButton("step2.options", item.id)}</td>
-            </tr>
-          `).join("")}</tbody>
+      ${tableHeader("How to master steering challenges", "add-manageability-option", "Add Option")}
+      <p class="section-note">Select the remedies that should be carried forward as inspiration for Step III.</p>
+      <div class="table-wrap wide">
+        <table class="manageability-options-table">
+          <thead><tr><th>Select</th><th>Option</th><th>Time to effect</th><th>Robustness</th><th>Pros</th><th>Cons</th><th>Challenges</th><th></th></tr></thead>
+          <tbody>${workspace.step2.options.map((item) => {
+            const isSelected = selectedOptionIds.has(item.id);
+            return `
+              <tr class="manageability-option-row ${isSelected ? "is-selected" : ""}">
+                <td>
+                  <button
+                    type="button"
+                    class="manageability-select-button ${isSelected ? "is-selected" : ""}"
+                    data-action="toggle-manageability-option"
+                    data-option-id="${escapeAttr(item.id)}"
+                    aria-pressed="${isSelected}"
+                  >${isSelected ? "Selected" : "Select"}</button>
+                </td>
+                <td>${cellInput("step2.options", item.id, "name", item.name)}</td>
+                <td>${cellInput("step2.options", item.id, "timeToEffect", item.timeToEffect)}</td>
+                <td>${cellInput("step2.options", item.id, "robustness", item.robustness)}</td>
+                <td>${cellInput("step2.options", item.id, "pros", item.pros)}</td>
+                <td>${cellInput("step2.options", item.id, "cons", item.cons)}</td>
+                <td>${cellInput("step2.options", item.id, "challenges", item.challenges)}</td>
+                <td>${removeButton("step2.options", item.id)}</td>
+              </tr>
+            `;
+          }).join("")}</tbody>
         </table>
       </div>
-      ${textarea("Manageability Levers", "step2.conclusion", workspace.step2.conclusion)}
     </section>
   `;
 }

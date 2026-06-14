@@ -1,6 +1,7 @@
+import { stepDefinitions } from "../../domain/vsm.js?v=20260613-sct-tool-method2";
 import { escapeHtml, field, metric, textarea } from "../shared/renderHelpers.js";
 
-export function renderOverview(workspace, completeness, stepDefinitions) {
+export function renderOverview(workspace) {
   return `
     <section class="view-header">
       <div>
@@ -14,7 +15,6 @@ export function renderOverview(workspace, completeness, stepDefinitions) {
       </div>
     </section>
     <section class="summary-strip">
-      ${metric("Completeness", `${completeness.score}%`, "Across VSM steps")}
       ${metric("SCTs", workspace.step3.successCriticalTasks.length, "Success-critical tasks")}
       ${metric("Meetings", workspace.step5.meetings.length, "Boards, committees, meetings")}
       ${metric("Roles", workspace.step7.roles.length, "Representation entities")}

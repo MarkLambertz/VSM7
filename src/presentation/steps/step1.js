@@ -8,7 +8,7 @@ import {
   removeButton,
   tableHeader,
   textarea
-} from "../shared/renderHelpers.js";
+} from "../shared/renderHelpers.js?v=20260613-hero-cleanup";
 import { renderMethodVisual } from "../shared/methodVisuals.js";
 
 export const step1Subpages = [
@@ -105,7 +105,7 @@ export function renderStep1(workspace, activeStep1Subpage) {
 
   return `
     <div class="step1-workshop-shell">
-      ${renderStep1Stage(workspace, activeSubpage)}
+      ${renderStep1Stage(activeSubpage)}
       ${renderStep1Progress(activeSubpage)}
     </div>
     ${renderStep1Subnav(activeStep1Subpage)}
@@ -162,21 +162,13 @@ function getStep1Subpage(activeStep1Subpage) {
   return step1Subpages.find((subpage) => subpage.id === activeStep1Subpage) || step1Subpages[0];
 }
 
-function renderStep1Stage(workspace, activeSubpage) {
-  const selectedOption = workspace.step1.segmentationOptions
-    .find((option) => option.id === workspace.step1.selectedSegmentationOptionId);
-
+function renderStep1Stage(activeSubpage) {
   return `
     <section class="step1-stage" aria-label="Step I workshop focus">
       <div class="step1-stage-copy">
         <p class="eyebrow">Step I · Operative Units</p>
         <h1>${escapeHtml(activeSubpage.title)}</h1>
         <p>${escapeHtml(activeSubpage.focus)}</p>
-        <div class="stage-context-strip">
-          <span><strong>SIF</strong>${escapeHtml(workspace.sif.name || "Not named yet")}</span>
-          <span><strong>Selected segmentation</strong>${escapeHtml(selectedOption?.name || "Open decision")}</span>
-          <span><strong>Outcome</strong>${escapeHtml(activeSubpage.artifact)}</span>
-        </div>
       </div>
       ${renderMethodVisual(activeSubpage)}
     </section>
@@ -483,7 +475,8 @@ function renderStrategicLink(fieldId, link) {
       >
       <button
         class="icon-button"
-        title="Remove link"
+        title="Delete supporting link"
+        aria-label="Delete supporting link"
         data-action="remove-strategic-link"
         data-field-id="${escapeAttr(fieldId)}"
         data-link-id="${escapeAttr(link.id)}"
@@ -505,7 +498,8 @@ function renderStrategicFile(fieldId, file) {
       </div>
       <button
         class="icon-button"
-        title="Remove file"
+        title="Delete attached file"
+        aria-label="Delete attached file"
         data-action="remove-strategic-file"
         data-field-id="${escapeAttr(fieldId)}"
         data-file-id="${escapeAttr(file.id)}"

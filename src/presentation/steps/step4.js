@@ -1,5 +1,5 @@
-import { createAllocation } from "../../domain/vsm.js";
-import { allocationCheckbox, allocationInput, emptyState, escapeHtml, stepHeader } from "../shared/renderHelpers.js";
+import { createAllocation, formatSctNumber } from "../../domain/vsm.js?v=20260613-manual-step-status";
+import { allocationCheckbox, allocationInput, emptyState, escapeHtml, stepHeader } from "../shared/renderHelpers.js?v=20260613-hero-cleanup";
 
 export function renderStep4(workspace) {
   return `
@@ -11,11 +11,12 @@ export function renderStep4(workspace) {
       </div>
       <div class="table-wrap wide">
         <table>
-          <thead><tr><th>Priority</th><th>System</th><th>SCT</th><th>R-1</th><th>R0</th><th>R+1</th><th>Accountable entity</th><th>Rationale</th><th>Partial allocation notes</th></tr></thead>
+          <thead><tr><th>SCT ID</th><th>Priority</th><th>System</th><th>SCT</th><th>R-1</th><th>R0</th><th>R+1</th><th>Accountable entity</th><th>Rationale</th><th>Partial allocation notes</th></tr></thead>
           <tbody>${workspace.step3.successCriticalTasks.map((task) => {
             const allocation = workspace.step4.allocations[task.id] || createAllocation(task.id);
             return `
               <tr>
+                <td><strong>${escapeHtml(formatSctNumber(task.number))}</strong></td>
                 <td>${escapeHtml(task.priority)}</td>
                 <td>${escapeHtml(task.system)}</td>
                 <td><strong>${escapeHtml(task.title || "Untitled SCT")}</strong><small>${escapeHtml(task.explanation)}</small></td>

@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 PORT=4173
 HOST="localhost"
 URL="http://${HOST}:${PORT}/"
-VERSION="responsive-polish"
+VERSION="sct-tool-method2"
 EXPECTED_TITLE="VSM7 Workshop Workspace"
 
 server_pids() {

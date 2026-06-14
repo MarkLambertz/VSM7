@@ -1,4 +1,5 @@
 import { renderMethodVisual } from "./methodVisuals.js";
+import { formatSctNumber } from "../../domain/vsm.js?v=20260613-manual-step-status";
 
 export function stepHeader(token, title, description) {
   const visual = getStepVisual(token, title);
@@ -9,10 +10,6 @@ export function stepHeader(token, title, description) {
         <p class="eyebrow">${escapeHtml(token)}</p>
         <h1>${escapeHtml(title)}</h1>
         <p>${escapeHtml(description)}</p>
-        <div class="stage-context-strip">
-          <span><strong>Focus</strong>Workshop capture</span>
-          <span><strong>Outcome</strong>Structured VSM artifact</span>
-        </div>
       </div>
       ${renderMethodVisual(visual)}
     </section>
@@ -73,11 +70,11 @@ function getStepVisual(token, title) {
   };
 }
 
-export function tableHeader(title, action) {
+export function tableHeader(title, action, actionLabel = "Add Row") {
   return `
     <div class="section-heading">
       <h2>${escapeHtml(title)}</h2>
-      <button class="ghost-button" data-action="${escapeAttr(action)}">Add Row</button>
+      <button class="ghost-button" data-action="${escapeAttr(action)}">${escapeHtml(actionLabel)}</button>
     </div>
   `;
 }
@@ -127,14 +124,14 @@ export function taskMultiSelect(workspace, collection, id, selectedIds) {
   return `
     <select multiple class="task-select" data-task-links="${escapeAttr(collection)}" data-id="${escapeAttr(id)}">
       ${workspace.step3.successCriticalTasks.map((task) => `
-        <option value="${escapeAttr(task.id)}" ${selectedIds.includes(task.id) ? "selected" : ""}>${escapeHtml(task.title || "Untitled SCT")}</option>
+        <option value="${escapeAttr(task.id)}" ${selectedIds.includes(task.id) ? "selected" : ""}>${escapeHtml(`${formatSctNumber(task.number)} · ${task.title || "Untitled SCT"}`)}</option>
       `).join("")}
     </select>
   `;
 }
 
 export function removeButton(collection, id) {
-  return `<button class="icon-button" title="Remove row" data-action="remove-item" data-collection="${escapeAttr(collection)}" data-id="${escapeAttr(id)}">x</button>`;
+  return `<button class="icon-button" title="Delete item" aria-label="Delete item" data-action="remove-item" data-collection="${escapeAttr(collection)}" data-id="${escapeAttr(id)}">x</button>`;
 }
 
 export function allocationCheckbox(taskId, level, checked) {
