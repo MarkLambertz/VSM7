@@ -11,7 +11,7 @@ import {
   markAllStep2SlidersAssessed,
   sixPackOfControl,
   syncAllocations
-} from "../domain/vsm.js?v=20260613-manual-step-status";
+} from "../domain/vsm.js?v=20260614-step4-accountability3";
 
 export function createSampleWorkspace() {
   const sample = createWorkspace();
@@ -123,13 +123,15 @@ export function createSampleWorkspace() {
   sample.step3.complexityDrivers.operationManagement = "Shared engineering capacity creates prioritization pressure across operative units.";
   sample.step3.successCriticalTasks = [task1, task2];
   syncAllocations(sample);
-  sample.step4.allocations[task1.id].levels.R0 = true;
-  sample.step4.allocations[task1.id].accountableEntity = "Portfolio Board";
-  sample.step4.allocations[task1.id].rationale = "Strategic coherence is required across operative units.";
-  sample.step4.allocations[task2.id].levels.R0 = true;
-  sample.step4.allocations[task2.id].levels["R-1"] = true;
-  sample.step4.allocations[task2.id].accountableEntity = "Operations Manager";
-  sample.step4.allocations[task2.id].partialAllocationNotes = "R0 sets rules; R-1 executes local prioritization.";
+  const parentSystem = sample.step1.recursionLevels.find((organization) => organization.level === "R+1");
+  const systemInFocus = sample.step1.recursionLevels.find((organization) => organization.level === "R0");
+  const nestedSystems = sample.step1.recursionLevels.find((organization) => organization.level === "R-1");
+  sample.step4.allocations[task1.id].contributions[parentSystem.id] = "Set the portfolio guardrails and investment expectations.";
+  sample.step4.allocations[task1.id].contributions[systemInFocus.id] = "Translate market insight into a coherent portfolio strategy across S1 units.";
+  sample.step4.allocations[task1.id].accountableOrganizationId = systemInFocus.id;
+  sample.step4.allocations[task2.id].contributions[systemInFocus.id] = "Set capacity-allocation rules and resolve cross-unit bottlenecks.";
+  sample.step4.allocations[task2.id].contributions[nestedSystems.id] = "Provide transparent demand, constraints, and local prioritization proposals.";
+  sample.step4.allocations[task2.id].accountableOrganizationId = systemInFocus.id;
 
   const meeting = createMeeting();
   meeting.name = "Portfolio Board";

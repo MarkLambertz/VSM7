@@ -8,7 +8,7 @@ const visualCaptions = {
   heatmap: "Make strong and weak segmentation patterns visible.",
   variety: "Compare horizontal and vertical variety for overload risk.",
   sct: "Turn complexity drivers into permanent success-critical tasks.",
-  accountability: "Connect SCTs to recursion levels and accountable entities.",
+  accountability: "Test affordability, customer value, synergy, and subsidiarity.",
   meetings: "Organize S2-S5 meeting layers by VSM function.",
   channels: "Evaluate whether communication loops are robust enough.",
   roles: "Connect roles, entities, meetings, and SCT accountability.",
@@ -166,15 +166,25 @@ function renderSctVisual() {
 }
 
 function renderAccountabilityVisual() {
+  const decisions = [
+    ["1", "Afford decentralization?", "No", "Central"],
+    ["2", "Key buying criterion?", "Yes", "Decentral"],
+    ["3", "Relevant synergy?", "Yes", "Central"]
+  ];
+
   return `
-    <div class="visual-ladder">
-      ${["R+1", "R0", "R-1"].map((level, index) => `
-        <div class="visual-ladder-row is-${toneName(index)}">
-          <strong>${escapeHtml(level)}</strong>
-          <span>SCT</span>
-          <small>Accountable entity</small>
+    <div class="visual-central-decentral-flow">
+      ${decisions.map(([number, question, answer, result], index) => `
+        <div class="visual-decision-row is-${toneName(index)}">
+          <span class="visual-decision-number">${escapeHtml(number)}</span>
+          <strong>${escapeHtml(question)}</strong>
+          <span class="visual-decision-route">
+            <b>${escapeHtml(answer)}</b>
+            <small class="${result === "Central" ? "is-central" : "is-decentral"}">${escapeHtml(result)}</small>
+          </span>
         </div>
       `).join("")}
+      <p><strong>Default:</strong> Decentral by subsidiarity</p>
     </div>
   `;
 }

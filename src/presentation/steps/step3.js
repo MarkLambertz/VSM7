@@ -93,7 +93,7 @@ export function filterScts(tasks, priorityFilter = "", sourceFilter = "") {
   ));
 }
 
-function renderSctFilters(tasks, priorityFilter, sourceFilter) {
+export function renderSctFilters(tasks, priorityFilter, sourceFilter, ariaLabel = "Filter Success-Critical Task Register") {
   const sources = [...new Set([
     ...tasks.map((task) => String(task.source || "Workshop Decision")),
     sourceFilter
@@ -103,7 +103,7 @@ function renderSctFilters(tasks, priorityFilter, sourceFilter) {
   const hasFilters = Boolean(priorityFilter || sourceFilter);
 
   return `
-    <div class="sct-filter-bar" aria-label="Filter Success-Critical Task Register">
+    <div class="sct-filter-bar" aria-label="${escapeAttr(ariaLabel)}">
       <div class="sct-filter-controls">
         <label class="sct-filter-field">
           <span>Priority</span>

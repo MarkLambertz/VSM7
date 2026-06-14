@@ -27,7 +27,7 @@ export const stepDefinitions = [
     id: "step4",
     label: "Step IV: Central/Decentral",
     shortLabel: "IV",
-    output: "Central/decentral accountability matrix"
+    output: "SCT contribution matrix across the recursion structure"
   },
   {
     id: "step5",
@@ -398,7 +398,12 @@ export function splitSuccessCriticalTask(workspace, taskId) {
   };
 
   workspace.step3.successCriticalTasks.push(splitTask);
-  workspace.step4.allocations[splitTask.id] = createAllocation(splitTask.id);
+  const sourceAllocation = workspace.step4.allocations[source.id] || createAllocation(source.id);
+  workspace.step4.allocations[splitTask.id] = {
+    taskId: splitTask.id,
+    contributions: { ...(sourceAllocation.contributions || {}) },
+    accountableOrganizationId: sourceAllocation.accountableOrganizationId || ""
+  };
   return splitTask;
 }
 
@@ -487,15 +492,26 @@ export function setStepCompletion(workspace, stepId, completed) {
 export function createAllocation(taskId) {
   return {
     taskId,
-    levels: {
-      "R-1": false,
-      R0: false,
-      "R+1": false
-    },
-    accountableEntity: "",
-    rationale: "",
-    partialAllocationNotes: ""
+    contributions: {},
+    accountableOrganizationId: ""
   };
+}
+
+export function getRecursionOrganizations(workspace) {
+  return (Array.isArray(workspace?.step1?.recursionLevels) ? workspace.step1.recursionLevels : [])
+    .filter((organization) => organization?.id)
+    .map((organization, index) => ({
+      id: organization.id,
+      level: String(organization.level || ""),
+      name: String(organization.name || organization.level || "Unnamed organization"),
+      description: String(organization.description || ""),
+      order: index
+    }))
+    .sort((left, right) => (
+      recursionLevelValue(left.level) - recursionLevelValue(right.level)
+      || left.order - right.order
+    ))
+    .map(({ order: _order, ...organization }) => organization);
 }
 
 export function createMeeting() {
@@ -564,9 +580,11 @@ export function ensureWorkspaceShape(candidate) {
   normalizeStep2VarietyDefaults(merged, candidate || {});
 
   for (const taskId of taskIds) {
-    if (!merged.step4.allocations[taskId]) {
-      merged.step4.allocations[taskId] = createAllocation(taskId);
-    }
+    merged.step4.allocations[taskId] = normalizeAllocation(
+      taskId,
+      merged.step4.allocations[taskId],
+      getRecursionOrganizations(merged)
+    );
   }
 
   for (const taskId of Object.keys(merged.step4.allocations)) {
@@ -643,17 +661,63 @@ function highestSctNumber(workspace) {
 
 function mergeAllocations(workspace, tasks, survivorId) {
   const allocations = tasks.map((task) => workspace.step4.allocations[task.id] || createAllocation(task.id));
+  const organizations = getRecursionOrganizations(workspace);
+
   return {
     taskId: survivorId,
-    levels: {
-      "R-1": allocations.some((allocation) => allocation.levels?.["R-1"]),
-      R0: allocations.some((allocation) => allocation.levels?.R0),
-      "R+1": allocations.some((allocation) => allocation.levels?.["R+1"])
-    },
-    accountableEntity: combineText(allocations.map((allocation) => allocation.accountableEntity)),
-    rationale: combineText(allocations.map((allocation) => allocation.rationale)),
-    partialAllocationNotes: combineText(allocations.map((allocation) => allocation.partialAllocationNotes))
+    accountableOrganizationId: commonAccountableOrganizationId(allocations),
+    contributions: Object.fromEntries(organizations.map((organization) => [
+      organization.id,
+      combineText(allocations.map((allocation) => allocation.contributions?.[organization.id]))
+    ]))
   };
+}
+
+function normalizeAllocation(taskId, savedAllocation, organizations) {
+  const saved = isPlainObject(savedAllocation) ? savedAllocation : {};
+  const contributions = isPlainObject(saved.contributions) ? { ...saved.contributions } : {};
+  const legacySummary = legacyAllocationSummary(saved);
+
+  if (isPlainObject(saved.levels)) {
+    for (const organization of organizations) {
+      if (saved.levels[organization.level] && !String(contributions[organization.id] || "").trim()) {
+        contributions[organization.id] = legacySummary || "Legacy allocation marked for this recursion level.";
+      }
+    }
+  }
+
+  return {
+    taskId,
+    accountableOrganizationId: normalizeAccountableOrganizationId(saved, organizations),
+    contributions: normalizeContributions(contributions, organizations)
+  };
+}
+
+function normalizeAccountableOrganizationId(allocation, organizations) {
+  const organizationIds = new Set(organizations.map((organization) => organization.id));
+  if (organizationIds.has(allocation.accountableOrganizationId)) {
+    return allocation.accountableOrganizationId;
+  }
+
+  const legacyName = String(allocation.accountableEntity || "").trim().toLowerCase();
+  return legacyName
+    ? organizations.find((organization) => organization.name.trim().toLowerCase() === legacyName)?.id || ""
+    : "";
+}
+
+function normalizeContributions(contributions, organizations) {
+  return Object.fromEntries(organizations.map((organization) => [
+    organization.id,
+    String(contributions?.[organization.id] || "")
+  ]));
+}
+
+function legacyAllocationSummary(allocation) {
+  return combineText([
+    allocation.rationale,
+    allocation.partialAllocationNotes,
+    allocation.accountableEntity ? `Previously named accountable entity: ${allocation.accountableEntity}` : ""
+  ]);
 }
 
 function combineText(values, separator = "\n\n") {
@@ -663,6 +727,18 @@ function combineText(values, separator = "\n\n") {
 function commonValue(values) {
   const unique = [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
   return unique.length === 1 ? unique[0] : "";
+}
+
+function commonAccountableOrganizationId(allocations) {
+  const values = allocations.map((allocation) => String(allocation.accountableOrganizationId || ""));
+  return values.length > 0 && values.every((value) => value && value === values[0])
+    ? values[0]
+    : "";
+}
+
+function recursionLevelValue(level) {
+  const match = String(level || "").trim().match(/^R([+-]?\d+)$/i);
+  return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
 }
 
 function strongestPriority(values) {
@@ -1092,11 +1168,14 @@ function normalizeSixPackName(value) {
 
 export function syncAllocations(workspace) {
   const taskIds = new Set(workspace.step3.successCriticalTasks.map((task) => task.id));
+  const organizations = getRecursionOrganizations(workspace);
 
   for (const task of workspace.step3.successCriticalTasks) {
-    if (!workspace.step4.allocations[task.id]) {
-      workspace.step4.allocations[task.id] = createAllocation(task.id);
-    }
+    workspace.step4.allocations[task.id] = normalizeAllocation(
+      task.id,
+      workspace.step4.allocations[task.id],
+      organizations
+    );
   }
 
   for (const taskId of Object.keys(workspace.step4.allocations)) {

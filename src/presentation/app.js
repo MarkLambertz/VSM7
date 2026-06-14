@@ -26,7 +26,7 @@ import {
   taskSources,
   vsmSystems,
   workflowStepOrder
-} from "../domain/vsm.js?v=20260613-manual-step-status";
+} from "../domain/vsm.js?v=20260614-step4-accountability3";
 import {
   deleteOrganization,
   deleteWorkspace,
@@ -38,9 +38,9 @@ import {
   replaceWorkspace,
   saveWorkspace
 } from "../application/workspaceService.js?v=20260613-manual-step-status";
-import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?v=20260613-manual-step-status";
+import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?v=20260614-step4-accountability3";
 import { createLocalStorageRepository } from "../infrastructure/localStorageRepository.js";
-import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js?v=20260613-manual-step-status";
+import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js?v=20260614-step4-accountability3";
 import { renderRenameDialog } from "./renameDialog.js?v=20260613-sct-tool-method2";
 import { destructiveActionMessage } from "./shared/destructiveActions.js?v=20260613-manual-step-status";
 import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260613-hero-cleanup";
@@ -55,11 +55,11 @@ import {
   getGenericFocusTileCount,
   hasGenericFocusMode,
   renderGenericFocusFullscreen
-} from "./steps/focusMode.js?v=20260613-stable-sct-viewport";
-import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js?v=20260613-hero-cleanup";
-import { renderStep2 } from "./steps/step2.js?v=20260613-hero-cleanup";
+} from "./steps/focusMode.js?v=20260614-step4-decision-guide";
+import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js?v=20260614-step1-evaluation-details2";
+import { renderStep2 } from "./steps/step2.js?v=20260614-step2-option-details";
 import { filterScts, renderStep3 } from "./steps/step3.js?v=20260613-stable-sct-viewport";
-import { renderStep4 } from "./steps/step4.js?v=20260613-hero-cleanup";
+import { renderStep4 } from "./steps/step4.js?v=20260614-step4-decision-guide";
 import { renderStep5 } from "./steps/step5.js?v=20260613-hero-cleanup";
 import { renderStep6 } from "./steps/step6.js?v=20260613-hero-cleanup";
 import { renderStep7 } from "./steps/step7.js?v=20260613-hero-cleanup";
@@ -513,7 +513,7 @@ function renderActiveView(projects) {
       sctPriorityFilter,
       sctSourceFilter
     }),
-    step4: () => renderStep4(workspace),
+    step4: () => renderStep4(workspace, { sctPriorityFilter, sctSourceFilter }),
     step5: () => renderStep5(workspace),
     step6: () => renderStep6(workspace),
     step7: () => renderStep7(workspace),
@@ -702,16 +702,11 @@ async function handleInput(target) {
     }
   }
 
-  if (target.dataset.allocationLevel) {
-    const [taskId, level] = target.dataset.allocationLevel.split("|");
+  if (target.dataset.allocationContribution) {
+    const [taskId, organizationId] = target.dataset.allocationContribution.split("|");
     workspace.step4.allocations[taskId] ||= createAllocation(taskId);
-    workspace.step4.allocations[taskId].levels[level] = target.checked;
-  }
-
-  if (target.dataset.allocationField) {
-    const [taskId, fieldName] = target.dataset.allocationField.split("|");
-    workspace.step4.allocations[taskId] ||= createAllocation(taskId);
-    workspace.step4.allocations[taskId][fieldName] = target.value;
+    workspace.step4.allocations[taskId].contributions ||= {};
+    workspace.step4.allocations[taskId].contributions[organizationId] = target.value;
   }
 }
 
@@ -909,6 +904,16 @@ function handleAction(button) {
     setStepCompletion(workspace, stepId, !isStepComplete(workspace, stepId));
     saveNow();
     renderAfterInPlaceAction();
+    return;
+  }
+
+  if (action === "set-accountable-organization") {
+    const taskId = button.dataset.taskId;
+    const organizationId = button.dataset.organizationId;
+    const allocation = workspace.step4.allocations[taskId] ||= createAllocation(taskId);
+    allocation.accountableOrganizationId = organizationId;
+    saveNow();
+    renderPreservingViewport();
     return;
   }
 

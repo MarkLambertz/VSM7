@@ -1,7 +1,5 @@
-import { createAllocation, formatSctNumber, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js?v=20260613-manual-step-status";
+import { formatSctNumber, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js?v=20260614-step4-accountability3";
 import {
-  allocationCheckbox,
-  allocationInput,
   cellInput,
   cellSelect,
   emptyState,
@@ -12,9 +10,10 @@ import {
   taskMultiSelect,
   textarea
 } from "../shared/renderHelpers.js?v=20260613-hero-cleanup";
-import { renderMethodVisual } from "../shared/methodVisuals.js";
-import { renderStep2Assessment, renderStep2Remedies } from "./step2.js?v=20260613-sct-tool-method2";
+import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260614-step4-decision-guide";
+import { renderStep2Assessment, renderStep2Remedies } from "./step2.js?v=20260614-step2-option-details";
 import { renderStep3Register } from "./step3.js?v=20260613-stable-sct-viewport";
+import { renderStep4ContributionMatrix, renderStep4DecisionGuide } from "./step4.js?v=20260614-step4-decision-guide";
 
 const focusStepMetadata = {
   step2: {
@@ -42,13 +41,14 @@ const focusStepMetadata = {
   step4: {
     token: "Step IV",
     title: "Central/Decentral",
-    description: "Allocate success-critical tasks to recursion levels and accountable entities.",
-    artifact: "Central/decentral accountability matrix.",
-    visual: "Accountability map",
+    description: "Decide where each SCT should be accountable, then decompose its contributions across the actual recursion structure.",
+    artifact: "SCT contribution matrix across the recursion structure.",
+    visual: "Central / decentral decision path",
     visualKind: "accountability",
-    visualItems: ["SCT", "R-1", "R0", "R+1", "Entity"],
-    coachNote: "Apply subsidiarity: allocate a task upward only when it cannot be done better at the next lower recursion level. Customer value comes before abstract synergy.",
-    prompts: ["Where must each SCT be owned?", "Which allocations are partial or shared?", "Who is accountable in the System-in-Focus?"]
+    visualItems: ["Afford decentralization?", "Key buying criterion?", "Relevant synergy?", "Central", "Decentral"],
+    decisionGuide: true,
+    coachNote: "Centralize only when decentralization is unaffordable or when a relevant synergy outweighs the required autonomy. Otherwise, follow subsidiarity and keep accountability as close to the operative work as possible.",
+    prompts: ["What makes decentralization unaffordable or non-compliant?", "Does the SCT directly shape a customer buying criterion?", "Which claimed synergy is relevant enough to justify central accountability?"]
   },
   step5: {
     token: "Step V",
@@ -199,7 +199,11 @@ function getGenericFocusTiles(workspace, viewId, context) {
       }), "is-matrix", "SCTs", metadata.title)
     ],
     step4: () => [
-      createTile("Accountability", "Central/Decentral Accountability", "Allocate every SCT to the right recursion level and accountable entity.", renderStep4Accountability(workspace), "is-matrix", "Matrix", metadata.title)
+      createTile("Contributions", "SCT Contribution Matrix", "Decompose every SCT across the actual recursion structure.", renderStep4ContributionMatrix(workspace, {
+        fullscreen: true,
+        sctPriorityFilter: context.sctPriorityFilter,
+        sctSourceFilter: context.sctSourceFilter
+      }), "is-matrix", "Matrix", metadata.title)
     ],
     step5: () => [
       createTile("Meetings", "Board, Committee, and Meeting Landscape", "Capture the meeting pattern across VSM systems and link it to SCTs.", renderStep5Meetings(workspace), "is-matrix", "Meetings", metadata.title)
@@ -235,6 +239,7 @@ function renderBriefContent(_workspace, metadata) {
         <p class="eyebrow">${escapeHtml(metadata.token)}</p>
         <h2>${escapeHtml(metadata.title)}</h2>
         <p>${escapeHtml(metadata.description)}</p>
+        ${metadata.decisionGuide ? renderStep4DecisionGuide({ fullscreen: true }) : ""}
         <div class="brief-outcome">
           <span>Workshop outcome</span>
           <strong>${escapeHtml(metadata.artifact)}</strong>
@@ -321,40 +326,6 @@ function driverTextarea(key, value) {
       >${escapeHtml(value)}</textarea>
       <small>${escapeHtml(guidance.example)}</small>
     </label>
-  `;
-}
-
-function renderStep4Accountability(workspace) {
-  return `
-    <section class="work-section fullscreen-matrix-section">
-      <div class="section-heading">
-        <h2>Central/Decentral Accountability</h2>
-        <button class="ghost-button" data-action="export-step" data-step="step4">Download Outcome</button>
-      </div>
-      <div class="table-wrap wide evaluation-wrap">
-        <table>
-          <thead><tr><th>SCT ID</th><th>Priority</th><th>System</th><th>SCT</th><th>R-1</th><th>R0</th><th>R+1</th><th>Accountable entity</th><th>Rationale</th><th>Partial allocation notes</th></tr></thead>
-          <tbody>${workspace.step3.successCriticalTasks.map((task) => {
-            const allocation = workspace.step4.allocations[task.id] || createAllocation(task.id);
-            return `
-              <tr>
-                <td><strong>${escapeHtml(formatSctNumber(task.number))}</strong></td>
-                <td>${escapeHtml(task.priority)}</td>
-                <td>${escapeHtml(task.system)}</td>
-                <td><strong>${escapeHtml(task.title || "Untitled SCT")}</strong><small>${escapeHtml(task.explanation)}</small></td>
-                <td>${allocationCheckbox(task.id, "R-1", allocation.levels["R-1"])}</td>
-                <td>${allocationCheckbox(task.id, "R0", allocation.levels.R0)}</td>
-                <td>${allocationCheckbox(task.id, "R+1", allocation.levels["R+1"])}</td>
-                <td>${allocationInput(task.id, "accountableEntity", allocation.accountableEntity)}</td>
-                <td>${allocationInput(task.id, "rationale", allocation.rationale)}</td>
-                <td>${allocationInput(task.id, "partialAllocationNotes", allocation.partialAllocationNotes)}</td>
-              </tr>
-            `;
-          }).join("")}</tbody>
-        </table>
-      </div>
-      ${workspace.step3.successCriticalTasks.length === 0 ? emptyState("Create success-critical tasks in Step III first.") : ""}
-    </section>
   `;
 }
 

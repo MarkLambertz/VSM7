@@ -1,4 +1,4 @@
-import { formatSctNumber } from "../domain/vsm.js?v=20260613-manual-step-status";
+import { formatSctNumber, getRecursionOrganizations } from "../domain/vsm.js?v=20260614-step4-accountability3";
 
 export function exportProjectJson(workspace) {
   const artifact = buildProjectJson(workspace);
@@ -29,7 +29,7 @@ export function buildProjectReport(workspace) {
     ${section("Customers / Stakeholders", paragraph(workspace.sif.customers))}
     ${section("Selected Segmentation", selectedSegmentation(workspace))}
     ${section("Success-Critical Tasks", taskTable(workspace))}
-    ${section("Central / Decentral Accountability", allocationTable(workspace))}
+    ${section("SCT Contributions Across the Recursion Structure", allocationTable(workspace))}
   `);
 
   return {
@@ -77,7 +77,7 @@ export function buildStepOutcome(workspace, stepId) {
 
   if (stepId === "step4") {
     return {
-      filename: `${name}-accountability-matrix.xls`,
+      filename: `${name}-sct-contribution-matrix.xls`,
       content: excelShell(allocationTable(workspace)),
       mimeType: "application/vnd.ms-excel"
     };
@@ -175,7 +175,7 @@ function step7Doc(workspace) {
     ${section("Roles and Entities", roleTable(workspace))}
     ${section("Org Chart Notes", paragraph(workspace.step7.orgChartNotes))}
     ${section("Representation Notes", paragraph(workspace.step7.representationNotes))}
-    ${section("Accountability Matrix", allocationTable(workspace))}
+    ${section("SCT Contribution Matrix", allocationTable(workspace))}
   `);
 }
 
@@ -267,21 +267,28 @@ function taskTable(workspace) {
 }
 
 function allocationTable(workspace) {
+  const organizations = getRecursionOrganizations(workspace);
+  const organizationById = new Map(organizations.map((organization) => [organization.id, organization]));
+
   return simpleTable(
-    ["SCT ID", "Priority", "System", "Success-critical Task", "R-1", "R0", "R+1", "Accountable Entity", "Rationale", "Partial Allocation Notes"],
+    [
+      "SCT ID",
+      "Priority",
+      "Success-critical Task",
+      "Description",
+      "Accountable organization",
+      ...organizations.map((organization) => `${organization.level} · ${organization.name}`)
+    ],
     workspace.step3.successCriticalTasks.map((task) => {
       const allocation = workspace.step4.allocations[task.id];
+      const accountableOrganization = organizationById.get(allocation?.accountableOrganizationId);
       return [
         formatSctNumber(task.number),
         task.priority,
-        task.system,
         task.title,
-        allocation?.levels["R-1"] ? "X" : "",
-        allocation?.levels.R0 ? "X" : "",
-        allocation?.levels["R+1"] ? "X" : "",
-        allocation?.accountableEntity || "",
-        allocation?.rationale || "",
-        allocation?.partialAllocationNotes || ""
+        task.explanation,
+        accountableOrganization ? `${accountableOrganization.level} · ${accountableOrganization.name}` : "",
+        ...organizations.map((organization) => allocation?.contributions?.[organization.id] || "")
       ];
     })
   );

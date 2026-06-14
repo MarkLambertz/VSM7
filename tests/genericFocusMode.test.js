@@ -29,6 +29,9 @@ test("generic focus mode renders explanation and work tiles", () => {
   assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /toggle-manageability-option/);
   assert.doesNotMatch(renderGenericFocusFullscreen(workspace, "step2", 2, context), /type="radio"/);
   assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /remove-item/);
+  assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /Read and edit details/);
+  assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /manageability-option-editor/);
+  assert.match(renderGenericFocusFullscreen(workspace, "step2", 2, context), /textarea/);
 });
 
 test("Step II focus mode renders S1 circles and a color-only variety pressure indicator", () => {
@@ -58,7 +61,20 @@ test("generic focus mode renders matrix-style work tiles", () => {
   const workspace = createSampleWorkspace();
 
   assert.equal(getGenericFocusTileCount(workspace, "step4", context), 2);
-  assert.match(renderGenericFocusFullscreen(workspace, "step4", 1, context), /Central\/Decentral Accountability/);
+  const step4Brief = renderGenericFocusFullscreen(workspace, "step4", 0, context);
+  assert.match(step4Brief, /Can we afford decentralization\?/);
+  assert.match(step4Brief, /key buying criterion/);
+  assert.match(step4Brief, /relevant synergy/);
+  assert.match(step4Brief, /Decentral by subsidiarity/);
+  const step4Html = renderGenericFocusFullscreen(workspace, "step4", 1, {
+    ...context,
+    sctPriorityFilter: "A",
+    sctSourceFilter: "Environment-Operation"
+  });
+  assert.match(step4Html, /SCT Contribution Matrix/);
+  assert.match(step4Html, /data-allocation-contribution/);
+  assert.match(step4Html, /Filter SCT Contribution Matrix/);
+  assert.match(step4Html, /data-action="set-accountable-organization"/);
   assert.match(renderGenericFocusFullscreen(workspace, "implementation", 1, context), /Transformation Backlog/);
 });
 

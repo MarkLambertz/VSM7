@@ -108,6 +108,11 @@ test("workspace shape repair keeps allocations synchronized with migrated SCTs",
     },
     step4: {
       allocations: {
+        "task-legacy": {
+          taskId: "task-legacy",
+          levels: { R0: true },
+          rationale: "Keep strategy coherent."
+        },
         stale: {
           taskId: "stale",
           levels: { R0: true }
@@ -118,8 +123,30 @@ test("workspace shape repair keeps allocations synchronized with migrated SCTs",
 
   assert.ok(workspace.step4.allocations["task-legacy"]);
   assert.equal(workspace.step4.allocations.stale, undefined);
+  const systemInFocus = workspace.step1.recursionLevels.find((organization) => organization.level === "R0");
+  assert.equal(workspace.step4.allocations["task-legacy"].contributions[systemInFocus.id], "Keep strategy coherent.");
+  assert.equal(workspace.step4.allocations["task-legacy"].accountableOrganizationId, "");
   assert.equal(workspace.step3.successCriticalTasks[0].toolOrMethodologicalApproach, "");
   assert.equal(workspace.step3.successCriticalTasks[0].number, 1);
+});
+
+test("workspace shape repair maps a legacy accountable entity only when it matches an organization", () => {
+  const workspace = ensureWorkspaceShape({
+    step3: {
+      successCriticalTasks: [{ id: "task-legacy", title: "Legacy SCT" }]
+    },
+    step4: {
+      allocations: {
+        "task-legacy": {
+          taskId: "task-legacy",
+          accountableEntity: "System in Focus"
+        }
+      }
+    }
+  });
+  const systemInFocus = workspace.step1.recursionLevels.find((organization) => organization.level === "R0");
+
+  assert.equal(workspace.step4.allocations["task-legacy"].accountableOrganizationId, systemInFocus.id);
 });
 
 test("workspace shape repair migrates the legacy single Step II selection", () => {

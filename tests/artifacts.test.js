@@ -66,12 +66,15 @@ test("export builders produce safe artifacts without completeness grading", () =
   const report = buildProjectReport(workspace);
   const step1 = buildStepOutcome(workspace, "step1");
   const step2 = buildStepOutcome(workspace, "step2");
+  const step4 = buildStepOutcome(workspace, "step4");
   const step7 = buildStepOutcome(workspace, "step7");
 
   assert.equal(report.filename, "sparse-project-report.doc");
   assert.doesNotMatch(report.content, /Completeness|Score|Open Items/);
   assert.match(step1.content, /Real Operative Units \/ S1/);
   assert.match(step2.content, /Horizontal Variety/);
+  assert.match(step4.content, /R0 · System in Focus/);
+  assert.match(step4.content, /Accountable organization/);
   assert.match(buildStepOutcome(workspace, "step3").content, /SCT ID/);
   assert.match(buildStepOutcome(workspace, "step3").content, /Tool or Methodological Approach/);
   assert.match(step7.content, /Representation/);

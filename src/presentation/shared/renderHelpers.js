@@ -1,15 +1,16 @@
-import { renderMethodVisual } from "./methodVisuals.js";
+import { renderMethodVisual } from "./methodVisuals.js?v=20260614-step4-decision-guide";
 import { formatSctNumber } from "../../domain/vsm.js?v=20260613-manual-step-status";
 
-export function stepHeader(token, title, description) {
+export function stepHeader(token, title, description, guidance = "") {
   const visual = getStepVisual(token, title);
 
   return `
-    <section class="step1-stage generic-step-stage" aria-label="${escapeAttr(title)} workshop focus">
+    <section class="step1-stage generic-step-stage ${guidance ? "has-stage-guidance" : ""}" aria-label="${escapeAttr(title)} workshop focus">
       <div class="step1-stage-copy">
         <p class="eyebrow">${escapeHtml(token)}</p>
         <h1>${escapeHtml(title)}</h1>
         <p>${escapeHtml(description)}</p>
+        ${guidance}
       </div>
       ${renderMethodVisual(visual)}
     </section>
@@ -31,10 +32,10 @@ function getStepVisual(token, title) {
       items: ["Drivers", "Overlaps", "Dependencies", "Weak scores", "SCTs"]
     },
     "Step IV": {
-      title: "Accountability map",
+      title: "Central / decentral decision path",
       kind: "accountability",
-      caption: "SCTs connected to recursion levels and accountable entities",
-      items: ["SCT", "R-1", "R0", "R+1", "Entity"]
+      caption: "Test affordability, customer value, synergy, and subsidiarity",
+      items: ["Afford decentralization?", "Key buying criterion?", "Relevant synergy?", "Central", "Decentral"]
     },
     "Step V": {
       title: "Meeting architecture",
@@ -132,14 +133,6 @@ export function taskMultiSelect(workspace, collection, id, selectedIds) {
 
 export function removeButton(collection, id) {
   return `<button class="icon-button" title="Delete item" aria-label="Delete item" data-action="remove-item" data-collection="${escapeAttr(collection)}" data-id="${escapeAttr(id)}">x</button>`;
-}
-
-export function allocationCheckbox(taskId, level, checked) {
-  return `<input type="checkbox" data-allocation-level="${escapeAttr(`${taskId}|${level}`)}" ${checked ? "checked" : ""}>`;
-}
-
-export function allocationInput(taskId, fieldName, value) {
-  return `<input data-allocation-field="${escapeAttr(`${taskId}|${fieldName}`)}" value="${escapeAttr(value)}">`;
 }
 
 export function metric(label, value, caption) {

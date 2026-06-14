@@ -21,11 +21,24 @@ test("Step I fullscreen mode splits SIF into explanation, SIF, and recursion til
 
 test("Step I fullscreen evaluation renders the giant matrix tile", () => {
   const workspace = createSampleWorkspace();
+  const longDirection = "Long strategic direction ".repeat(20);
+  workspace.step1.strategicFields[0].direction = longDirection;
   const html = renderStep1Fullscreen(workspace, "evaluation", 1);
 
   assert.equal(getStep1FullscreenTileCount(workspace, "evaluation"), 3);
   assert.match(html, /Segmentation Evaluation/);
   assert.match(html, /evaluation-table/);
+  assert.match(html, /evaluation-row-strategic/);
+  assert.match(html, /strategic-direction-detail-row/);
+  assert.match(html, /strategic-direction-detail-cell/);
+  assert.match(html, /Segmentation fit/);
+  assert.match(html, /strategic-direction-preview/);
+  assert.match(html, /Show full strategic direction/);
+  assert.equal(
+    (html.match(/strategic-direction-preview/g) || []).length,
+    workspace.step1.strategicFields.length
+  );
+  assert.equal(html.split(longDirection).length - 1, 2);
 });
 
 test("recursion fullscreen allows additional organizations on an existing level", () => {

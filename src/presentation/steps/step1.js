@@ -743,10 +743,12 @@ function renderSegmentationEvaluationMatrix(workspace, rows, options, totals) {
 }
 
 function renderEvaluationRow(workspace, row, options) {
+  const isStrategicDirection = row.kind === "strategic";
+
   return `
-    <tr>
+    <tr class="${isStrategicDirection ? "evaluation-row-strategic" : ""}">
       <td class="row-group">${escapeHtml(row.group)}</td>
-      <td class="criterion-cell">${escapeHtml(row.label)}</td>
+      <td class="criterion-cell">${renderEvaluationCriterion(row)}</td>
       <td>${escapeHtml(row.weight)}</td>
       <td>${escapeHtml(row.relativePosition)}</td>
       ${options.map((option) => {
@@ -755,12 +757,39 @@ function renderEvaluationRow(workspace, row, options) {
       }).join("")}
       <td>${evaluationCommentInput(workspace, row.id)}</td>
     </tr>
+    ${isStrategicDirection ? renderStrategicDirectionDetailRow(row, options.length + 4) : ""}
+  `;
+}
+
+function renderEvaluationCriterion(row) {
+  if (row.kind === "strategic") {
+    return `<span class="strategic-direction-evaluation-label">Segmentation fit</span>`;
+  }
+
+  return escapeHtml(row.label);
+}
+
+function renderStrategicDirectionDetailRow(row, detailColspan) {
+  return `
+    <tr class="strategic-direction-detail-row">
+      <td class="strategic-direction-detail-label">Direction</td>
+      <td colspan="${detailColspan}" class="strategic-direction-detail-cell">
+        <details class="strategic-direction-preview">
+          <summary>
+            <span>${escapeHtml(row.label)}</span>
+            <small>Show full strategic direction</small>
+          </summary>
+          <div>${escapeHtml(row.label)}</div>
+        </details>
+      </td>
+    </tr>
   `;
 }
 
 function getStep1EvaluationRows(workspace) {
   const criteriaRows = workspace.step1.keyBuyingCriteria.map((criterion, index) => ({
     id: criterion.id,
+    kind: "criterion",
     group: "Key Buying Criteria",
     label: criterion.name || `Criterion ${index + 1}`,
     weight: criterion.weight ? `${criterion.weight}%` : "",
@@ -769,6 +798,7 @@ function getStep1EvaluationRows(workspace) {
 
   const strategicRows = workspace.step1.strategicFields.map((field) => ({
     id: field.id,
+    kind: "strategic",
     group: field.variable,
     label: field.direction || "Describe the strategic ambition and targets for this Six Pack variable.",
     weight: "",

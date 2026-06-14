@@ -1,5 +1,5 @@
 import { evaluateStep2Variety } from "../../domain/vsm.js?v=20260613-sct-tool-method2";
-import { cellInput, escapeAttr, escapeHtml, removeButton, stepHeader, tableHeader, textarea } from "../shared/renderHelpers.js?v=20260613-hero-cleanup";
+import { escapeAttr, escapeHtml, removeButton, stepHeader, tableHeader, textarea } from "../shared/renderHelpers.js?v=20260613-hero-cleanup";
 
 export function renderStep2(workspace) {
   return `
@@ -13,38 +13,89 @@ export function renderStep2Remedies(workspace) {
   const selectedOptionIds = new Set(workspace.step2.selectedOptionIds || []);
 
   return `
-    <section class="work-section">
+    <section class="work-section manageability-options-section">
       ${tableHeader("How to master steering challenges", "add-manageability-option", "Add Option")}
       <p class="section-note">Select the remedies that should be carried forward as inspiration for Step III.</p>
-      <div class="table-wrap wide">
-        <table class="manageability-options-table">
-          <thead><tr><th>Select</th><th>Option</th><th>Time to effect</th><th>Robustness</th><th>Pros</th><th>Cons</th><th>Challenges</th><th></th></tr></thead>
-          <tbody>${workspace.step2.options.map((item) => {
-            const isSelected = selectedOptionIds.has(item.id);
-            return `
-              <tr class="manageability-option-row ${isSelected ? "is-selected" : ""}">
-                <td>
-                  <button
-                    type="button"
-                    class="manageability-select-button ${isSelected ? "is-selected" : ""}"
-                    data-action="toggle-manageability-option"
-                    data-option-id="${escapeAttr(item.id)}"
-                    aria-pressed="${isSelected}"
-                  >${isSelected ? "Selected" : "Select"}</button>
-                </td>
-                <td>${cellInput("step2.options", item.id, "name", item.name)}</td>
-                <td>${cellInput("step2.options", item.id, "timeToEffect", item.timeToEffect)}</td>
-                <td>${cellInput("step2.options", item.id, "robustness", item.robustness)}</td>
-                <td>${cellInput("step2.options", item.id, "pros", item.pros)}</td>
-                <td>${cellInput("step2.options", item.id, "cons", item.cons)}</td>
-                <td>${cellInput("step2.options", item.id, "challenges", item.challenges)}</td>
-                <td>${removeButton("step2.options", item.id)}</td>
-              </tr>
-            `;
-          }).join("")}</tbody>
-        </table>
+      <div class="manageability-option-overview-header" aria-hidden="true">
+        <span>Select</span>
+        <span>Option</span>
+        <span>Time to effect</span>
+        <span>Robustness</span>
+        <span>Actions</span>
+      </div>
+      <div class="manageability-option-list">
+        ${workspace.step2.options.map((item) => renderManageabilityOption(item, selectedOptionIds.has(item.id))).join("")}
       </div>
     </section>
+  `;
+}
+
+function renderManageabilityOption(item, isSelected) {
+  return `
+    <article class="manageability-option-card ${isSelected ? "is-selected" : ""}">
+      <div class="manageability-option-overview">
+        <button
+          type="button"
+          class="manageability-select-button ${isSelected ? "is-selected" : ""}"
+          data-action="toggle-manageability-option"
+          data-option-id="${escapeAttr(item.id)}"
+          aria-pressed="${isSelected}"
+        >${isSelected ? "Selected" : "Select"}</button>
+        ${manageabilityPreview(item.name, "Untitled steering option", "manageability-option-name")}
+        ${manageabilityPreview(item.timeToEffect, "Not assessed yet")}
+        ${manageabilityPreview(item.robustness, "Not assessed yet")}
+        <div class="manageability-option-actions">
+          ${removeButton("step2.options", item.id)}
+        </div>
+      </div>
+      <details class="manageability-option-details">
+        <summary>Read and edit details</summary>
+        <div class="manageability-option-editor">
+          ${manageabilityField("Option", item, "name")}
+          ${manageabilityField("Time to effect", item, "timeToEffect")}
+          ${manageabilityTextarea("Robustness", item, "robustness")}
+          ${manageabilityTextarea("Pros", item, "pros")}
+          ${manageabilityTextarea("Cons", item, "cons")}
+          ${manageabilityTextarea("Challenges", item, "challenges")}
+        </div>
+      </details>
+    </article>
+  `;
+}
+
+function manageabilityPreview(value, fallback, className = "") {
+  return `
+    <span class="manageability-option-preview ${escapeAttr(className)}" title="${escapeAttr(value || fallback)}">
+      ${escapeHtml(value || fallback)}
+    </span>
+  `;
+}
+
+function manageabilityField(label, item, fieldName) {
+  return `
+    <label class="field">
+      <span>${escapeHtml(label)}</span>
+      <input
+        data-collection="step2.options"
+        data-id="${escapeAttr(item.id)}"
+        data-field="${escapeAttr(fieldName)}"
+        value="${escapeAttr(item[fieldName])}"
+      >
+    </label>
+  `;
+}
+
+function manageabilityTextarea(label, item, fieldName) {
+  return `
+    <label class="field">
+      <span>${escapeHtml(label)}</span>
+      <textarea
+        data-collection="step2.options"
+        data-id="${escapeAttr(item.id)}"
+        data-field="${escapeAttr(fieldName)}"
+        rows="4"
+      >${escapeHtml(item[fieldName])}</textarea>
+    </label>
   `;
 }
 
