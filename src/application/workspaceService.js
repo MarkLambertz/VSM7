@@ -1,4 +1,4 @@
-import { ensureWorkspaceShape, syncAllocations } from "../domain/vsm.js?v=20260613-manual-step-status";
+import { ensureWorkspaceShape, syncAllocations } from "../domain/vsm.js";
 
 export function loadWorkspace(repository) {
   return ensureWorkspaceShape(repository.load());

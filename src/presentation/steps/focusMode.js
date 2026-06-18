@@ -1,4 +1,4 @@
-import { formatSctNumber, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js?v=20260614-step4-accountability3";
+import { formatSctNumber, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js";
 import {
   cellInput,
   cellSelect,
@@ -9,11 +9,12 @@ import {
   tableHeader,
   taskMultiSelect,
   textarea
-} from "../shared/renderHelpers.js?v=20260613-hero-cleanup";
-import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260614-step4-decision-guide";
-import { renderStep2Assessment, renderStep2Remedies } from "./step2.js?v=20260614-step2-option-details";
-import { renderStep3Register } from "./step3.js?v=20260613-stable-sct-viewport";
-import { renderStep4ContributionMatrix, renderStep4DecisionGuide } from "./step4.js?v=20260614-step4-decision-guide";
+} from "../shared/renderHelpers.js";
+import { renderMethodVisual } from "../shared/methodVisuals.js";
+import { renderStep2Assessment, renderStep2Remedies } from "./step2.js";
+import { renderStep3Register } from "./step3.js";
+import { renderStep4ContributionMatrix, renderStep4DecisionGuide } from "./step4.js";
+import { renderStep5Mapping } from "./step5.js?v=20260618-step5-copy-remove";
 
 const focusStepMetadata = {
   step2: {
@@ -52,14 +53,14 @@ const focusStepMetadata = {
   },
   step5: {
     token: "Step V",
-    title: "Design S2-S5",
-    description: "Design the meeting and committee landscape across VSM systems.",
-    artifact: "Meeting and committee landscape.",
-    visual: "Meeting architecture",
-    visualKind: "meetings",
-    visualItems: ["S2", "S3", "S3*", "S4", "S5"],
-    coachNote: "Start with the current meeting landscape, but challenge every entity by its value contribution to SCTs and its VSM function.",
-    prompts: ["Which meetings are needed for coordination, control, strategy, and policy?", "Which meetings should be kept or changed?", "Which SCTs must each meeting serve?"]
+    title: "Design Steering System",
+    description: "Map the real R0 SCT contributions of the System-in-Focus to the systems of the VSM.",
+    artifact: "SCT-to-VSM-system map and steering-system signals.",
+    visual: "VSM system map",
+    visualKind: "vsm",
+    visualItems: ["S1", "S2", "S3", "S3*", "S4", "S5"],
+    coachNote: "The mapping is an inspection aid, not a mathematical proof. Look for patterns, omissions, and disproportionate steering responses.",
+    prompts: ["Which VSM function performs each real contribution?", "Which contributions need more than one VSM system?", "Is the mapped steering response proportionate to the variety found in Step II?"]
   },
   step6: {
     token: "Step VI",
@@ -205,8 +206,14 @@ function getGenericFocusTiles(workspace, viewId, context) {
         sctSourceFilter: context.sctSourceFilter
       }), "is-matrix", "Matrix", metadata.title)
     ],
-    step5: () => [
-      createTile("Meetings", "Board, Committee, and Meeting Landscape", "Capture the meeting pattern across VSM systems and link it to SCTs.", renderStep5Meetings(workspace), "is-matrix", "Meetings", metadata.title)
+  step5: () => [
+      createTile("Mapping", "SCT-to-VSM-System Mapping", "Map each real R0/SIF contribution to exactly one VSM system.", renderStep5Mapping(workspace, {
+        fullscreen: true,
+        activeStep5System: context.activeStep5System,
+        sctPriorityFilter: context.sctPriorityFilter,
+        sctSourceFilter: context.sctSourceFilter,
+        vsmPaneVisible: context.vsmPaneVisible
+      }), "is-matrix", "Map", metadata.title)
     ],
     step6: () => [
       createTile("Channels", "Variety Checks", "Evaluate communication-loop robustness across capacity, intelligibility, synchronicity, and security.", renderStep6Channels(workspace), "is-matrix", "Checks", metadata.title)
@@ -326,32 +333,6 @@ function driverTextarea(key, value) {
       >${escapeHtml(value)}</textarea>
       <small>${escapeHtml(guidance.example)}</small>
     </label>
-  `;
-}
-
-function renderStep5Meetings(workspace) {
-  return `
-    <section class="work-section fullscreen-matrix-section">
-      ${tableHeader("Board, Committee, and Meeting Landscape", "add-meeting")}
-      <div class="table-wrap wide evaluation-wrap">
-        <table>
-          <thead><tr><th>Keep</th><th>Name</th><th>Purpose</th><th>Participants</th><th>Cadence</th><th>Decision type</th><th>System</th><th>Linked SCTs</th><th></th></tr></thead>
-          <tbody>${workspace.step5.meetings.map((meeting) => `
-            <tr>
-              <td><input type="checkbox" data-collection="step5.meetings" data-id="${escapeAttr(meeting.id)}" data-field="keep" ${meeting.keep ? "checked" : ""}></td>
-              <td>${cellInput("step5.meetings", meeting.id, "name", meeting.name)}</td>
-              <td>${cellInput("step5.meetings", meeting.id, "purpose", meeting.purpose)}</td>
-              <td>${cellInput("step5.meetings", meeting.id, "participants", meeting.participants)}</td>
-              <td>${cellInput("step5.meetings", meeting.id, "cadence", meeting.cadence)}</td>
-              <td>${cellInput("step5.meetings", meeting.id, "decisionType", meeting.decisionType)}</td>
-              <td>${cellSelect("step5.meetings", meeting.id, "vsmSystem", meeting.vsmSystem, ["2", "3", "3*", "4", "5"])}</td>
-              <td>${taskMultiSelect(workspace, "step5.meetings", meeting.id, meeting.linkedTaskIds)}</td>
-              <td>${removeButton("step5.meetings", meeting.id)}</td>
-            </tr>
-          `).join("")}</tbody>
-        </table>
-      </div>
-    </section>
   `;
 }
 

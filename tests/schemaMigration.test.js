@@ -66,6 +66,24 @@ test("workspace shape repair ignores mixed-type saved data for structured fields
   assert.ok(workspace.step6.communicationChannels.length > 0);
 });
 
+test("workspace shape repair gives legacy operative units stable ids", () => {
+  const workspace = ensureWorkspaceShape({
+    step1: {
+      operativeUnits: [
+        { name: "Sovereign AI Assistant Platform", description: "Product S1" },
+        { title: "Industrial AI Copilot", scope: "Engineering S1" },
+        "Public Sector AI Suite"
+      ]
+    }
+  });
+
+  assert.equal(workspace.step1.operativeUnits.length, 3);
+  assert.ok(workspace.step1.operativeUnits.every((unit) => unit.id.startsWith("unit-")));
+  assert.equal(workspace.step1.operativeUnits[1].name, "Industrial AI Copilot");
+  assert.equal(workspace.step1.operativeUnits[1].description, "Engineering S1");
+  assert.equal(workspace.step1.operativeUnits[2].name, "Public Sector AI Suite");
+});
+
 test("workspace shape repair treats legacy Step II conclusions as assessed neutral sliders", () => {
   const workspace = ensureWorkspaceShape({
     step2: {

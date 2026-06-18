@@ -8,7 +8,7 @@ import {
   removeButton,
   tableHeader,
   textarea
-} from "../shared/renderHelpers.js?v=20260613-hero-cleanup";
+} from "../shared/renderHelpers.js";
 import { renderMethodVisual } from "../shared/methodVisuals.js";
 
 export const step1Subpages = [

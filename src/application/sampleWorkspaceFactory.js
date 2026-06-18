@@ -1,7 +1,7 @@
 import {
   createImplementationItem,
   createKeyBuyingCriterion,
-  createMeeting,
+  getStep5ContributionKey,
   createOperativeUnit,
   createNumberedSuccessCriticalTask,
   createRole,
@@ -11,7 +11,7 @@ import {
   markAllStep2SlidersAssessed,
   sixPackOfControl,
   syncAllocations
-} from "../domain/vsm.js?v=20260614-step4-accountability3";
+} from "../domain/vsm.js";
 
 export function createSampleWorkspace() {
   const sample = createWorkspace();
@@ -133,14 +133,8 @@ export function createSampleWorkspace() {
   sample.step4.allocations[task2.id].contributions[nestedSystems.id] = "Provide transparent demand, constraints, and local prioritization proposals.";
   sample.step4.allocations[task2.id].accountableOrganizationId = systemInFocus.id;
 
-  const meeting = createMeeting();
-  meeting.name = "Portfolio Board";
-  meeting.purpose = "Balance strategic ambition and operative constraints.";
-  meeting.participants = "Business leadership, product leads, operations";
-  meeting.cadence = "Monthly";
-  meeting.vsmSystem = "4";
-  meeting.linkedTaskIds = [task1.id];
-  sample.step5.meetings = [meeting];
+  sample.step5.assignments["4"] = [getStep5ContributionKey(task1.id, systemInFocus.id)];
+  sample.step5.assignments["3"] = [getStep5ContributionKey(task2.id, systemInFocus.id)];
 
   sample.step6.communicationChannels[5].channelsUsed = "Portfolio board, planning calendar, decision log";
   sample.step6.communicationChannels[5].capacity = "Adequate";

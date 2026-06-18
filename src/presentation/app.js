@@ -3,7 +3,6 @@ import {
   createImplementationItem,
   createKeyBuyingCriterion,
   createManageabilityOption,
-  createMeeting,
   createOperativeUnit,
   createRecursionLevel,
   createRole,
@@ -18,15 +17,17 @@ import {
   isStepComplete,
   markStep2SliderAssessed,
   mergeSuccessCriticalTasks,
+  removeStep5TaskAssignments,
   resetStep2SlidersToNeutral,
   setStepCompletion,
   splitSuccessCriticalTask,
   stepDefinitions,
   syncAllocations,
   taskSources,
+  toggleStep5ContributionAssignment,
   vsmSystems,
   workflowStepOrder
-} from "../domain/vsm.js?v=20260614-step4-accountability3";
+} from "../domain/vsm.js";
 import {
   deleteOrganization,
   deleteWorkspace,
@@ -37,32 +38,39 @@ import {
   renameWorkspace,
   replaceWorkspace,
   saveWorkspace
-} from "../application/workspaceService.js?v=20260613-manual-step-status";
-import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?v=20260614-step4-accountability3";
+} from "../application/workspaceService.js";
+import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js";
 import { createLocalStorageRepository } from "../infrastructure/localStorageRepository.js";
-import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js?v=20260614-step4-accountability3";
-import { renderRenameDialog } from "./renameDialog.js?v=20260613-sct-tool-method2";
-import { destructiveActionMessage } from "./shared/destructiveActions.js?v=20260613-manual-step-status";
-import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260613-hero-cleanup";
+import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js";
+import { renderRenameDialog } from "./renameDialog.js";
+import { destructiveActionMessage } from "./shared/destructiveActions.js";
+import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js";
 import { renderProjectManagement } from "./projectManagement.js";
 import { applySkinPreference, defaultSkin, readSkinPreference } from "./skinSettings.js";
 import { renderStartPage } from "./startPage.js";
-import { renderOverview } from "./steps/overview.js?v=20260613-sct-tool-method2";
-import { renderImplementation } from "./steps/implementation.js?v=20260613-hero-cleanup";
+import { renderOverview } from "./steps/overview.js";
+import { renderImplementation } from "./steps/implementation.js";
 import {
   focusStepOrder,
   getGenericFocusStepTitle,
   getGenericFocusTileCount,
   hasGenericFocusMode,
   renderGenericFocusFullscreen
-} from "./steps/focusMode.js?v=20260614-step4-decision-guide";
-import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js?v=20260614-step1-evaluation-details2";
-import { renderStep2 } from "./steps/step2.js?v=20260614-step2-option-details";
-import { filterScts, renderStep3 } from "./steps/step3.js?v=20260613-stable-sct-viewport";
-import { renderStep4 } from "./steps/step4.js?v=20260614-step4-decision-guide";
-import { renderStep5 } from "./steps/step5.js?v=20260613-hero-cleanup";
-import { renderStep6 } from "./steps/step6.js?v=20260613-hero-cleanup";
-import { renderStep7 } from "./steps/step7.js?v=20260613-hero-cleanup";
+} from "./steps/focusMode.js?v=20260618-step5-copy-remove";
+import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js";
+import { renderStep2 } from "./steps/step2.js";
+import { filterScts, renderStep3 } from "./steps/step3.js";
+import { renderStep4 } from "./steps/step4.js";
+import { renderStep5 } from "./steps/step5.js?v=20260618-step5-copy-remove";
+import { renderStep6 } from "./steps/step6.js";
+import { renderStep7 } from "./steps/step7.js";
+import { renderVsmStandalone } from "./vsmStandalone.js";
+import {
+  buildVsmHostTree,
+  getVsmSystemType,
+  recursionLevelLabel,
+  recursionLevelValue
+} from "./shared/vsmHostBridge.js";
 
 const app = document.querySelector("#app");
 const repository = createLocalStorageRepository();
@@ -81,6 +89,7 @@ let selectedSctId = "";
 let selectedSctMergeIds = new Set();
 let sctPriorityFilter = "";
 let sctSourceFilter = "";
+let activeStep5System = "3";
 let isSettingsOpen = false;
 let renameTarget = null;
 let isNavCollapsed = false;
@@ -88,7 +97,16 @@ let activeSkin = applySkinPreference(readSkinPreference());
 let saveStatus = "Saved";
 let saveTimer = null;
 let lastAction = { button: null, at: 0 };
+const vsmFramePaths = {
+  standalone: [],
+  step5: []
+};
+const vsmFramePaneVisibility = {
+  standalone: undefined,
+  step5: false
+};
 
+window.addEventListener("message", handleVsmBridgeMessage);
 render();
 
 app.addEventListener("input", (event) => {
@@ -163,7 +181,7 @@ function render() {
   document.body.classList.toggle("has-fullscreen-workshop", isFocusFullscreen);
   const projects = listWorkspaces(repository);
   selectedOrganizationId = normalizeSelectedOrganization(projects);
-  const showStepNavigation = activeView !== "start" && activeView !== "projects";
+  const showStepNavigation = activeView !== "start" && activeView !== "projects" && activeView !== "vsm";
 
   app.innerHTML = `
     <header class="topbar">
@@ -178,6 +196,7 @@ function render() {
       </div>
       <div class="topbar-actions">
         ${renderSaveIndicator()}
+        ${renderTopbarVsmButton()}
         ${renderTopbarFocusButton()}
         ${renderTopbarMenu()}
         ${renderSettingsTrigger()}
@@ -194,6 +213,7 @@ function render() {
     ${renderFocusFullscreenLayer()}
     ${renderRenameDialog(renameTarget)}
   `;
+  syncVisibleVsmFrames();
 }
 
 function renderPreservingViewport(anchorSctId = "") {
@@ -220,6 +240,294 @@ function renderAfterInPlaceAction(anchorSctId = "") {
   } else {
     renderPreservingViewport(anchorSctId);
   }
+}
+
+function syncVisibleVsmFrames() {
+  document.querySelectorAll("[data-vsm-frame]").forEach((frame) => {
+    if (!(frame instanceof HTMLIFrameElement)) {
+      return;
+    }
+
+    if (!frame.dataset.vsmHostWired) {
+      frame.dataset.vsmHostWired = "true";
+      frame.addEventListener("load", () => syncVsmFrame(frame));
+    }
+  });
+}
+
+function handleVsmBridgeMessage(event) {
+  const frame = findVsmFrameForSource(event.source);
+  const message = event.data;
+
+  if (!frame || !message || typeof message !== "object" || !message.evt) {
+    return;
+  }
+
+  const context = getVsmFrameContext(frame);
+
+  if (message.evt === "ready") {
+    syncVsmFrame(frame);
+    return;
+  }
+
+  if (message.evt === "paneVisibilityChanged") {
+    if ((message.pane || "details") === "details" && typeof message.visible === "boolean") {
+      vsmFramePaneVisibility[context] = message.visible;
+      updateVsmPaneToggleButtons(context);
+    }
+    return;
+  }
+
+  if (message.evt === "elementClick") {
+    handleVsmElementClick(message, context);
+    return;
+  }
+
+  if (message.evt === "mutate") {
+    handleVsmMutation(message, frame, context);
+    return;
+  }
+
+  if (message.evt === "drill" || message.evt === "zoom") {
+    vsmFramePaths[context] = Array.isArray(message.path) ? message.path : [];
+  }
+}
+
+function findVsmFrameForSource(source) {
+  return [...document.querySelectorAll("[data-vsm-frame]")]
+    .find((frame) => frame instanceof HTMLIFrameElement && frame.contentWindow === source) || null;
+}
+
+function getVsmFrameContext(frame) {
+  return frame.dataset.vsmContext === "step5" ? "step5" : "standalone";
+}
+
+function syncVsmFrame(frame) {
+  const { tree, pathIds } = buildVsmHostTree(workspace);
+  const context = getVsmFrameContext(frame);
+  const path = vsmFramePaths[context]?.length ? vsmFramePaths[context] : pathIds;
+
+  postToVsmFrame(frame, { cmd: "loadTree", tree });
+  postToVsmFrame(frame, { cmd: "setPath", ids: path });
+  postToVsmFrame(frame, {
+    cmd: "setChannels",
+    shown: { a: true, b: true, c: true, d: true, e: true, f: true, g: false, env: true, meta: true }
+  });
+
+  if (context === "step5") {
+    postToVsmFrame(frame, { cmd: "select", type: activeStep5System });
+  }
+
+  if (typeof vsmFramePaneVisibility[context] === "boolean") {
+    postToVsmFrame(frame, {
+      cmd: "setPaneVisibility",
+      pane: "details",
+      visible: vsmFramePaneVisibility[context]
+    });
+    updateVsmPaneToggleButtons(context);
+  }
+}
+
+function postToVsmFrame(frame, message) {
+  frame.contentWindow?.postMessage(message, "*");
+}
+
+function syncVsmPaneVisibility(context) {
+  document.querySelectorAll(`[data-vsm-frame][data-vsm-context="${context}"]`).forEach((frame) => {
+    if (frame instanceof HTMLIFrameElement) {
+      postToVsmFrame(frame, {
+        cmd: "setPaneVisibility",
+        pane: "details",
+        visible: vsmFramePaneVisibility[context] === true
+      });
+    }
+  });
+  updateVsmPaneToggleButtons(context);
+}
+
+function updateVsmPaneToggleButtons(context) {
+  const visible = vsmFramePaneVisibility[context] === true;
+  document.querySelectorAll(`[data-action="toggle-vsm-details-pane"][data-vsm-context="${context}"]`).forEach((button) => {
+    button.setAttribute("aria-pressed", String(visible));
+    button.textContent = visible ? "Hide pane" : "Show pane";
+  });
+}
+
+function handleVsmElementClick(message, context) {
+  const systemId = getVsmSystemType(message.type);
+
+  if (context !== "step5" || !systemId) {
+    return;
+  }
+
+  if (systemId === "1" && workspace.step5.includeSystem1 === false) {
+    return;
+  }
+
+  activeStep5System = systemId;
+  renderAfterInPlaceAction();
+}
+
+function handleVsmMutation(message, frame, context) {
+  if (message.op === "rename") {
+    if (renameVsmHostUnit(message.hostId, message.name)) {
+      saveNow();
+      renderAfterInPlaceAction();
+    } else {
+      syncVsmFrame(frame);
+    }
+    return;
+  }
+
+  if (message.op === "add") {
+    addRecursionOrganizationFromVsm(message.parentId, message.name);
+    vsmFramePaths[context] = Array.isArray(message.path) ? message.path : [];
+    saveNow();
+    renderAfterInPlaceAction();
+    return;
+  }
+
+  if (message.op === "remove") {
+    const unit = findVsmHostUnitById(message.hostId);
+    if (!unit) {
+      syncVsmFrame(frame);
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete "${unit.item.name || unit.item.level || "this unit"}" from the VSM structure? Existing workshop notes that reference this unit stay in the project data, but the unit will no longer be shown.`);
+    if (!confirmed) {
+      syncVsmFrame(frame);
+      return;
+    }
+
+    if (unit.kind === "operative") {
+      workspace.step1.operativeUnits = workspace.step1.operativeUnits.filter((item) => item.id !== unit.item.id);
+    } else {
+      workspace.step1.recursionLevels = workspace.step1.recursionLevels.filter((item) => item.id !== unit.item.id);
+    }
+    saveNow();
+    renderAfterInPlaceAction();
+    return;
+  }
+
+  if (message.op === "reorder") {
+    reorderVsmHostUnits(message.order);
+    vsmFramePaths[context] = Array.isArray(message.path) ? message.path : [];
+    saveNow();
+    renderAfterInPlaceAction();
+  }
+}
+
+function renameVsmHostUnit(hostId, name) {
+  const unit = findVsmHostUnitById(hostId);
+  if (!unit) {
+    return false;
+  }
+
+  unit.item.name = String(name || "").trim() || unit.item.name;
+  return true;
+}
+
+function renameRecursionOrganization(organizationId, name) {
+  const organization = findRecursionOrganizationById(organizationId);
+  if (!organization) {
+    return false;
+  }
+
+  organization.name = String(name || "").trim() || organization.name;
+  return true;
+}
+
+function addRecursionOrganizationFromVsm(parentId, name) {
+  const parent = findRecursionOrganizationById(parentId);
+  if (!parent || recursionLevelValue(parent.level) === 0) {
+    workspace.step1.operativeUnits.push(createOperativeUnit(String(name || "New S1").trim() || "New S1", ""));
+    return;
+  }
+
+  const parentLevel = parent ? recursionLevelValue(parent.level) : 0;
+  const childLevel = recursionLevelLabel(parentLevel - 1);
+  workspace.step1.recursionLevels.push(createRecursionLevel(childLevel, String(name || "New unit").trim() || "New unit", ""));
+  workspace.step1.recursionLevels.sort((left, right) => recursionRank(left.level) - recursionRank(right.level));
+}
+
+function reorderVsmHostUnits(order) {
+  if (reorderOperativeUnits(order)) {
+    return;
+  }
+
+  reorderRecursionOrganizations(order);
+}
+
+function reorderOperativeUnits(order) {
+  if (!Array.isArray(order) || order.length === 0 || !Array.isArray(workspace.step1.operativeUnits)) {
+    return false;
+  }
+
+  const orderedIds = order.map(String);
+  const operativeIds = new Set(workspace.step1.operativeUnits.map((item) => String(item.id)));
+  const matchingIds = orderedIds.filter((id) => operativeIds.has(id));
+  if (matchingIds.length === 0) {
+    return false;
+  }
+
+  const orderedSet = new Set(matchingIds);
+  const orderedItems = matchingIds
+    .map((id) => workspace.step1.operativeUnits.find((item) => String(item.id) === id))
+    .filter(Boolean);
+  let cursor = 0;
+
+  workspace.step1.operativeUnits = workspace.step1.operativeUnits.map((item) => {
+    if (!orderedSet.has(String(item.id))) {
+      return item;
+    }
+
+    return orderedItems[cursor++] || item;
+  });
+  return true;
+}
+
+function reorderRecursionOrganizations(order) {
+  if (!Array.isArray(order) || order.length === 0) {
+    return;
+  }
+
+  const orderedIds = order.map(String);
+  const orderedSet = new Set(orderedIds);
+  const orderedItems = orderedIds
+    .map((id) => workspace.step1.recursionLevels.find((item) => String(item.id) === id))
+    .filter(Boolean);
+  let cursor = 0;
+
+  workspace.step1.recursionLevels = workspace.step1.recursionLevels.map((item) => {
+    if (!orderedSet.has(String(item.id))) {
+      return item;
+    }
+
+    return orderedItems[cursor++] || item;
+  });
+}
+
+function findRecursionOrganizationById(organizationId) {
+  return workspace.step1.recursionLevels.find((item) => String(item.id) === String(organizationId)) || null;
+}
+
+function findOperativeUnitById(unitId) {
+  return (workspace.step1.operativeUnits || []).find((item) => String(item.id) === String(unitId)) || null;
+}
+
+function findVsmHostUnitById(hostId) {
+  const operativeUnit = findOperativeUnitById(hostId);
+  if (operativeUnit) {
+    return { kind: "operative", item: operativeUnit };
+  }
+
+  const organization = findRecursionOrganizationById(hostId);
+  if (organization) {
+    return { kind: "recursion", item: organization };
+  }
+
+  return null;
 }
 
 function capturePreservedScrollRegions() {
@@ -264,6 +572,18 @@ function renderTopbarMenu() {
         <button class="ghost-button" data-action="export-project-json">Archive</button>
       </div>
     </details>
+  `;
+}
+
+function renderTopbarVsmButton() {
+  return `
+    <button
+      class="ghost-button topbar-vsm-button ${activeView === "vsm" ? "is-active" : ""}"
+      data-action="navigate"
+      data-view="vsm"
+      title="Open VSM system map"
+      aria-label="Open standalone VSM system map"
+    >VSM</button>
   `;
 }
 
@@ -403,7 +723,9 @@ function getGenericFocusContext() {
     selectedSctId,
     selectedSctMergeIds: [...selectedSctMergeIds],
     sctPriorityFilter,
-    sctSourceFilter
+    sctSourceFilter,
+    activeStep5System,
+    vsmPaneVisible: vsmFramePaneVisibility.step5
   };
 }
 
@@ -503,6 +825,7 @@ function renderStepToken(step) {
 function renderActiveView(projects) {
   const views = {
     start: () => renderStartPage(workspace, projects),
+    vsm: () => renderVsmStandalone(workspace),
     projects: () => renderProjectManagement(workspace, projects, selectedOrganizationId),
     overview: () => renderOverview(workspace),
     step1: () => renderStep1(workspace, activeStep1Subpage),
@@ -514,7 +837,12 @@ function renderActiveView(projects) {
       sctSourceFilter
     }),
     step4: () => renderStep4(workspace, { sctPriorityFilter, sctSourceFilter }),
-    step5: () => renderStep5(workspace),
+    step5: () => renderStep5(workspace, {
+      activeStep5System,
+      sctPriorityFilter,
+      sctSourceFilter,
+      vsmPaneVisible: vsmFramePaneVisibility.step5
+    }),
     step6: () => renderStep6(workspace),
     step7: () => renderStep7(workspace),
     implementation: () => renderImplementation(workspace)
@@ -626,7 +954,7 @@ function getNextAction() {
   const nextByView = {
     step2: { label: "Continue with SCTs", view: "step3" },
     step3: { label: "Continue with Central/Decentral", view: "step4" },
-    step4: { label: "Continue with Design S2-S5", view: "step5" },
+    step4: { label: "Continue with Design Steering System", view: "step5" },
     step5: { label: "Continue with Channels", view: "step6" },
     step6: { label: "Continue with Representation", view: "step7" },
     step7: { label: "Continue with Implementation", view: "implementation" }
@@ -917,6 +1245,41 @@ function handleAction(button) {
     return;
   }
 
+  if (action === "select-step5-system") {
+    if (button.classList.contains("is-disabled")) {
+      return;
+    }
+    activeStep5System = button.dataset.system || "3";
+    renderAfterInPlaceAction();
+    return;
+  }
+
+  if (action === "set-step5-doctrine") {
+    workspace.step5.includeSystem1 = button.dataset.includeSystem1 !== "false";
+    if (!workspace.step5.includeSystem1 && activeStep5System === "1") {
+      activeStep5System = "2";
+    }
+    saveNow();
+    renderAfterInPlaceAction();
+    return;
+  }
+
+  if (action === "toggle-vsm-details-pane") {
+    const context = button.dataset.vsmContext === "standalone" ? "standalone" : "step5";
+    vsmFramePaneVisibility[context] = vsmFramePaneVisibility[context] !== true;
+    syncVsmPaneVisibility(context);
+    return;
+  }
+
+  if (action === "toggle-step5-assignment") {
+    if (!toggleStep5ContributionAssignment(workspace, button.dataset.system, button.dataset.contributionKey)) {
+      return;
+    }
+    saveNow();
+    renderAfterInPlaceAction();
+    return;
+  }
+
   if (action === "toggle-sct-merge-selection") {
     const taskId = button.dataset.sctId;
     selectedSctMergeIds.has(taskId)
@@ -1176,7 +1539,6 @@ function addItem(action) {
     "add-criterion": () => workspace.step1.keyBuyingCriteria.push(createKeyBuyingCriterion()),
     "add-strategic-field": () => workspace.step1.strategicFields.push(createStrategicField()),
     "add-manageability-option": () => workspace.step2.options.push(createManageabilityOption()),
-    "add-meeting": () => workspace.step5.meetings.push(createMeeting()),
     "add-role": () => workspace.step7.roles.push(createRole()),
     "add-implementation": () => workspace.implementation.items.push(createImplementationItem())
   };
@@ -1669,7 +2031,8 @@ function removeFromCollection(collectionPath, id) {
 }
 
 function removeTaskReferences(taskId) {
-  for (const item of [...workspace.step5.meetings, ...workspace.step7.roles]) {
+  removeStep5TaskAssignments(workspace, taskId);
+  for (const item of workspace.step7.roles) {
     item.linkedTaskIds = item.linkedTaskIds.filter((id) => id !== taskId);
   }
 }

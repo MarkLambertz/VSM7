@@ -78,6 +78,21 @@ test("generic focus mode renders matrix-style work tiles", () => {
   assert.match(renderGenericFocusFullscreen(workspace, "implementation", 1, context), /Transformation Backlog/);
 });
 
+test("Step V focus mode renders the real code-native contribution mapping", () => {
+  const workspace = createSampleWorkspace();
+  const html = renderGenericFocusFullscreen(workspace, "step5", 1, {
+    ...context,
+    activeStep5System: "4"
+  });
+
+  assert.match(html, /SCT-to-VSM-System Mapping/);
+  assert.match(html, /vsm-host-frame/);
+  assert.match(html, /data-vsm-context="step5"/);
+  assert.match(html, /S4 · Future and environment/);
+  assert.match(html, /toggle-step5-assignment/);
+  assert.doesNotMatch(html, /Eligible SCTs|eligible SCTs/);
+});
+
 test("Step III focus mode exposes manageability levers as SCT input signals", () => {
   const workspace = createSampleWorkspace();
   const html = renderGenericFocusFullscreen(workspace, "step3", 1, context);

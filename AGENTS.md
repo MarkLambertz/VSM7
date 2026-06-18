@@ -30,6 +30,7 @@ The app must not feel like a naked data collector or generic SAP/Bootstrap templ
 - Browser localStorage is currently the persistence mechanism.
 - Node.js is allowed only for developer activities such as tests or local tooling.
 - Keep `start.command` aligned with the static/local serving approach if it changes.
+- When frontend JS or CSS changes should be visible in the browser, update the cache-busting labels in both `index.html` and `start.command`. Otherwise Safari may keep loading an older app module even though the source files changed.
 
 ## Architecture Principles
 
@@ -97,7 +98,7 @@ Suggested visual placeholders:
 - Step II: variety balance scale, flattening simulator, remedy triangle, six vertical channels.
 - Step III: complexity funnel, SCT spine, overlap map, weak-score radar.
 - Step IV: subsidiarity ladder, accountability map, centralization tension, split-ownership warning.
-- Step V: meeting architecture, meeting value filter, input-output meeting chain, VSM system map.
+- Step V: code-native VSM system map, SCT-contribution distribution, unmapped-contribution signals, and Step II variety comparison.
 - Step VI: closed-loop diagram, channel robustness radar, bottleneck map, strategic-operative planning loop.
 - Step VII: role constellation, RASIC core, value-enhanced org chart, one-pager stack.
 - Implementation: transformation roadmap, epic board, dependency map, project team triangle.
@@ -119,7 +120,7 @@ The SCT lifecycle answers progressively richer steering questions:
 
 - Step III defines the SCT: **What must permanently be done?**
 - Step IV decomposes the SCT into contributions by recursion level and organizational unit: **Where are contributions required?**
-- Step V allocates VSM system numbers to those contributions: **Which steering function performs each contribution?**
+- Step V allocates VSM system numbers to the R0/System-in-Focus contributions: **Which steering function performs each SIF contribution?**
 - Step VI connects contributions through communication channels and later E2E process routes: **How must information and work flow?**
 - Step VII allocates roles, responsibilities, and RASIC relationships: **Who is accountable and involved?**
 
@@ -133,10 +134,16 @@ Important modeling boundaries:
   - and later enrichments such as VSM system number, channels, roles, RASIC, meetings, and processes.
 - Step IV must reuse the actual recursion structure and organizational units defined in Step I. Do not show only generic `R-1`, `R0`, and `R+1` columns.
 - Each SCT/organizational-unit intersection needs a free-text field to describe that unit's contribution. An empty field means no contribution has been identified yet.
-- Allocate the VSM system number in Step V per SCT contribution, not only once for the entire SCT. The same SCT can represent different VSM systems at different recursion levels.
-- Step V analysis should make visible:
-  - whether all VSM systems are sufficiently covered,
-  - and how the proportion of tasks per VSM system differs across recursion levels.
+- Allocate the VSM system number in Step V per R0 SCT contribution, not only once for the entire SCT.
+- Step V is a tri-pane, one-to-one mapping workflow: unmapped R0/SIF contributions on the left, the code-native clickable VSM diagram in the middle, and mapped contributions grouped by VSM system on the right.
+- A Step V contribution can be assigned to exactly one VSM system. If a contribution appears to serve multiple systems, split or decompose the SCT/contribution upstream before mapping it.
+- Step V is system-first: select a VSM system, then assign the actual Step IV SCT contributions that perform its function.
+- Step V includes only real, non-empty SCT contributions at R0, the System-in-Focus. Do not map lower recursion levels in Step V, and do not invent candidates, recommendations, or "eligible SCTs" that are not supported by canonical workshop data.
+- Step V analysis should make visible the distribution of mapped contributions across VSM systems, unmapped contributions, and a human-led comparison with the Step II variety assessment. Do not present these patterns as organizational truth.
+- The interactive Step V VSM diagram must be built as a precise code-native visual. Do not use the bitmap/pixel VSM graphic for interactive mapping. Preserve the original VSM color grammar: S1 neutral/navy, S2 amber, S3/S3* red, S4 green, and S5 light blue.
+- **Front-end pointer:** that code-native diagram ships as `vsm.html` (front-end-owned); its data model, events, and `postMessage`/API integration contract are documented in **`VSM-VISUALIZATION-BRIEFING.md` §12**. It is a reusable component with its own standalone entry point in the main navigation **in addition to** Step V (Step V is not the only entry point). Request visual/interaction changes from the front-end designer rather than editing `vsm.html` directly.
+- The Step V mapping lens should distinguish the doctrinal view (S2-S5 steering systems, S1 treated as self-organizing) from the pragmatic view (S1 can be mapped when the R0 SCT contribution describes operative work).
+- Meeting landscapes and roles belong in Step VII, not Step V.
 - Step VI has two distinct scopes:
   - variety checks between VSM systems,
   - and a later robustness check for E2E processes based on SCTs and their contributions, inspired by a Flight Levels flight-route simulation.
@@ -187,7 +194,7 @@ Current step labels:
 - Step II: Manageability.
 - Step III: SCTs.
 - Step IV: Central/Decentral.
-- Step V: Design S2-S5.
+- Step V: Design Steering System.
 - Step VI: Channels.
 - Step VII: Representation.
 - Implementation.

@@ -9,7 +9,7 @@ const visualCaptions = {
   variety: "Compare horizontal and vertical variety for overload risk.",
   sct: "Turn complexity drivers into permanent success-critical tasks.",
   accountability: "Test affordability, customer value, synergy, and subsidiarity.",
-  meetings: "Organize S2-S5 meeting layers by VSM function.",
+  vsm: "Design the steering system through real R0 SCT contributions.",
   channels: "Evaluate whether communication loops are robust enough.",
   roles: "Connect roles, entities, meetings, and SCT accountability.",
   roadmap: "Stage implementation work across now, next, and later."
@@ -53,7 +53,7 @@ function renderVisualBody(kind, items) {
     variety: renderVarietyVisual,
     sct: renderSctVisual,
     accountability: renderAccountabilityVisual,
-    meetings: renderMeetingsVisual,
+    vsm: renderVsmMapVisual,
     channels: renderChannelsVisual,
     roles: renderRolesVisual,
     roadmap: renderRoadmapVisual
@@ -189,8 +189,8 @@ function renderAccountabilityVisual() {
   `;
 }
 
-function renderMeetingsVisual() {
-  const layers = ["S5 Policy", "S4 Strategy", "S3 Control", "S3* Audit", "S2 Coordination"];
+function renderVsmMapVisual() {
+  const layers = ["S5 Policy", "S4 Future", "S3 Control", "S3* Monitor", "S2 Coordinate", "S1 Operate"];
 
   return `
     <div class="visual-meeting-layers">

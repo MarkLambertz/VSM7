@@ -1,5 +1,5 @@
-import { evaluateStep2Variety } from "../../domain/vsm.js?v=20260613-sct-tool-method2";
-import { escapeAttr, escapeHtml, removeButton, stepHeader, tableHeader, textarea } from "../shared/renderHelpers.js?v=20260613-hero-cleanup";
+import { evaluateStep2Variety } from "../../domain/vsm.js";
+import { escapeAttr, escapeHtml, removeButton, stepHeader, tableHeader, textarea } from "../shared/renderHelpers.js";
 
 export function renderStep2(workspace) {
   return `

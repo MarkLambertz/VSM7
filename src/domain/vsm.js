@@ -31,9 +31,9 @@ export const stepDefinitions = [
   },
   {
     id: "step5",
-    label: "Step V: Design S2-S5",
+    label: "Step V: Design Steering System",
     shortLabel: "V",
-    output: "Meeting and committee landscape"
+    output: "SCT-to-VSM-system map"
   },
   {
     id: "step6",
@@ -202,7 +202,8 @@ export function createWorkspace() {
       allocations: {}
     },
     step5: {
-      meetings: []
+      includeSystem1: true,
+      assignments: createVsmSystemAssignments()
     },
     step6: {
       communicationChannels: communicationLoops.map((loop) => createCommunicationChannel(loop))
@@ -404,6 +405,7 @@ export function splitSuccessCriticalTask(workspace, taskId) {
     contributions: { ...(sourceAllocation.contributions || {}) },
     accountableOrganizationId: sourceAllocation.accountableOrganizationId || ""
   };
+  duplicateStep5TaskAssignments(workspace, source.id, splitTask.id);
   return splitTask;
 }
 
@@ -427,13 +429,14 @@ export function mergeSuccessCriticalTasks(workspace, taskIds) {
   survivor.requiredArtifacts = combineText(selectedTasks.map((task) => task.requiredArtifacts));
   survivor.toolOrMethodologicalApproach = combineText(selectedTasks.map((task) => task.toolOrMethodologicalApproach));
   workspace.step4.allocations[survivor.id] = mergeAllocations(workspace, selectedTasks, survivor.id);
+  mergeStep5TaskAssignments(workspace, survivor.id, removedIds);
   workspace.step3.successCriticalTasks = workspace.step3.successCriticalTasks.filter((task) => !removedIds.has(task.id));
 
   for (const removedId of removedIds) {
     delete workspace.step4.allocations[removedId];
   }
 
-  for (const item of [...workspace.step5.meetings, ...workspace.step7.roles]) {
+  for (const item of workspace.step7.roles) {
     const linkedTaskIds = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : [];
     if (linkedTaskIds.some((id) => selectedIds.has(id))) {
       item.linkedTaskIds = [...new Set([
@@ -494,6 +497,119 @@ export function createAllocation(taskId) {
     taskId,
     contributions: {},
     accountableOrganizationId: ""
+  };
+}
+
+export function createVsmSystemAssignments() {
+  return Object.fromEntries(vsmSystems.map((systemId) => [systemId, []]));
+}
+
+export function getStep5ContributionKey(taskId, organizationId) {
+  return `${String(taskId || "")}|${String(organizationId || "")}`;
+}
+
+export function getStep5InScopeContributions(workspace) {
+  const tasks = Array.isArray(workspace?.step3?.successCriticalTasks) ? workspace.step3.successCriticalTasks : [];
+  const organizations = getRecursionOrganizations(workspace)
+    .filter((organization) => recursionLevelValue(organization.level) === 0);
+  const contributions = [];
+
+  for (const task of tasks) {
+    const allocation = workspace?.step4?.allocations?.[task.id];
+    for (const organization of organizations) {
+      const text = String(allocation?.contributions?.[organization.id] || "").trim();
+      if (!text) {
+        continue;
+      }
+
+      contributions.push({
+        key: getStep5ContributionKey(task.id, organization.id),
+        taskId: task.id,
+        organizationId: organization.id,
+        sctNumber: formatSctNumber(task.number),
+        title: task.title || "Untitled SCT",
+        description: task.explanation || "",
+        priority: task.priority || "A",
+        source: task.source || "Workshop Decision",
+        level: organization.level,
+        organizationName: organization.name,
+        contribution: text
+      });
+    }
+  }
+
+  return contributions.sort((left, right) => (
+    Number(left.sctNumber.replace(/\D/g, "")) - Number(right.sctNumber.replace(/\D/g, ""))
+    || left.organizationName.localeCompare(right.organizationName)
+  ));
+}
+
+export function isStep5ContributionAssigned(workspace, systemId, contributionKey) {
+  return Array.isArray(workspace?.step5?.assignments?.[systemId])
+    && workspace.step5.assignments[systemId].includes(contributionKey);
+}
+
+export function getStep5AssignedSystem(workspace, contributionKey) {
+  normalizeStep5Assignments(workspace);
+  return vsmSystems.find((systemId) => workspace.step5.assignments[systemId].includes(contributionKey)) || "";
+}
+
+export function toggleStep5ContributionAssignment(workspace, systemId, contributionKey) {
+  if (!vsmSystems.includes(systemId)) {
+    return false;
+  }
+
+  normalizeStep5Assignments(workspace);
+  const validKeys = new Set(getStep5InScopeContributions(workspace).map((contribution) => contribution.key));
+  if (!validKeys.has(contributionKey)) {
+    return false;
+  }
+
+  const alreadyAssignedToSystem = workspace.step5.assignments[systemId].includes(contributionKey);
+  for (const candidateSystemId of vsmSystems) {
+    workspace.step5.assignments[candidateSystemId] = workspace.step5.assignments[candidateSystemId]
+      .filter((key) => key !== contributionKey);
+  }
+
+  if (!alreadyAssignedToSystem) {
+    workspace.step5.assignments[systemId] = [...workspace.step5.assignments[systemId], contributionKey];
+  }
+  return true;
+}
+
+export function removeStep5TaskAssignments(workspace, taskId) {
+  normalizeStep5Assignments(workspace);
+  const prefix = `${taskId}|`;
+  for (const systemId of vsmSystems) {
+    workspace.step5.assignments[systemId] = workspace.step5.assignments[systemId]
+      .filter((key) => !key.startsWith(prefix));
+  }
+}
+
+export function getStep5MappingDiagnostics(workspace) {
+  normalizeStep5Assignments(workspace);
+  const contributions = getStep5InScopeContributions(workspace);
+  const validKeys = new Set(contributions.map((contribution) => contribution.key));
+  const visibleSystems = workspace.step5.includeSystem1 === false ? vsmSystems.filter((systemId) => systemId !== "1") : vsmSystems;
+  const distribution = visibleSystems.map((systemId) => {
+    const count = workspace.step5.assignments[systemId].filter((key) => validKeys.has(key)).length;
+    return { systemId, count, percentage: 0 };
+  });
+  const assignmentCount = distribution.reduce((sum, item) => sum + item.count, 0);
+  for (const item of distribution) {
+    item.percentage = assignmentCount > 0 ? Math.round((item.count / assignmentCount) * 100) : 0;
+  }
+
+  const assignedKeys = new Set(visibleSystems.flatMap((systemId) => workspace.step5.assignments[systemId]));
+  const unmappedContributions = contributions.filter((contribution) => !assignedKeys.has(contribution.key));
+  const dominant = [...distribution].sort((left, right) => right.percentage - left.percentage)[0];
+  return {
+    contributions,
+    contributionCount: contributions.length,
+    assignmentCount,
+    distribution,
+    unmappedContributions,
+    observation: buildStep5DistributionObservation(dominant, assignmentCount)
   };
 }
 
@@ -576,6 +692,7 @@ export function ensureWorkspaceShape(candidate) {
   }
 
   ensureSixPackFields(merged);
+  normalizeStep1OperativeUnits(merged);
   normalizeStep2SelectedOptions(merged, candidate?.step2);
   normalizeStep2VarietyDefaults(merged, candidate || {});
 
@@ -592,6 +709,8 @@ export function ensureWorkspaceShape(candidate) {
       delete merged.step4.allocations[taskId];
     }
   }
+
+  normalizeStep5Assignments(merged);
 
   if (!Array.isArray(merged.step6.communicationChannels) || merged.step6.communicationChannels.length === 0) {
     merged.step6.communicationChannels = communicationLoops.map((loop) => createCommunicationChannel(loop));
@@ -632,6 +751,25 @@ function normalizeSuccessCriticalTasks(workspace) {
     normalizePositiveInteger(workspace.step3.nextSctNumber) || 1,
     nextAvailableNumber
   );
+}
+
+function normalizeStep1OperativeUnits(workspace) {
+  workspace.step1.operativeUnits = (Array.isArray(workspace?.step1?.operativeUnits) ? workspace.step1.operativeUnits : [])
+    .map((unit) => {
+      if (typeof unit === "string") {
+        return createOperativeUnit(unit, "");
+      }
+
+      const saved = isPlainObject(unit) ? unit : {};
+      return {
+        ...createOperativeUnit(),
+        ...saved,
+        id: saved.id || createId("unit"),
+        name: String(saved.name || saved.title || saved.label || ""),
+        description: String(saved.description || saved.scope || saved.kind || ""),
+        notes: String(saved.notes || "")
+      };
+    });
 }
 
 function normalizeStepCompletion(workspace) {
@@ -1183,6 +1321,77 @@ export function syncAllocations(workspace) {
       delete workspace.step4.allocations[taskId];
     }
   }
+
+  normalizeStep5Assignments(workspace);
+}
+
+function normalizeStep5Assignments(workspace) {
+  workspace.step5 = isPlainObject(workspace.step5) ? workspace.step5 : {};
+  workspace.step5.includeSystem1 = workspace.step5.includeSystem1 !== false;
+  const savedAssignments = isPlainObject(workspace.step5.assignments) ? workspace.step5.assignments : {};
+  const validKeys = new Set(getStep5InScopeContributions(workspace).map((contribution) => contribution.key));
+
+  const normalized = createVsmSystemAssignments();
+  const assignedKeys = new Set();
+  const migrationOrder = ["2", "3", "3*", "4", "5", "1"];
+
+  for (const systemId of migrationOrder) {
+    const keys = [...new Set(Array.isArray(savedAssignments[systemId]) ? savedAssignments[systemId] : [])]
+      .filter((key) => validKeys.has(key));
+    for (const key of keys) {
+      if (!assignedKeys.has(key)) {
+        normalized[systemId].push(key);
+        assignedKeys.add(key);
+      }
+    }
+  }
+
+  workspace.step5.assignments = normalized;
+}
+
+function duplicateStep5TaskAssignments(workspace, sourceTaskId, splitTaskId) {
+  normalizeStep5Assignments(workspace);
+  const sourcePrefix = `${sourceTaskId}|`;
+  for (const systemId of vsmSystems) {
+    const duplicateKeys = workspace.step5.assignments[systemId]
+      .filter((key) => key.startsWith(sourcePrefix))
+      .map((key) => getStep5ContributionKey(splitTaskId, key.slice(sourcePrefix.length)));
+    workspace.step5.assignments[systemId] = [...new Set([
+      ...workspace.step5.assignments[systemId],
+      ...duplicateKeys
+    ])];
+  }
+}
+
+function mergeStep5TaskAssignments(workspace, survivorTaskId, removedIds) {
+  normalizeStep5Assignments(workspace);
+  for (const systemId of vsmSystems) {
+    const rewired = workspace.step5.assignments[systemId].map((key) => {
+      const [taskId, organizationId] = key.split("|");
+      return removedIds.has(taskId)
+        ? getStep5ContributionKey(survivorTaskId, organizationId)
+        : key;
+    });
+    workspace.step5.assignments[systemId] = [...new Set(rewired)];
+  }
+  normalizeStep5Assignments(workspace);
+}
+
+function buildStep5DistributionObservation(dominant, assignmentCount) {
+  if (!assignmentCount || !dominant?.percentage) {
+    return "No VSM-system distribution is visible yet. Map the real SCT contributions to inspect the steering system.";
+  }
+
+  const observations = {
+    "1": "Strong operative focus. Discuss whether the steering system leaves sufficient coordination, control, future, and policy capacity.",
+    "2": "Coordination is the strongest visible focus. Check whether dependencies between operative units genuinely require this emphasis.",
+    "3": "Control and resource-bargain work dominates. Inspect whether this is necessary cohesion or excessive intervention.",
+    "3*": "Independent monitoring is the strongest visible focus. Check whether audit and real-life feedback are proportionate.",
+    "4": "Future and environmental work dominates. Check whether strategic insight is translated into operative decisions.",
+    "5": "Policy, identity, and normative work dominates. Check whether this provides useful orientation without over-centralizing."
+  };
+
+  return `${observations[dominant.systemId]} S${dominant.systemId} represents ${dominant.percentage}% of current assignments.`;
 }
 
 function mergeDeep(target, source) {

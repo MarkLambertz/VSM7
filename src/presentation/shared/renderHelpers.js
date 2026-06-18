@@ -1,5 +1,5 @@
-import { renderMethodVisual } from "./methodVisuals.js?v=20260614-step4-decision-guide";
-import { formatSctNumber } from "../../domain/vsm.js?v=20260613-manual-step-status";
+import { renderMethodVisual } from "./methodVisuals.js";
+import { formatSctNumber } from "../../domain/vsm.js";
 
 export function stepHeader(token, title, description, guidance = "") {
   const visual = getStepVisual(token, title);
@@ -38,10 +38,10 @@ function getStepVisual(token, title) {
       items: ["Afford decentralization?", "Key buying criterion?", "Relevant synergy?", "Central", "Decentral"]
     },
     "Step V": {
-      title: "Meeting architecture",
-      kind: "meetings",
-      caption: "S2-S5 meeting layers organized by VSM function",
-      items: ["S2", "S3", "S3*", "S4", "S5"]
+      title: "VSM system map",
+      kind: "vsm",
+      caption: "Design the steering system through real R0 SCT contributions",
+      items: ["S1", "S2", "S3", "S3*", "S4", "S5"]
     },
     "Step VI": {
       title: "Channel robustness radar",

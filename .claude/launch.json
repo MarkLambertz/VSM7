@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "-l", "5174", "."],
       "port": 5174
+    },
+    {
+      "name": "vsm-diagram",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "7710"],
+      "port": 7710
     }
   ]
 }

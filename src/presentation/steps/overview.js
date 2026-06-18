@@ -1,7 +1,8 @@
-import { stepDefinitions } from "../../domain/vsm.js?v=20260613-sct-tool-method2";
+import { getStep5MappingDiagnostics, stepDefinitions } from "../../domain/vsm.js";
 import { escapeHtml, field, metric, textarea } from "../shared/renderHelpers.js";
 
 export function renderOverview(workspace) {
+  const step5Diagnostics = getStep5MappingDiagnostics(workspace);
   return `
     <section class="view-header">
       <div>
@@ -16,7 +17,7 @@ export function renderOverview(workspace) {
     </section>
     <section class="summary-strip">
       ${metric("SCTs", workspace.step3.successCriticalTasks.length, "Success-critical tasks")}
-      ${metric("Meetings", workspace.step5.meetings.length, "Boards, committees, meetings")}
+      ${metric("VSM mappings", step5Diagnostics.assignmentCount, "SCT contribution assignments")}
       ${metric("Roles", workspace.step7.roles.length, "Representation entities")}
     </section>
     <section class="work-section">

@@ -5,7 +5,6 @@ const collectionLabels = {
   "step1.operativeUnits": "operative unit / S1",
   "step2.options": "manageability option",
   "step3.successCriticalTasks": "success-critical task",
-  "step5.meetings": "meeting or committee",
   "step7.roles": "role or representation entity",
   "implementation.items": "implementation item"
 };

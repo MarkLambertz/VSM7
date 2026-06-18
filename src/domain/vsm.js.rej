@@ -1,0 +1,33 @@
+--- src/domain/vsm.js
++++ src/domain/vsm.js
+@@ -603,16 +603,13 @@
+   const assignedKeys = new Set(visibleSystems.flatMap((systemId) => workspace.step5.assignments[systemId]));
+   const unmappedContributions = contributions.filter((contribution) => !assignedKeys.has(contribution.key));
+   const dominant = [...distribution].sort((left, right) => right.percentage - left.percentage)[0];
+-  const step2 = evaluateStep2Variety(workspace);
+-
+   return {
+     contributions,
+     contributionCount: contributions.length,
+     assignmentCount,
+     distribution,
+     unmappedContributions,
+-    observation: buildStep5DistributionObservation(dominant, assignmentCount),
+-    step2Comparison: buildStep5VarietyComparison(step2, distribution)
++    observation: buildStep5DistributionObservation(dominant, assignmentCount)
+   };
+ }
+ 
+@@ -1377,12 +1374,6 @@
+   return `${observations[dominant.systemId]} S${dominant.systemId} represents ${dominant.percentage}% of current assignments.`;
+ }
+ 
+-function buildStep5VarietyComparison(step2, distribution) {
+-  const operativeShare = distribution.find((item) => item.systemId === "1")?.percentage || 0;
+-  const steeringShare = 100 - operativeShare;
+-  return `Step II estimated required cohesion variety at ${step2.requiredCohesionVariety} and vertical capacity at ${step2.verticalCapacity}. The current mapping contains ${steeringShare}% steering-system assignments and ${operativeShare}% operative assignments. Use this as a discussion prompt: is the mapped steering response proportionate, neither too weak nor unnecessarily strong?`;
+-}
+-
+ function mergeDeep(target, source) {
+   if (!source || typeof source !== "object") {
+     return target;

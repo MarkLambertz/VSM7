@@ -4,7 +4,18 @@
       "Bash(npm test *)",
       "mcp__Claude_in_Chrome__list_connected_browsers",
       "Bash(npx --yes serve --version)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "WebSearch",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:viable-systems.github.io)",
+      "WebFetch(domain:commons.wikimedia.org)",
+      "WebFetch(domain:www.businessballs.com)",
+      "WebFetch(domain:systemic2016.wordpress.com)",
+      "Read(//private/tmp/vsm-research/**)",
+      "Bash(curl -sL \"https://i0.wp.com/i2insights.org/wp-content/uploads/2023/01/espinosa_illustration-simple-viable-system-model.jpg\" -o \"13_espinosa_simple.jpg\" --max-time 60)",
+      "Read(//private/tmp/vsm-pdf/**)",
+      "Bash(python3 -)",
+      "Bash(grep -n \"Canvas pan + zoom\\\\|Fit maximizes\\\\|module \\\\`view\\\\`\\\\|VB0 =\" VSM-VISUALIZATION-BRIEFING.md)"
     ]
   }
 }

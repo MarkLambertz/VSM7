@@ -67,6 +67,7 @@ test("export builders produce safe artifacts without completeness grading", () =
   const step1 = buildStepOutcome(workspace, "step1");
   const step2 = buildStepOutcome(workspace, "step2");
   const step4 = buildStepOutcome(workspace, "step4");
+  const step5 = buildStepOutcome(workspace, "step5");
   const step7 = buildStepOutcome(workspace, "step7");
 
   assert.equal(report.filename, "sparse-project-report.doc");
@@ -75,6 +76,8 @@ test("export builders produce safe artifacts without completeness grading", () =
   assert.match(step2.content, /Horizontal Variety/);
   assert.match(step4.content, /R0 · System in Focus/);
   assert.match(step4.content, /Accountable organization/);
+  assert.match(step5.content, /VSM System/);
+  assert.match(step5.content, /Contribution/);
   assert.match(buildStepOutcome(workspace, "step3").content, /SCT ID/);
   assert.match(buildStepOutcome(workspace, "step3").content, /Tool or Methodological Approach/);
   assert.match(step7.content, /Representation/);
@@ -87,6 +90,6 @@ test("project overview leaves completion judgment to the workshop expert", () =>
 
   assert.doesNotMatch(html, /Completeness|%/);
   assert.match(html, /Success-critical tasks/);
-  assert.match(html, /Boards, committees, meetings/);
+  assert.match(html, /SCT contribution assignments/);
   assert.match(html, /Representation entities/);
 });

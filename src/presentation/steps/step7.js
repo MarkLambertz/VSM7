@@ -1,4 +1,4 @@
-import { cellInput, cellSelect, removeButton, stepHeader, tableHeader, taskMultiSelect, textarea } from "../shared/renderHelpers.js?v=20260613-hero-cleanup";
+import { cellInput, cellSelect, removeButton, stepHeader, tableHeader, taskMultiSelect, textarea } from "../shared/renderHelpers.js";
 
 export function renderStep7(workspace) {
   return `

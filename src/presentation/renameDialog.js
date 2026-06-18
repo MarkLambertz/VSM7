@@ -1,4 +1,4 @@
-import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260613-sct-tool-method2";
+import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js";
 
 export function renderRenameDialog(target) {
   if (!target) {

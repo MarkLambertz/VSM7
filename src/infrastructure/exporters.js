@@ -1,4 +1,9 @@
-import { formatSctNumber, getRecursionOrganizations } from "../domain/vsm.js?v=20260614-step4-accountability3";
+import {
+  formatSctNumber,
+  getRecursionOrganizations,
+  getStep5InScopeContributions,
+  getStep5MappingDiagnostics
+} from "../domain/vsm.js";
 
 export function exportProjectJson(workspace) {
   const artifact = buildProjectJson(workspace);
@@ -30,6 +35,7 @@ export function buildProjectReport(workspace) {
     ${section("Selected Segmentation", selectedSegmentation(workspace))}
     ${section("Success-Critical Tasks", taskTable(workspace))}
     ${section("SCT Contributions Across the Recursion Structure", allocationTable(workspace))}
+    ${section("SCT-to-VSM-System Map", systemMappingTable(workspace))}
   `);
 
   return {
@@ -85,8 +91,8 @@ export function buildStepOutcome(workspace, stepId) {
 
   if (stepId === "step5") {
     return {
-      filename: `${name}-meeting-landscape.xls`,
-      content: excelShell(meetingTable(workspace)),
+      filename: `${name}-sct-vsm-system-map.xls`,
+      content: excelShell(systemMappingTable(workspace)),
       mimeType: "application/vnd.ms-excel"
     };
   }
@@ -294,19 +300,28 @@ function allocationTable(workspace) {
   );
 }
 
-function meetingTable(workspace) {
+function systemMappingTable(workspace) {
+  const contributionsByKey = new Map(getStep5InScopeContributions(workspace).map((contribution) => [contribution.key, contribution]));
+  const diagnostics = getStep5MappingDiagnostics(workspace);
+  const rows = diagnostics.distribution.flatMap(({ systemId }) => (
+    (workspace.step5.assignments?.[systemId] || [])
+      .map((key) => ({ systemId, contribution: contributionsByKey.get(key) }))
+      .filter((item) => item.contribution)
+      .map(({ contribution }) => [
+        `S${systemId}`,
+        contribution.sctNumber,
+        contribution.priority,
+        contribution.title,
+        contribution.level,
+        contribution.organizationName,
+        contribution.contribution,
+        contribution.source
+      ])
+  ));
+
   return simpleTable(
-    ["Name", "Purpose", "Participants", "Cadence", "Decision Type", "VSM System", "Keep", "Linked SCTs"],
-    workspace.step5.meetings.map((meeting) => [
-      meeting.name,
-      meeting.purpose,
-      meeting.participants,
-      meeting.cadence,
-      meeting.decisionType,
-      meeting.vsmSystem,
-      meeting.keep ? "Yes" : "No",
-      linkedTaskTitles(workspace, meeting.linkedTaskIds)
-    ])
+    ["VSM System", "SCT ID", "Priority", "Task", "Recursion Level", "Organizational Unit", "Contribution", "Source"],
+    rows
   );
 }
 

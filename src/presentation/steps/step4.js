@@ -1,6 +1,6 @@
-import { createAllocation, formatSctNumber, getRecursionOrganizations } from "../../domain/vsm.js?v=20260614-step4-accountability3";
-import { emptyState, escapeAttr, escapeHtml, stepHeader } from "../shared/renderHelpers.js?v=20260614-step4-decision-guide";
-import { filterScts, renderSctFilters } from "./step3.js?v=20260614-step4-accountability3";
+import { createAllocation, formatSctNumber, getRecursionOrganizations } from "../../domain/vsm.js";
+import { emptyState, escapeAttr, escapeHtml, stepHeader } from "../shared/renderHelpers.js";
+import { filterScts, renderSctFilters } from "./step3.js";
 
 export const step4DecisionGuide = [
   {

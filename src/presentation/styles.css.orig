@@ -227,10 +227,6 @@ select:focus {
   flex-wrap: nowrap;
 }
 
-.topbar-vsm-button {
-  min-width: 50px;
-}
-
 .topbar-menu {
   position: relative;
   flex: 0 0 auto;
@@ -5277,56 +5273,6 @@ td input[type="radio"] {
   }
 }
 
-/* Standalone VSM iframe view */
-.vsm-standalone-page {
-  display: grid;
-  gap: 14px;
-  min-height: calc(100vh - 112px);
-}
-
-.vsm-standalone-header,
-.vsm-standalone-frame-shell {
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface-strong);
-}
-
-.vsm-standalone-header {
-  padding: 22px 24px;
-}
-
-.vsm-standalone-header h1 {
-  margin: 2px 0 6px;
-  font-size: clamp(34px, 4vw, 58px);
-}
-
-.vsm-standalone-header p {
-  max-width: 760px;
-  margin: 0;
-  color: var(--muted);
-}
-
-.vsm-standalone-frame-shell {
-  display: grid;
-  min-height: min(780px, calc(100vh - 250px));
-  overflow: hidden;
-}
-
-.vsm-host-frame {
-  display: block;
-  width: 100%;
-  min-height: 560px;
-  height: 100%;
-  border: 0;
-  background: var(--surface);
-}
-
-html[data-skin="command-deck"] .vsm-standalone-header,
-html[data-skin="command-deck"] .vsm-standalone-frame-shell {
-  border-color: #454d5b;
-  background: #131820;
-}
-
 /* Step V: system-first SCT contribution mapping */
 .step5-mapping-section .section-heading > div:first-child {
   max-width: 980px;
@@ -5459,8 +5405,8 @@ html[data-skin="command-deck"] .vsm-standalone-frame-shell {
 
 .step5-tri-pane-layout {
   display: grid;
-  grid-template-columns: minmax(230px, 0.48fr) minmax(720px, 1.8fr) minmax(300px, 0.72fr);
-  gap: 12px;
+  grid-template-columns: minmax(280px, 0.92fr) minmax(360px, 0.9fr) minmax(390px, 1.18fr);
+  gap: 14px;
   align-items: start;
   min-width: 0;
 }
@@ -5469,7 +5415,7 @@ html[data-skin="command-deck"] .vsm-standalone-frame-shell {
   display: grid;
   gap: 12px;
   min-width: 0;
-  padding: 12px;
+  padding: 14px;
   border-radius: 7px;
 }
 
@@ -5508,68 +5454,10 @@ html[data-skin="command-deck"] .vsm-standalone-frame-shell {
   min-width: 0;
 }
 
-.step5-iframe-panel {
-  display: grid;
-  grid-template-rows: auto minmax(680px, 1fr);
-  gap: 10px;
-}
-
-.step5-iframe-heading {
-  display: flex;
-  gap: 12px;
-  align-items: start;
-  justify-content: space-between;
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface-strong);
-}
-
-.step5-iframe-heading h3 {
-  margin: 1px 0 3px;
-}
-
-.step5-iframe-heading p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.35;
-}
-
-.step5-iframe-heading-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 8px;
-}
-
-.step5-map-count {
-  flex: 0 0 auto;
-  padding: 6px 9px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 900;
-}
-
-.step5-pane-toggle {
-  min-height: 32px;
-  padding: 6px 10px;
-  white-space: nowrap;
-}
-
-.step5-iframe-panel .vsm-host-frame {
-  height: clamp(680px, 74vh, 980px);
-  min-height: 680px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface);
-}
-
 .step5-mapped-systems {
   display: grid;
   gap: 10px;
-  max-height: clamp(640px, 72vh, 940px);
+  max-height: 680px;
   overflow-y: auto;
   padding-right: 3px;
 }
@@ -5815,7 +5703,7 @@ html[data-skin="command-deck"] .vsm-standalone-frame-shell {
   display: grid;
   gap: 8px;
   align-content: start;
-  max-height: clamp(620px, 70vh, 920px);
+  max-height: 650px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -5827,7 +5715,6 @@ html[data-skin="command-deck"] .vsm-standalone-frame-shell {
   padding: 11px 12px;
   border-radius: 7px;
   border-left: 4px solid transparent;
-  min-width: 0;
 }
 
 .step5-contribution-option.is-selected,
@@ -5846,7 +5733,6 @@ html[data-skin="command-deck"] .vsm-standalone-frame-shell {
   gap: 10px;
   align-items: center;
   justify-content: space-between;
-  min-width: 0;
 }
 
 .step5-contribution-identity > div {
@@ -5854,13 +5740,6 @@ html[data-skin="command-deck"] .vsm-standalone-frame-shell {
   gap: 2px;
   min-width: 0;
   flex: 1;
-}
-
-.step5-contribution-identity strong,
-.step5-contribution-identity span,
-.step5-contribution-footer span,
-.step5-contribution-card p {
-  overflow-wrap: anywhere;
 }
 
 .step5-contribution-identity span,
@@ -5879,37 +5758,6 @@ html[data-skin="command-deck"] .vsm-standalone-frame-shell {
   margin: 0;
   color: var(--ink);
   line-height: 1.45;
-}
-
-.step5-unmapped-panel .step5-contribution-card {
-  gap: 7px;
-  padding: 9px 10px;
-  font-size: 0.88rem;
-}
-
-.step5-unmapped-panel .step5-contribution-card p {
-  font-size: 0.9rem;
-  line-height: 1.38;
-}
-
-.step5-unmapped-panel .step5-contribution-identity {
-  gap: 8px;
-}
-
-.step5-unmapped-panel .step5-contribution-footer {
-  align-items: end;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.step5-unmapped-panel .step5-action-button {
-  max-width: 100%;
-  min-height: 30px;
-  padding: 5px 8px;
-  white-space: normal;
-  text-align: center;
-  font-size: 0.82rem;
-  line-height: 1.15;
 }
 
 .priority-badge {
@@ -5940,11 +5788,6 @@ html[data-skin="command-deck"] .vsm-standalone-frame-shell {
   border-radius: 6px;
   background: var(--viable);
   color: white;
-  font-weight: 900;
-}
-
-.step5-action-button {
-  min-width: 104px;
   font-weight: 900;
 }
 
@@ -6051,7 +5894,7 @@ html[data-skin="command-deck"] .vsm-standalone-frame-shell {
 }
 
 .step1-fullscreen-tile .step5-tri-pane-layout {
-  grid-template-columns: minmax(220px, 0.45fr) minmax(760px, 1.9fr) minmax(290px, 0.7fr);
+  grid-template-columns: minmax(280px, 0.92fr) minmax(330px, 0.82fr) minmax(360px, 1.18fr);
   align-items: start;
 }
 
@@ -6059,18 +5902,9 @@ html[data-skin="command-deck"] .vsm-standalone-frame-shell {
   max-height: 580px;
 }
 
-.step1-fullscreen-tile .step5-iframe-panel {
-  grid-template-rows: auto minmax(660px, 1fr);
-}
-
-.step1-fullscreen-tile .step5-iframe-panel .vsm-host-frame {
-  height: clamp(660px, 72vh, 940px);
-  min-height: 660px;
-}
-
 .step1-fullscreen-tile .step5-contribution-list,
 .step1-fullscreen-tile .step5-mapped-systems {
-  max-height: clamp(600px, 68vh, 900px);
+  max-height: 440px;
 }
 
 html[data-skin="command-deck"] .step5-doctrine-switch,
@@ -6081,8 +5915,6 @@ html[data-skin="command-deck"] .step5-workbench-panel,
 html[data-skin="command-deck"] .step5-contribution-card,
 html[data-skin="command-deck"] .step5-mapped-system,
 html[data-skin="command-deck"] .step5-lens-option,
-html[data-skin="command-deck"] .step5-iframe-heading,
-html[data-skin="command-deck"] .step5-iframe-panel .vsm-host-frame,
 html[data-skin="command-deck"] .vsm-system-diagram-shell,
 html[data-skin="command-deck"] .step5-system-assignment-panel {
   border-color: #454d5b;

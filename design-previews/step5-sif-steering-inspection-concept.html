@@ -1,0 +1,1099 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VSM7 Step V SIF Steering Inspection Concept</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    :root {
+      --bg: #f3f6f5;
+      --surface: #ffffff;
+      --surface-soft: #f7fafb;
+      --line: #cfdad5;
+      --line-strong: #9dafaa;
+      --ink: #1f2935;
+      --muted: #667482;
+      --blue: #3386bf;
+      --blue-soft: #e8f2f9;
+      --teal: #178275;
+      --teal-soft: #e5f3ef;
+      --green: #63b16c;
+      --green-soft: #e8f5e9;
+      --amber: #efbd45;
+      --amber-soft: #fff5d8;
+      --red: #df6353;
+      --red-soft: #fbe8e5;
+      --violet: #8171b4;
+      --violet-soft: #eeeaf8;
+      --s1: #34404c;
+      --s2: #efbd45;
+      --s3: #df6353;
+      --s3star: #b85045;
+      --s4: #63b16c;
+      --s5: #9dbed2;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, select, input { font: inherit; }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 230px 1fr auto;
+      align-items: center;
+      gap: 22px;
+      height: 76px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .brand small,
+    .context small {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .brand strong {
+      font-size: 22px;
+    }
+
+    .context {
+      display: flex;
+      gap: 24px;
+      min-width: 0;
+    }
+
+    .context strong {
+      display: block;
+      max-width: 260px;
+      overflow: hidden;
+      font-size: 13px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .button,
+    .icon-button {
+      min-height: 36px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 750;
+    }
+
+    .button {
+      padding: 0 14px;
+    }
+
+    .icon-button {
+      width: 36px;
+      padding: 0;
+      font-size: 18px;
+    }
+
+    .status {
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 230px minmax(0, 1fr);
+      min-height: calc(100vh - 76px);
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 16px 12px;
+      border-right: 1px solid var(--line);
+      background: #f0f4f2;
+    }
+
+    .nav-button {
+      display: grid;
+      grid-template-columns: 38px 1fr 22px;
+      align-items: center;
+      gap: 8px;
+      min-height: 48px;
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--ink);
+      text-align: left;
+    }
+
+    .nav-button .step {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      background: var(--surface-soft);
+      color: var(--blue);
+      font-weight: 900;
+    }
+
+    .nav-button strong {
+      font-size: 13px;
+    }
+
+    .nav-button .check {
+      color: var(--green);
+      font-weight: 900;
+    }
+
+    .nav-button.active {
+      border-color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .nav-button.active .step {
+      background: var(--blue);
+      color: white;
+    }
+
+    .sidebar-note {
+      margin-top: auto;
+      padding: 12px;
+      border-left: 4px solid var(--violet);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    main {
+      min-width: 0;
+      padding: 18px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 24px;
+      min-height: 154px;
+      padding: 22px 24px;
+      border: 1px solid #bdd7e8;
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .eyebrow {
+      margin: 0 0 7px;
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      margin-bottom: 8px;
+      font-size: 38px;
+      line-height: 1.05;
+    }
+
+    .hero p {
+      max-width: 840px;
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.5;
+    }
+
+    .hero-visual {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      align-items: end;
+      gap: 8px;
+      padding: 16px;
+      border: 1px dashed #a9cadf;
+      border-radius: 6px;
+      background: var(--surface-soft);
+    }
+
+    .system-bar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      height: var(--height);
+      min-height: 44px;
+      padding-bottom: 8px;
+      border-radius: 5px 5px 0 0;
+      background: var(--color);
+      color: white;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .method-control {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 18px;
+      margin-top: 14px;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .method-control h2 {
+      margin-bottom: 4px;
+      font-size: 16px;
+    }
+
+    .method-control p {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .segment {
+      display: inline-flex;
+      padding: 4px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: var(--surface-soft);
+    }
+
+    .segment button {
+      min-height: 38px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .segment button.active {
+      background: var(--blue);
+      color: white;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 14px;
+      margin-top: 14px;
+      min-height: 640px;
+    }
+
+    .mapping-panel,
+    .analysis-panel {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-head h2 {
+      margin-bottom: 3px;
+      font-size: 20px;
+    }
+
+    .panel-head p {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-soft);
+    }
+
+    .filters select,
+    .filters input {
+      min-height: 34px;
+      border: 1px solid var(--line-strong);
+      border-radius: 5px;
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .filters select {
+      padding: 0 28px 0 9px;
+    }
+
+    .filters input {
+      flex: 1;
+      min-width: 180px;
+      padding: 0 10px;
+    }
+
+    .contribution-list {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .contribution {
+      display: grid;
+      grid-template-columns: 34px 126px minmax(220px, 1fr) 160px 150px;
+      align-items: stretch;
+      min-height: 108px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--accent);
+      border-radius: 6px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .contribution > div {
+      min-width: 0;
+      padding: 12px;
+      border-right: 1px solid var(--line);
+    }
+
+    .contribution > div:last-child {
+      border-right: 0;
+    }
+
+    .selection {
+      display: grid;
+      place-items: start center;
+      padding-top: 16px !important;
+    }
+
+    .selection input {
+      width: 17px;
+      height: 17px;
+      accent-color: var(--blue);
+    }
+
+    .identity small,
+    .mapping-label,
+    .analysis-label {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .identity strong {
+      display: block;
+      margin-top: 4px;
+      color: var(--blue);
+      font-size: 13px;
+    }
+
+    .priority {
+      display: inline-grid;
+      place-items: center;
+      width: 25px;
+      height: 25px;
+      margin-top: 8px;
+      border-radius: 50%;
+      background: var(--priority-bg);
+      color: var(--priority-color);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .contribution-copy strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 14px;
+    }
+
+    .contribution-copy p {
+      display: -webkit-box;
+      margin-bottom: 7px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .unit {
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .unit em {
+      color: var(--teal);
+      font-style: normal;
+    }
+
+    .system-choice {
+      display: grid;
+      align-content: center;
+      gap: 7px;
+    }
+
+    .system-choice select {
+      width: 100%;
+      min-height: 38px;
+      border: 2px solid var(--system-color);
+      border-radius: 5px;
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 850;
+    }
+
+    .supporting {
+      display: flex;
+      flex-wrap: wrap;
+      align-content: center;
+      gap: 5px;
+    }
+
+    .system-chip {
+      display: inline-grid;
+      place-items: center;
+      min-width: 34px;
+      min-height: 28px;
+      padding: 0 7px;
+      border: 1px solid var(--chip-color);
+      border-radius: 999px;
+      background: var(--chip-bg);
+      color: var(--chip-color);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .system-chip.muted {
+      border-color: var(--line);
+      background: var(--surface-soft);
+      color: var(--muted);
+    }
+
+    .analysis-panel {
+      align-self: start;
+      padding-bottom: 12px;
+    }
+
+    .analysis-panel .panel-head {
+      display: block;
+    }
+
+    .analysis-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .analysis-section:last-child {
+      border-bottom: 0;
+    }
+
+    .distribution {
+      display: grid;
+      gap: 10px;
+      margin-top: 11px;
+    }
+
+    .distribution-row {
+      display: grid;
+      grid-template-columns: 32px 1fr 24px;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .distribution-row i {
+      display: block;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--line);
+      overflow: hidden;
+    }
+
+    .distribution-row i::after {
+      display: block;
+      width: var(--value);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--bar-color);
+      content: "";
+    }
+
+    .signal {
+      display: grid;
+      grid-template-columns: 8px 1fr;
+      gap: 9px;
+      margin-top: 11px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .signal i {
+      width: 8px;
+      height: 8px;
+      margin-top: 4px;
+      border-radius: 50%;
+      background: var(--signal-color);
+    }
+
+    .recursion {
+      display: grid;
+      grid-template-columns: 46px repeat(5, 1fr);
+      gap: 4px;
+      margin-top: 11px;
+      font-size: 9px;
+      text-align: center;
+    }
+
+    .recursion span {
+      min-height: 25px;
+      padding: 6px 3px;
+      border-radius: 4px;
+      background: var(--surface-soft);
+    }
+
+    .recursion .head {
+      color: var(--muted);
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .recursion .hot {
+      background: var(--amber-soft);
+      color: #846111;
+      font-weight: 900;
+    }
+
+    .scope-note {
+      margin: 12px 16px 0;
+      padding: 11px 12px;
+      border-left: 4px solid var(--blue);
+      background: var(--blue-soft);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .scope-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .scope-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .scope-chip strong {
+      color: var(--ink);
+    }
+
+    .scope-chip.included {
+      border-color: #9acdc2;
+      background: var(--teal-soft);
+      color: var(--teal);
+    }
+
+    .scope-chip.excluded {
+      background: var(--surface-soft);
+    }
+
+    .profile-summary {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 5px;
+      margin-top: 10px;
+    }
+
+    .profile-system {
+      min-width: 0;
+      padding: 8px 4px;
+      border-top: 4px solid var(--system-color);
+      border-radius: 4px;
+      background: var(--surface-soft);
+      text-align: center;
+    }
+
+    .profile-system b,
+    .profile-system small {
+      display: block;
+    }
+
+    .profile-system b {
+      font-size: 12px;
+    }
+
+    .profile-system small {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 8px;
+      font-weight: 800;
+    }
+
+    .steering-chain {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      align-items: center;
+      gap: 4px;
+      margin-top: 11px;
+    }
+
+    .chain-node {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 36px;
+      border: 2px solid var(--system-color);
+      border-radius: 5px;
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .chain-node:not(:last-child)::after {
+      position: absolute;
+      left: calc(100% + 1px);
+      width: 6px;
+      height: 2px;
+      background: var(--line-strong);
+      content: "";
+    }
+
+    .chain-node.gap {
+      border-style: dashed;
+      background: var(--red-soft);
+      color: #a74639;
+    }
+
+    .signal-card {
+      margin-top: 9px;
+      padding: 9px 10px;
+      border-left: 4px solid var(--signal-color);
+      border-radius: 4px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+
+    .signal-card strong {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--ink);
+      font-size: 11px;
+    }
+
+    .preview-note {
+      position: fixed;
+      right: 14px;
+      bottom: 12px;
+      padding: 7px 11px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    @media (max-width: 1120px) {
+      .topbar {
+        grid-template-columns: 1fr auto;
+      }
+
+      .context,
+      .sidebar {
+        display: none;
+      }
+
+      .shell {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      main {
+        padding: 12px;
+      }
+
+      .hero {
+        grid-template-columns: minmax(0, 1fr) 220px;
+      }
+
+      .workspace {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .analysis-panel {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .analysis-panel .panel-head,
+      .scope-note {
+        grid-column: 1 / -1;
+      }
+
+      .analysis-section {
+        border-right: 1px solid var(--line);
+      }
+
+      .contribution {
+        grid-template-columns: 30px 100px minmax(220px, 1fr) 155px 110px;
+      }
+
+      .system-choice select {
+        font-size: 11px;
+      }
+    }
+
+    @media (max-width: 780px) {
+      .topbar {
+        height: auto;
+      }
+
+      .top-actions .status,
+      .top-actions .button {
+        display: none;
+      }
+
+      .hero,
+      .method-control {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .hero-visual {
+        min-height: 130px;
+      }
+
+      .method-control {
+        align-items: stretch;
+      }
+
+      .segment {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .contribution {
+        grid-template-columns: 30px 84px minmax(180px, 1fr);
+      }
+
+      .contribution .system-choice,
+      .contribution .supporting {
+        border-top: 1px solid var(--line);
+      }
+
+      .contribution .system-choice {
+        grid-column: 2 / 3;
+      }
+
+      .contribution .supporting {
+        grid-column: 3 / 4;
+      }
+
+      .analysis-panel {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .analysis-section {
+        border-right: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">VSM7</span>
+        <div><small>Workshop Workspace</small><strong>VSM7</strong></div>
+      </div>
+      <div class="context">
+        <div><small>Organization</small><strong>EU AI Solutions SE</strong></div>
+        <div><small>Project</small><strong>Target Steering Model</strong></div>
+        <div><small>SIF</small><strong>European AI Business</strong></div>
+      </div>
+      <div class="top-actions">
+        <span class="status">Saved</span>
+        <button class="button">More</button>
+        <button class="icon-button" aria-label="Settings">⚙</button>
+      </div>
+    </header>
+
+    <div class="shell">
+      <nav class="sidebar" aria-label="VSM steps">
+        <button class="nav-button"><span class="step">I</span><strong>Operative Units</strong><span class="check">✓</span></button>
+        <button class="nav-button"><span class="step">II</span><strong>Manageability</strong><span class="check">✓</span></button>
+        <button class="nav-button"><span class="step">III</span><strong>SCTs</strong><span class="check">✓</span></button>
+        <button class="nav-button"><span class="step">IV</span><strong>Central/Decentral</strong><span class="check">✓</span></button>
+        <button class="nav-button active"><span class="step">V</span><strong>Inspect Steering System</strong><span></span></button>
+        <button class="nav-button"><span class="step">VI</span><strong>Channels</strong><span></span></button>
+        <button class="nav-button"><span class="step">VII</span><strong>Representation</strong><span></span></button>
+        <div class="sidebar-note"><strong>Preview only</strong><br>This concept does not change the current VSM7 application or workshop data.</div>
+      </nav>
+
+      <main>
+        <section class="hero">
+          <div>
+            <p class="eyebrow">Step V · Inspect the SIF steering system</p>
+            <h1>Inspect how the System-in-Focus is steered</h1>
+            <p>Map every relevant SCT contribution from R0 and lower levels to the systems of the VSM. Use the resulting patterns to inspect whether the SIF can coordinate, control, learn, adapt, and preserve its identity.</p>
+          </div>
+          <div class="hero-visual" aria-label="VSM system distribution">
+            <span class="system-bar" style="--height:48%;--color:var(--s1)">S1</span>
+            <span class="system-bar" style="--height:62%;--color:var(--s2)">S2</span>
+            <span class="system-bar" style="--height:88%;--color:var(--s3)">S3</span>
+            <span class="system-bar" style="--height:38%;--color:var(--s3star)">S3*</span>
+            <span class="system-bar" style="--height:72%;--color:var(--s4)">S4</span>
+            <span class="system-bar" style="--height:54%;--color:var(--s5)">S5</span>
+          </div>
+        </section>
+
+        <section class="method-control">
+          <div>
+            <h2>SIF inspection scope</h2>
+            <p>Only the System-in-Focus and its lower recursion levels are inspected. Contributions from R+1 and above remain outside this design task.</p>
+            <div class="scope-strip">
+              <span class="scope-chip"><strong>SIF</strong> European AI Business · R0</span>
+              <span class="scope-chip included"><strong>Included</strong> R0 · R-1 · R-2</span>
+              <span class="scope-chip excluded"><strong>Excluded</strong> R+1 and above</span>
+              <span class="scope-chip"><strong>23</strong> eligible SCT contributions</span>
+            </div>
+          </div>
+          <div class="segment" role="group" aria-label="Mapping doctrine">
+            <button data-scope="steering">Pure doctrine · S2-S5</button>
+            <button class="active" data-scope="whole">Practical view · S1-S5</button>
+          </div>
+        </section>
+
+        <section class="workspace">
+          <article class="mapping-panel">
+            <header class="panel-head">
+              <div>
+                <h2>SIF Contribution Mapping</h2>
+                <p>One primary system per eligible contribution; supporting systems are optional.</p>
+              </div>
+              <button class="button">Assign selected</button>
+            </header>
+
+            <div class="filters">
+              <select aria-label="Priority filter"><option>All priorities</option><option>Priority A</option><option>Priority B</option></select>
+              <select aria-label="Recursion filter"><option>All included levels</option><option>R0</option><option>R-1</option><option>R-2</option></select>
+              <select aria-label="System filter"><option>Unmapped only</option><option>All systems</option><option>S1</option><option>S2</option><option>S3</option><option>S3*</option><option>S4</option><option>S5</option></select>
+              <input aria-label="Search SCTs" placeholder="Search SCT, contribution, or unit">
+            </div>
+
+            <div class="contribution-list">
+              <section class="contribution" style="--accent:var(--s5);--priority-bg:var(--red-soft);--priority-color:#b94738">
+                <div class="selection"><input type="checkbox" aria-label="Select SCT-001 contribution"></div>
+                <div class="identity"><small>SCT ID</small><strong>SCT-001</strong><span class="priority">A</span></div>
+                <div class="contribution-copy">
+                  <strong>Normative management</strong>
+                  <p>Define common identity, non-negotiable policy boundaries, and the strategic mandate for all operative units.</p>
+                  <span class="unit"><em>R0</em> · European AI Business · Accountable</span>
+                </div>
+                <div class="system-choice" style="--system-color:var(--s5)"><span class="mapping-label">Primary system</span><select><option>S5 · Policy</option></select></div>
+                <div class="supporting"><span class="mapping-label">Supporting</span><span class="system-chip" style="--chip-color:var(--s4);--chip-bg:var(--green-soft)">S4</span><span class="system-chip muted">+</span></div>
+              </section>
+
+              <section class="contribution" style="--accent:var(--s4);--priority-bg:var(--red-soft);--priority-color:#b94738">
+                <div class="selection"><input type="checkbox" aria-label="Select SCT-004 contribution"></div>
+                <div class="identity"><small>SCT ID</small><strong>SCT-004</strong><span class="priority">A</span></div>
+                <div class="contribution-copy">
+                  <strong>Market intelligence</strong>
+                  <p>Aggregate regulatory, competitor, and customer signals and translate them into portfolio implications.</p>
+                  <span class="unit"><em>R0</em> · European AI Business · Accountable</span>
+                </div>
+                <div class="system-choice" style="--system-color:var(--s4)"><span class="mapping-label">Primary system</span><select><option>S4 · Future</option></select></div>
+                <div class="supporting"><span class="mapping-label">Supporting</span><span class="system-chip" style="--chip-color:var(--s3star);--chip-bg:var(--red-soft)">S3*</span><span class="system-chip muted">+</span></div>
+              </section>
+
+              <section class="contribution" style="--accent:var(--s2);--priority-bg:var(--amber-soft);--priority-color:#8f6811">
+                <div class="selection"><input type="checkbox" aria-label="Select SCT-009 contribution"></div>
+                <div class="identity"><small>SCT ID</small><strong>SCT-009</strong><span class="priority">B</span></div>
+                <div class="contribution-copy">
+                  <strong>Shared capacity planning</strong>
+                  <p>Coordinate scarce expert capacity and resolve dependencies between the sovereign platform units.</p>
+                  <span class="unit"><em>R0</em> · European AI Business</span>
+                </div>
+                <div class="system-choice" style="--system-color:var(--s2)"><span class="mapping-label">Primary system</span><select><option>S2 · Coordination</option></select></div>
+                <div class="supporting"><span class="mapping-label">Supporting</span><span class="system-chip" style="--chip-color:var(--s3);--chip-bg:var(--red-soft)">S3</span><span class="system-chip muted">+</span></div>
+              </section>
+
+              <section class="contribution s1-contribution" style="--accent:var(--s1);--priority-bg:var(--red-soft);--priority-color:#b94738">
+                <div class="selection"><input type="checkbox" aria-label="Select SCT-012 contribution"></div>
+                <div class="identity"><small>SCT ID</small><strong>SCT-012</strong><span class="priority">A</span></div>
+                <div class="contribution-copy">
+                  <strong>Operate customer-specific deployment</strong>
+                  <p>Deliver and operate the validated sovereign AI solution for regulated healthcare customers.</p>
+                  <span class="unit"><em>R-1</em> · Healthcare Solutions Unit · Accountable</span>
+                </div>
+                <div class="system-choice" style="--system-color:var(--s1)"><span class="mapping-label">Primary system</span><select><option>S1 · Operative unit</option></select></div>
+                <div class="supporting"><span class="mapping-label">Supporting</span><span class="system-chip muted">+</span></div>
+              </section>
+
+              <section class="contribution" style="--accent:var(--line-strong);--priority-bg:var(--amber-soft);--priority-color:#8f6811">
+                <div class="selection"><input type="checkbox" aria-label="Select SCT-015 contribution"></div>
+                <div class="identity"><small>SCT ID</small><strong>SCT-015</strong><span class="priority">B</span></div>
+                <div class="contribution-copy">
+                  <strong>Audit model-output quality</strong>
+                  <p>Independently test model output against agreed quality, risk, and compliance thresholds.</p>
+                  <span class="unit"><em>R0</em> · European AI Business</span>
+                </div>
+                <div class="system-choice" style="--system-color:var(--line-strong)"><span class="mapping-label">Primary system</span><select><option>Select VSM system</option></select></div>
+                <div class="supporting"><span class="mapping-label">Supporting</span><span class="system-chip muted">+</span></div>
+              </section>
+            </div>
+          </article>
+
+          <aside class="analysis-panel">
+            <header class="panel-head">
+              <p class="eyebrow">Computed interpretation help</p>
+              <h2>Steering-system signals</h2>
+              <p>Patterns for inspecting the SIF, not claims of organizational truth.</p>
+            </header>
+
+            <section class="analysis-section">
+              <span class="analysis-label">Unmapped contributions</span>
+              <div class="signal-card" style="--signal-color:var(--red)">
+                <strong>1 priority-B contribution needs a primary system.</strong>
+                “Audit model-output quality” is not yet located in the steering architecture.
+              </div>
+            </section>
+
+            <section class="analysis-section">
+              <span class="analysis-label">Priority-weighted system profile</span>
+              <div class="profile-summary">
+                <span class="profile-system" style="--system-color:var(--s1)"><b>S1</b><small>6 pts</small></span>
+                <span class="profile-system" style="--system-color:var(--s2)"><b>S2</b><small>8 pts</small></span>
+                <span class="profile-system" style="--system-color:var(--s3)"><b>S3</b><small>14 pts</small></span>
+                <span class="profile-system" style="--system-color:var(--s3star)"><b>S3*</b><small>2 pts</small></span>
+                <span class="profile-system" style="--system-color:var(--s4)"><b>S4</b><small>11 pts</small></span>
+                <span class="profile-system" style="--system-color:var(--s5)"><b>S5</b><small>9 pts</small></span>
+              </div>
+              <div class="signal-card" style="--signal-color:var(--amber)">
+                <strong>S3 dominates the high-priority steering profile.</strong>
+                Inspect whether this reflects necessary control or excessive operational intervention.
+              </div>
+            </section>
+
+            <section class="analysis-section">
+              <span class="analysis-label">SCT steering-chain gap</span>
+              <div class="steering-chain" aria-label="Steering chain">
+                <span class="chain-node" style="--system-color:var(--s4)">S4</span>
+                <span class="chain-node" style="--system-color:var(--s5)">S5</span>
+                <span class="chain-node" style="--system-color:var(--s3)">S3</span>
+                <span class="chain-node" style="--system-color:var(--s2)">S2</span>
+                <span class="chain-node" style="--system-color:var(--s1)">S1</span>
+                <span class="chain-node gap" style="--system-color:var(--s3star)">S3*</span>
+              </div>
+              <div class="signal-card" style="--signal-color:var(--red)">
+                <strong>SCT-015 lacks independent feedback.</strong>
+                The task has policy, control, and execution contributions, but no clear S3* monitoring contribution.
+              </div>
+            </section>
+
+            <section class="analysis-section">
+              <span class="analysis-label">Generated workshop questions</span>
+              <div class="signal" style="--signal-color:var(--red)"><i></i><span><strong>Who independently validates model-output quality?</strong><br>Consider whether S3* needs an explicit contribution.</span></div>
+              <div class="signal" style="--signal-color:var(--amber)"><i></i><span><strong>Are coordination needs adequately represented?</strong><br>Several cross-unit SCTs have no supporting S2 contribution.</span></div>
+              <div class="signal" style="--signal-color:var(--green)"><i></i><span><strong>Future and policy work are connected.</strong><br>S4 insights are linked to S5 decisions for the highest-priority strategic SCTs.</span></div>
+            </section>
+
+            <div class="scope-note" id="scope-note"><strong>Practical view:</strong> operative S1 contributions are included when inspecting the complete steering chain of the SIF.</div>
+          </aside>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <span class="preview-note">Revised Step V concept · no production data changed</span>
+
+  <script>
+    const scopeButtons = [...document.querySelectorAll("[data-scope]")];
+    const scopeNote = document.querySelector("#scope-note");
+
+    scopeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        scopeButtons.forEach((candidate) => candidate.classList.toggle("active", candidate === button));
+        const practicalView = button.dataset.scope === "whole";
+        scopeNote.innerHTML = practicalView
+          ? "<strong>Practical view:</strong> operative S1 contributions are included when inspecting the complete steering chain of the SIF."
+          : "<strong>Pure-doctrine view:</strong> all eligible contributions remain visible, while operative S1 work is marked as outside the S2-S5 steering-system inspection.";
+      });
+    });
+  </script>
+</body>
+</html>
