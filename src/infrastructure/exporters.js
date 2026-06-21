@@ -1,6 +1,8 @@
 import {
   formatSctNumber,
   getRecursionOrganizations,
+  getStep6ChannelVarietyContext,
+  getStep6FindingCandidates,
   getStep5InScopeContributions,
   getStep5MappingDiagnostics
 } from "../domain/vsm.js";
@@ -36,6 +38,7 @@ export function buildProjectReport(workspace) {
     ${section("Success-Critical Tasks", taskTable(workspace))}
     ${section("SCT Contributions Across the Recursion Structure", allocationTable(workspace))}
     ${section("SCT-to-VSM-System Map", systemMappingTable(workspace))}
+    ${section("E2E Robustness Findings", e2eFindingTable(workspace))}
   `);
 
   return {
@@ -99,8 +102,13 @@ export function buildStepOutcome(workspace, stepId) {
 
   if (stepId === "step6") {
     return {
-      filename: `${name}-communication-checks.xls`,
-      content: excelShell(channelTable(workspace)),
+      filename: `${name}-robust-flows-and-channels.xls`,
+      content: excelShell(`
+        <h2>E2E Robustness Findings</h2>
+        ${e2eFindingTable(workspace)}
+        <h2>Communication Variety Checks</h2>
+        ${channelTable(workspace)}
+      `),
       mimeType: "application/vnd.ms-excel"
     };
   }
@@ -326,16 +334,38 @@ function systemMappingTable(workspace) {
 }
 
 function channelTable(workspace) {
+  const model = getStep6ChannelVarietyContext(workspace).model;
   return simpleTable(
-    ["Loop", "Channels Used", "Capacity", "Intelligibility", "Synchronicity", "Security", "Observation"],
-    workspace.step6.communicationChannels.map((channel) => [
-      channel.loop,
-      channel.channelsUsed,
-      channel.capacity,
-      channel.intelligibility,
-      channel.synchronicity,
-      channel.security,
-      channel.observation
+    ["VSM System", "Canonical Loop", "Communication & Meetings", "Artifact", "Role", "Capacity", "Clarity", "Synchronicity", "Feedback", "Observation"],
+    model.loops.map((loop) => [
+      loop.sys,
+      loop.label,
+      loop.communication,
+      loop.artifact,
+      loop.role,
+      ...loop.ratings.map(formatChannelVarietyRating),
+      loop.note
+    ])
+  );
+}
+
+function formatChannelVarietyRating(value) {
+  return ({ 0: "Unrated", 1: "Weak", 2: "Caution", 3: "Pass" })[Number(value)] || "Unrated";
+}
+
+function e2eFindingTable(workspace) {
+  return simpleTable(
+    ["Route ID", "Route", "SCT ID", "SCT", "Finding ID", "Category", "Severity", "Affected Element", "Observation"],
+    getStep6FindingCandidates(workspace).map((candidate) => [
+      candidate.routeId,
+      candidate.routeName,
+      candidate.sctNumber,
+      candidate.sctTitle,
+      candidate.finding.id,
+      candidate.finding.category,
+      candidate.finding.severity,
+      candidate.affectedElement,
+      candidate.finding.note
     ])
   );
 }
@@ -356,8 +386,20 @@ function roleTable(workspace) {
 
 function implementationTable(workspace) {
   return simpleTable(
-    ["Challenge", "Dependency / Requirement", "Responsible", "Due Date", "Status"],
-    workspace.implementation.items.map((item) => [item.challenge, item.requirement, item.responsible, item.dueDate, item.status])
+    ["Challenge / Action", "Dependency / Requirement", "Responsible", "Due Date", "Status", "Source Kind", "Route ID", "Finding ID", "Loop ID", "Criterion Index", "Source Status"],
+    workspace.implementation.items.map((item) => [
+      item.challenge,
+      item.requirement,
+      item.responsible,
+      item.dueDate,
+      item.status,
+      item.source?.kind || "",
+      item.source?.routeId || "",
+      item.source?.findingId || "",
+      item.source?.loopId || "",
+      item.source?.criterionIndex ?? "",
+      item.sourceStatus || ""
+    ])
   );
 }
 

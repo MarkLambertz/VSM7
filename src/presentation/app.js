@@ -1,6 +1,8 @@
 import {
   createAllocation,
   createImplementationItem,
+  createImplementationItemFromChannelWeakness,
+  createImplementationItemFromFinding,
   createKeyBuyingCriterion,
   createManageabilityOption,
   createOperativeUnit,
@@ -14,12 +16,20 @@ import {
   createWorkspace,
   canCompleteStep,
   evaluateStep2Variety,
+  formatSctNumber,
+  getStep6ChannelVarietyContext,
+  getStep6FindingCandidates,
+  getStep6RouteContext,
+  getStep6RouteModel,
   isStepComplete,
   markStep2SliderAssessed,
   mergeSuccessCriticalTasks,
   removeStep5TaskAssignments,
   resetStep2SlidersToNeutral,
   setStepCompletion,
+  setStep6ChannelVarietyModel,
+  setStep6RelatedSctIds,
+  setStep6RouteModel,
   splitSuccessCriticalTask,
   stepDefinitions,
   syncAllocations,
@@ -42,8 +52,11 @@ import {
 import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js";
 import { createLocalStorageRepository } from "../infrastructure/localStorageRepository.js";
 import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js";
+import { buildE2ERouteDocument } from "../infrastructure/e2eRouteDocuments.js?v=20260619-e2e-documents";
 import { renderRenameDialog } from "./renameDialog.js";
 import { destructiveActionMessage } from "./shared/destructiveActions.js";
+import { createE2ERouteExportCoordinator } from "./shared/e2eRouteExport.js?v=20260619-e2e-documents";
+import { createChannelVarietyExportCoordinator } from "./shared/channelVarietyExport.js?v=20260620-channel-loop-detail-fields";
 import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js";
 import { renderProjectManagement } from "./projectManagement.js";
 import { applySkinPreference, defaultSkin, readSkinPreference } from "./skinSettings.js";
@@ -56,13 +69,13 @@ import {
   getGenericFocusTileCount,
   hasGenericFocusMode,
   renderGenericFocusFullscreen
-} from "./steps/focusMode.js?v=20260618-step5-copy-remove";
+} from "./steps/focusMode.js?v=20260620-channel-loop-detail-fields";
 import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js";
 import { renderStep2 } from "./steps/step2.js";
 import { filterScts, renderStep3 } from "./steps/step3.js";
 import { renderStep4 } from "./steps/step4.js";
 import { renderStep5 } from "./steps/step5.js?v=20260618-step5-copy-remove";
-import { renderStep6 } from "./steps/step6.js";
+import { getActiveStep6SctId, renderStep6 } from "./steps/step6.js?v=20260620-channel-loop-detail-fields";
 import { renderStep7 } from "./steps/step7.js";
 import { renderVsmStandalone } from "./vsmStandalone.js";
 import {
@@ -90,12 +103,16 @@ let selectedSctMergeIds = new Set();
 let sctPriorityFilter = "";
 let sctSourceFilter = "";
 let activeStep5System = "3";
+let activeStep6Subpage = "e2e";
+let selectedStep6SctId = "";
 let isSettingsOpen = false;
 let renameTarget = null;
 let isNavCollapsed = false;
 let activeSkin = applySkinPreference(readSkinPreference());
 let saveStatus = "Saved";
 let saveTimer = null;
+let e2eRouteSaveTimer = null;
+let channelVarietySaveTimer = null;
 let lastAction = { button: null, at: 0 };
 const vsmFramePaths = {
   standalone: [],
@@ -105,8 +122,12 @@ const vsmFramePaneVisibility = {
   standalone: undefined,
   step5: false
 };
+const e2eRouteExportCoordinator = createE2ERouteExportCoordinator({ send: postToE2EFrame });
+const channelVarietyExportCoordinator = createChannelVarietyExportCoordinator({ send: postToChannelVarietyFrame });
 
 window.addEventListener("message", handleVsmBridgeMessage);
+window.addEventListener("message", handleE2EBridgeMessage);
+window.addEventListener("message", handleChannelVarietyBridgeMessage);
 render();
 
 app.addEventListener("input", (event) => {
@@ -120,6 +141,17 @@ app.addEventListener("input", (event) => {
 });
 
 app.addEventListener("change", async (event) => {
+  if (event.target instanceof HTMLElement && event.target.dataset.step6SctSelect !== undefined) {
+    selectedStep6SctId = event.target.value;
+    renderAfterInPlaceAction();
+    return;
+  }
+
+  if (event.target instanceof HTMLElement && event.target.dataset.step6RelatedSct !== undefined) {
+    updateStep6RelatedScts(event.target);
+    return;
+  }
+
   if (event.target instanceof HTMLElement && event.target.dataset.sctFilter) {
     updateSctFilter(event.target.dataset.sctFilter, event.target.value);
     renderAfterInPlaceAction();
@@ -178,6 +210,7 @@ function render() {
   if (selectedSctId && !workspace.step3.successCriticalTasks.some((task) => task.id === selectedSctId)) {
     selectedSctId = "";
   }
+  selectedStep6SctId = getActiveStep6SctId(workspace, selectedStep6SctId);
   document.body.classList.toggle("has-fullscreen-workshop", isFocusFullscreen);
   const projects = listWorkspaces(repository);
   selectedOrganizationId = normalizeSelectedOrganization(projects);
@@ -214,6 +247,8 @@ function render() {
     ${renderRenameDialog(renameTarget)}
   `;
   syncVisibleVsmFrames();
+  syncVisibleE2EFrames();
+  syncVisibleChannelVarietyFrames();
 }
 
 function renderPreservingViewport(anchorSctId = "") {
@@ -351,6 +386,314 @@ function updateVsmPaneToggleButtons(context) {
     button.setAttribute("aria-pressed", String(visible));
     button.textContent = visible ? "Hide pane" : "Show pane";
   });
+}
+
+function syncVisibleE2EFrames() {
+  document.querySelectorAll("[data-e2e-frame]").forEach((frame) => {
+    if (!(frame instanceof HTMLIFrameElement) || frame.dataset.e2eHostWired) {
+      return;
+    }
+
+    frame.dataset.e2eHostWired = "true";
+    frame.addEventListener("load", () => syncE2EFrame(frame));
+  });
+}
+
+function syncVisibleChannelVarietyFrames() {
+  document.querySelectorAll("[data-channel-variety-frame]").forEach((frame) => {
+    if (!(frame instanceof HTMLIFrameElement) || frame.dataset.channelVarietyHostWired) {
+      return;
+    }
+
+    frame.dataset.channelVarietyHostWired = "true";
+    frame.addEventListener("load", () => syncChannelVarietyFrame(frame));
+  });
+}
+
+function handleChannelVarietyBridgeMessage(event) {
+  const frame = findChannelVarietyFrameForSource(event.source);
+  const message = event.data;
+
+  if (!frame || !isTrustedFrameMessage(event, frame) || !message || typeof message !== "object" || !message.evt) {
+    return;
+  }
+
+  if (message.evt === "ready") {
+    syncChannelVarietyFrame(frame);
+    return;
+  }
+
+  if (message.evt === "exportReady" || message.evt === "exportError") {
+    channelVarietyExportCoordinator.handle(frame, message);
+    return;
+  }
+
+  if (message.evt === "change" && setStep6ChannelVarietyModel(workspace, message.model)) {
+    scheduleChannelVarietySave();
+  }
+}
+
+function findChannelVarietyFrameForSource(source) {
+  return [...document.querySelectorAll("[data-channel-variety-frame]")]
+    .find((frame) => frame instanceof HTMLIFrameElement && frame.contentWindow === source) || null;
+}
+
+function syncChannelVarietyFrame(frame) {
+  const context = getStep6ChannelVarietyContext(workspace);
+  postToChannelVarietyFrame(frame, { cmd: "loadModel", model: context.model });
+  postToChannelVarietyFrame(frame, { cmd: "setLoops", loops: context.loops });
+  postToChannelVarietyFrame(frame, { cmd: "setMeta", meta: context.meta });
+}
+
+function postToChannelVarietyFrame(frame, message) {
+  const targetOrigin = getFrameTargetOrigin(frame);
+  frame.contentWindow?.postMessage(message, targetOrigin);
+}
+
+function scheduleChannelVarietySave() {
+  window.clearTimeout(channelVarietySaveTimer);
+  channelVarietySaveTimer = window.setTimeout(() => {
+    channelVarietySaveTimer = null;
+    saveNow();
+  }, 180);
+}
+
+function handleE2EBridgeMessage(event) {
+  const frame = findE2EFrameForSource(event.source);
+  const message = event.data;
+
+  if (!frame || !isTrustedFrameMessage(event, frame) || !message || typeof message !== "object" || !message.evt) {
+    return;
+  }
+
+  if (message.evt === "ready") {
+    syncE2EFrame(frame);
+    return;
+  }
+
+  if (message.evt === "exportReady" || message.evt === "exportError") {
+    e2eRouteExportCoordinator.handle(frame, message);
+    return;
+  }
+
+  if (message.evt === "change") {
+    const taskId = frame.dataset.e2eSctId || "";
+    if (setStep6RouteModel(workspace, taskId, message.model)) {
+      scheduleE2ERouteSave();
+    }
+  }
+}
+
+function findE2EFrameForSource(source) {
+  return [...document.querySelectorAll("[data-e2e-frame]")]
+    .find((frame) => frame instanceof HTMLIFrameElement && frame.contentWindow === source) || null;
+}
+
+function syncE2EFrame(frame) {
+  const taskId = frame.dataset.e2eSctId || "";
+  const context = getStep6RouteContext(workspace, taskId);
+  const model = getStep6RouteModel(workspace, taskId);
+  if (!context || !model) {
+    return;
+  }
+
+  // Reconciliation keeps authored route ids and call-outs while aligning lanes to current Step I truth.
+  setStep6RouteModel(workspace, taskId, model);
+  postToE2EFrame(frame, { cmd: "loadModel", model });
+  postToE2EFrame(frame, { cmd: "setLanes", lanes: context.lanes });
+  postToE2EFrame(frame, {
+    cmd: "setSCTContext",
+    primarySct: context.primarySct,
+    relatedScts: context.relatedScts,
+    contributions: context.contributions
+  });
+  postToE2EFrame(frame, { cmd: "setFit", mode: "full" });
+}
+
+function updateStep6RelatedScts(target) {
+  const section = target.closest(".e2e-route-section");
+  const primarySctId = target.dataset.primarySctId || "";
+  if (!section || !primarySctId) {
+    return;
+  }
+
+  const relatedSctIds = [...section.querySelectorAll("[data-step6-related-sct]:checked")]
+    .map((checkbox) => checkbox.value);
+  if (!setStep6RelatedSctIds(workspace, primarySctId, relatedSctIds)) {
+    return;
+  }
+
+  saveNow();
+  const context = getStep6RouteContext(workspace, primarySctId);
+  const frame = section.querySelector("[data-e2e-frame]");
+  if (frame instanceof HTMLIFrameElement) {
+    syncE2EFrame(frame);
+  }
+  if (!context) {
+    return;
+  }
+
+  section.querySelectorAll("[data-e2e-related-count]").forEach((element) => {
+    element.textContent = String(context.relatedScts.length);
+  });
+  const relatedSummary = section.querySelector("[data-e2e-related-summary]");
+  if (relatedSummary) {
+    relatedSummary.textContent = `${context.relatedScts.length} related SCT${context.relatedScts.length === 1 ? "" : "s"}`;
+  }
+  const contributionSummary = section.querySelector("[data-e2e-contribution-summary]");
+  if (contributionSummary) {
+    contributionSummary.textContent = `${context.contributions.length} contribution${context.contributions.length === 1 ? "" : "s"} available to place`;
+  }
+}
+
+function postToE2EFrame(frame, message) {
+  const targetOrigin = getFrameTargetOrigin(frame);
+  frame.contentWindow?.postMessage(message, targetOrigin);
+}
+
+function isTrustedFrameMessage(event, frame) {
+  if (event.source !== frame.contentWindow) {
+    return false;
+  }
+
+  const targetOrigin = getFrameTargetOrigin(frame);
+  return targetOrigin === "*" ? event.origin === "null" : event.origin === targetOrigin;
+}
+
+function getFrameTargetOrigin(frame) {
+  try {
+    const origin = new URL(frame.getAttribute("src") || "", window.location.href).origin;
+    return origin === "null" ? "*" : origin;
+  } catch (_error) {
+    return window.location.origin === "null" ? "*" : window.location.origin;
+  }
+}
+
+function scheduleE2ERouteSave() {
+  window.clearTimeout(e2eRouteSaveTimer);
+  e2eRouteSaveTimer = window.setTimeout(() => {
+    e2eRouteSaveTimer = null;
+    saveNow();
+  }, 180);
+}
+
+async function exportE2ERoute(button) {
+  const section = button.closest(".e2e-route-section");
+  const frame = section?.querySelector("[data-e2e-frame]");
+  const status = section?.querySelector("[data-e2e-export-status]");
+  const requestedFormat = ["svg", "png", "pdf", "pptx"].includes(button.dataset.format)
+    ? button.dataset.format
+    : "svg";
+  const frameFormat = ["pdf", "pptx"].includes(requestedFormat) ? "png" : requestedFormat;
+
+  if (!(frame instanceof HTMLIFrameElement)) {
+    setE2EExportStatus(status, "The route editor is not ready.", true);
+    return;
+  }
+
+  section.querySelector("[data-e2e-export-menu]")?.removeAttribute("open");
+  setE2EExportBusy(section, true);
+  const formatLabel = requestedFormat === "pptx" ? "PowerPoint" : requestedFormat.toUpperCase();
+  setE2EExportStatus(status, `Preparing ${formatLabel}…`);
+
+  try {
+    const result = await e2eRouteExportCoordinator.request(frame, frameFormat);
+    if (requestedFormat === "pdf" || requestedFormat === "pptx") {
+      const document = await buildE2ERouteDocument(
+        requestedFormat,
+        result.blob,
+        getE2ERouteDocumentContext(frame.dataset.e2eSctId || "")
+      );
+      downloadBrowserBlob(document.blob, document.filename);
+    } else {
+      downloadBrowserBlob(result.blob, result.filename || `e2e-route.${requestedFormat}`);
+    }
+    setE2EExportStatus(status, `${formatLabel} downloaded.`);
+  } catch (error) {
+    setE2EExportStatus(status, error?.message || "The route export failed.", true);
+  } finally {
+    setE2EExportBusy(section, false);
+  }
+}
+
+async function exportChannelVariety(button) {
+  const section = button.closest(".channel-variety-section");
+  const frame = section?.querySelector("[data-channel-variety-frame]");
+  const status = section?.querySelector("[data-channel-variety-export-status]");
+  const format = button.dataset.format === "png" ? "png" : "svg";
+
+  if (!(frame instanceof HTMLIFrameElement)) {
+    setE2EExportStatus(status, "The communication variety editor is not ready.", true);
+    return;
+  }
+
+  section.querySelector("[data-channel-variety-export-menu]")?.removeAttribute("open");
+  section.querySelectorAll('[data-action="export-channel-variety"]').forEach((exportButton) => {
+    exportButton.disabled = true;
+  });
+  setE2EExportStatus(status, `Preparing ${format.toUpperCase()}…`);
+
+  try {
+    const result = await channelVarietyExportCoordinator.request(frame, format);
+    downloadBrowserBlob(result.blob, result.filename || `communication-variety-check.${format}`);
+    setE2EExportStatus(status, `${format.toUpperCase()} downloaded.`);
+  } catch (error) {
+    setE2EExportStatus(status, error?.message || "The communication variety export failed.", true);
+  } finally {
+    section.querySelectorAll('[data-action="export-channel-variety"]').forEach((exportButton) => {
+      exportButton.disabled = false;
+    });
+  }
+}
+
+function getE2ERouteDocumentContext(taskId) {
+  const task = workspace.step3.successCriticalTasks.find((candidate) => candidate.id === taskId);
+  const model = getStep6RouteModel(workspace, taskId);
+  const findings = getStep6FindingCandidates(workspace)
+    .filter((candidate) => candidate.taskId === taskId)
+    .map((candidate) => ({
+      category: candidate.finding.category,
+      severity: candidate.finding.severity,
+      note: candidate.finding.note,
+      affectedElement: candidate.affectedElement
+    }));
+
+  return {
+    organizationName: workspace.organization.name,
+    projectName: workspace.project.name,
+    sifName: workspace.sif.name,
+    sctNumber: task ? formatSctNumber(task.number) : "SCT",
+    sctTitle: task?.title || "E2E route",
+    routeName: model?.meta?.name || "E2E Process Robustness Check",
+    findings
+  };
+}
+
+function setE2EExportBusy(section, busy) {
+  section?.querySelectorAll('[data-action="export-e2e-route"]').forEach((button) => {
+    button.disabled = busy;
+  });
+  section?.querySelector("[data-e2e-export-menu]")?.setAttribute("aria-busy", String(busy));
+}
+
+function setE2EExportStatus(status, message, isError = false) {
+  if (!(status instanceof HTMLElement)) {
+    return;
+  }
+
+  status.textContent = message;
+  status.classList.toggle("is-error", isError);
+}
+
+function downloadBrowserBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function handleVsmElementClick(message, context) {
@@ -725,7 +1068,8 @@ function getGenericFocusContext() {
     sctPriorityFilter,
     sctSourceFilter,
     activeStep5System,
-    vsmPaneVisible: vsmFramePaneVisibility.step5
+    vsmPaneVisible: vsmFramePaneVisibility.step5,
+    selectedStep6SctId
   };
 }
 
@@ -843,7 +1187,10 @@ function renderActiveView(projects) {
       sctSourceFilter,
       vsmPaneVisible: vsmFramePaneVisibility.step5
     }),
-    step6: () => renderStep6(workspace),
+    step6: () => renderStep6(workspace, {
+      activeSubpage: activeStep6Subpage,
+      selectedSctId: selectedStep6SctId
+    }),
     step7: () => renderStep7(workspace),
     implementation: () => renderImplementation(workspace)
   };
@@ -1125,6 +1472,12 @@ function handleAction(button) {
     return;
   }
 
+  if (action === "step6-subpage") {
+    activeStep6Subpage = button.dataset.subpage === "channels" ? "channels" : "e2e";
+    renderAfterInPlaceAction();
+    return;
+  }
+
   if (action === "navigate") {
     activeView = button.dataset.view || "overview";
     isSettingsOpen = false;
@@ -1202,6 +1555,62 @@ function handleAction(button) {
   if (action === "export-step") {
     saveNow();
     exportStepOutcome(workspace, button.dataset.step);
+    return;
+  }
+
+  if (action === "export-e2e-route") {
+    void exportE2ERoute(button);
+    return;
+  }
+
+  if (action === "export-channel-variety") {
+    void exportChannelVariety(button);
+    return;
+  }
+
+  if (action === "create-backlog-from-finding") {
+    const item = createImplementationItemFromFinding(
+      workspace,
+      button.dataset.routeId || "",
+      button.dataset.findingId || ""
+    );
+    if (item) {
+      saveNow();
+      renderAfterInPlaceAction();
+    }
+    return;
+  }
+
+  if (action === "create-backlog-from-channel-weakness") {
+    const item = createImplementationItemFromChannelWeakness(
+      workspace,
+      button.dataset.loopId || "",
+      button.dataset.criterionIndex || ""
+    );
+    if (item) {
+      saveNow();
+      renderAfterInPlaceAction();
+    }
+    return;
+  }
+
+  if (action === "open-channel-weakness-source") {
+    activeView = "step6";
+    activeStep6Subpage = "channels";
+    isFocusFullscreen = false;
+    render();
+    return;
+  }
+
+  if (action === "open-e2e-finding-source") {
+    const taskId = button.dataset.taskId || "";
+    if (workspace.step3.successCriticalTasks.some((task) => task.id === taskId)) {
+      activeView = "step6";
+      activeStep6Subpage = "e2e";
+      selectedStep6SctId = taskId;
+      isFocusFullscreen = false;
+      render();
+    }
     return;
   }
 

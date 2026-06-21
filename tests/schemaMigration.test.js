@@ -52,7 +52,8 @@ test("workspace shape repair ignores mixed-type saved data for structured fields
       allocations: []
     },
     step6: {
-      communicationChannels: "not an array"
+      communicationChannels: "not an array",
+      e2eRoutes: "not an object"
     }
   });
 
@@ -64,6 +65,9 @@ test("workspace shape repair ignores mixed-type saved data for structured fields
   assert.deepEqual(workspace.step4.allocations, {});
   assert.equal(Array.isArray(workspace.step6.communicationChannels), true);
   assert.ok(workspace.step6.communicationChannels.length > 0);
+  assert.equal(Array.isArray(workspace.step6.channelVarietyModel.loops), true);
+  assert.equal(workspace.step6.channelVarietyModel.loops.length, 8);
+  assert.deepEqual(workspace.step6.e2eRoutes, {});
 });
 
 test("workspace shape repair gives legacy operative units stable ids", () => {

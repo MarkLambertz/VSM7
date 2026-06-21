@@ -1,8 +1,6 @@
 # VSM Visualization — Build Briefing
 
-A self-contained set of instructions for visualizing the **Viable System Model** correctly in browser-native HTML/SVG, faithful to the **Pfiffner / Bosch** visual language (Martin Pfiffner, *The Neurology of Business: Implementing the Viable System Model*, Springer 2022).
-
-> **Source of truth:** the Bosch training deck `VSM-Coach-Day2-and-Day3-Application.pdf`. The canonical assembled model is deck **p.15**; the element toolkit is **p.14**; the recursion/unfold idea is **p.4 & p.26**; the six channels are labelled on **p.39**.
+A self-contained set of instructions for visualizing the **Viable System Model** correctly in browser-native HTML/SVG, faithful to the **Pfiffner** visual language (Martin Pfiffner, *The Neurology of Business: Implementing the Viable System Model*, Springer 2022).
 
 > **🔌 Connecting a backend? Codex, start here →** jump to **§12 — Frontend code & backend-integration guide** (read **§12.0** first — it defines who owns what). §12 is authoritative for the *shipped* file `vsm.html`; §1–11 describe the visual-design intent, some of which evolved during the build (see **§12.10 Build delta**). The artifact is a **standalone, code-native VSM diagram** with **its own entry point in the main navigation** *and* an embedded use in **Step V** — Step V is **not** the only entry point. (On the "code-native, not bitmap" requirement, see `AGENTS.md`.)
 
@@ -12,7 +10,7 @@ A self-contained set of instructions for visualizing the **Viable System Model**
 
 1. **Recursion-first.** The VSM is *one structure repeated at every scale*, not a 5-box hierarchy. The visualization's backbone is the ability to move between recursion levels (drill down / zoom out), not a single static picture. This is what "modular / adaptive" means.
 2. **Never forget System 3\*.** The audit channel is the element most diagrams drop. It must always be present and correct. Systems are **1, 2, 3, 3\*, 4, 5** — never stop at 5.
-3. **Pixel-faithful to the deck.** Use the exact shapes, sides, colours, and amoeba/homeostat motifs below. Don't invent a new visual language.
+3. **Pixel-faithful to the reference.** Use the exact shapes, sides, colours, and amoeba/homeostat motifs below. Don't invent a new visual language.
 4. **It is NOT an org chart.** Levels are *containment* (a viable system inside a viable system), not command. Each unit is independently viable.
 5. **Distinguish operational units (S1) from support functions.** They are different things (cardinal error #9).
 
@@ -33,7 +31,7 @@ A self-contained set of instructions for visualizing the **Viable System Model**
 
 ---
 
-## 2. Element catalog (the toolkit — deck p.14)
+## 2. Element catalog (the toolkit)
 
 Draw each element exactly as specified. Sides matter: **S3\* is LEFT, S2 is RIGHT.**
 
@@ -61,7 +59,7 @@ Draw each element exactly as specified. Sides matter: **S3\* is LEFT, S2 is RIGH
 
 ---
 
-## 3. Canonical layout of one level (R0) — deck p.15
+## 3. Canonical layout of one level (R0)
 
 Use a **portrait** SVG canvas (suggested `viewBox="0 0 900 1100"`). Three zones:
 
@@ -89,9 +87,9 @@ Use a **portrait** SVG canvas (suggested `viewBox="0 0 900 1100"`). Three zones:
 
 ---
 
-## 4. The six communication channels (deck p.39, "vertical variety" a–f)
+## 4. The six communication channels ("vertical variety" a–f)
 
-These are the connective tissue and should be **independently toggleable layers**. Use the deck's own labels:
+These are the connective tissue and should be **independently toggleable layers**. Use the canonical labels:
 
 | # | Channel | Visual | Colour |
 |---|---|---|---|
@@ -107,7 +105,7 @@ These are the connective tissue and should be **independently toggleable layers*
 ## 5. Recursion model (the backbone)
 
 - **Notation:** `R+1` = the system that *contains* the current one; `R0` = the **System in Focus (SIF)** currently rendered; `R-1` = the S1 sub-units, each of which unfolds into its own full VSM.
-- **Unfold mechanic** (deck p.26 — real Bosch example: Bosch Group → Mobility Solutions → ETAS → DAP → Probes → Teams): clicking an S1 unit makes **that unit become the new R0** (its operation "opens" into a complete VSM). Zooming out makes the current R0 become one S1 unit of R+1.
+- **Unfold mechanic** (e.g. organisation → division → business unit → team): clicking an S1 unit makes **that unit become the new R0** (its operation "opens" into a complete VSM). Zooming out makes the current R0 become one S1 unit of R+1.
 - **Breadcrumb / recursion ladder:** always show the path, e.g. `R+1 ▸ R0 (SIF) ▸ R-1`, so the user knows which level they are on. Only three levels are ever in focus at once.
 - **Self-similarity:** every level renders with the *identical* structure from §3. No special "top" level.
 
@@ -121,11 +119,11 @@ These are the connective tissue and should be **independently toggleable layers*
 4. **Modular units:** add / remove / rename S1 units; the layout (circles, squares, rungs, env blobs, squiggles) regenerates to match the count.
 5. **Variety read-out (Step II):** show a simple **horizontal-variety vs vertical-variety** indicator; warn when many dissimilar units overload the channels, and suggest the three fixes (strengthen control / re-cluster S1 / add a recursion level).
 6. **Element info panel:** click any element → show its name, role, and the copy in §9.
-7. **Methodology overlay (optional):** a guided walk through the 7 steps (§8) using the deck's examples (Pasta Lasta restaurant; Automotive Interior AG).
+7. **Methodology overlay (optional):** a guided walk through the 7 steps (§8) using worked examples (Pasta Lasta restaurant; Automotive Interior AG).
 
 ---
 
-## 7. Colour palette (exact, sampled from deck p.14)
+## 7. Colour palette (exact)
 
 ```
 S5 Policy / light blue ........ #A0C0D5
@@ -287,6 +285,8 @@ ensureChildren(n)                          // lazily gives a node 3 placeholder 
 | `setChannels` | `{ cmd:'setChannels', shown }`, `shown` = any subset of `{a,b,c,d,e,f,g,env,meta}` booleans | applies recognised keys, re-renders. |
 | `select` | `{ cmd:'select', type, idx? }`, `type` = a `data-el` value, `idx` required for `'unit'` | sets selection + info panel (no `elementClick` echo); `type:null` clears. |
 | `setPaneVisibility` | `{ cmd:'setPaneVisibility', pane:'details', visible:boolean }` | shows/hides the internal **details side-pane** (operational units · channels · element info · legend · homeostat editor). `visible:false` frees its width to the diagram, which re-centres/reflows immediately; emits `paneVisibilityChanged`. `pane` omitted ⇒ treated as `'details'`. Standalone default = visible. |
+| `highlight` | `{ cmd:'highlight', els }` — `els` = array of **tokens** to keep bright (everything else dims); `null` clears → default view | Tokens: `a c b d e f g` (channels), `h34` (3–4 homeostat), `h5` (S5 arms), `s4env` (S4↔future eye), `sp54`/`sp43` (blue/green metasystem spine), `feed3s`/`feed2` (S3→S3*/S3→S2 elbows), `s2 s3 s3s s4box s5box` (system shapes), `units` (S1 units). Call `setChannels` first so the channels are visible. Pure visual (emits nothing). Used by the channel-variety editor to light up the selected loop's channel in the real diagram. |
+| `fullscreen` | `{ cmd:'fullscreen', on? }` — `on:true` enter / `false` exit / omit = toggle | browser full screen for the diagram. **Exit always works; entering needs a user gesture** (a `postMessage` has none → the reliable enter is the in-frame ⛶ button / `F` key). **⚠ The host `<iframe>` MUST carry `allow="fullscreen"`** (or legacy `allowfullscreen`) or the browser blocks it and the button silently no-ops. The view re-fits on enter/exit; emits `fullscreenchange`. |
 
 > **URL param (no bridge needed):** embed `vsm.html?pane=hidden` (synonyms: `collapsed`/`false`/`0`) to open with the details pane already collapsed — ideal for the **standalone main-nav entry** that wants a diagram-only view without wiring postMessage. The in-iframe toggle button still works.
 >
@@ -304,10 +304,11 @@ ensureChildren(n)                          // lazily gives a node 3 placeholder 
 | `drill` | `{ evt:'drill', path:[hostId,…], sifId }` — user double-clicked an S1 operation |
 | `zoom` | `{ evt:'zoom', path:[hostId,…], sifId }` — user zoomed out or used a breadcrumb |
 | `paneVisibilityChanged` | `{ evt:'paneVisibilityChanged', pane:'details', visible:boolean }` — emitted whenever the details pane is toggled, **both** by the user (the compact panel button in the top control bar, `aria-label` "Hide/Show VSM detail pane") **and** by a host `setPaneVisibility` command |
+| `fullscreenchange` | `{ evt:'fullscreenchange', fullscreen:boolean }` — emitted on enter/exit (the in-frame ⛶ button, `F` key, `Esc`, or a host `fullscreen` command) |
 
 where `parentId` / `sifId` = the current SIF host id, and `path` = host ids from root to SIF.
 
-**Inline alternative (option B, also shipped):** `window.VSM = { loadTree, setPath, setChannels, select, setPaneVisibility, getState, onEmit }` mirrors the commands for hosts that inline the `<script>` instead of using an iframe (`setPaneVisibility(boolean)`). `getState()` → `{ path:[hostId…], sif, shown, selected, paneShown }`; set `onEmit = fn` to receive the outgoing `evt` messages without postMessage.
+**Inline alternative (option B, also shipped):** `window.VSM = { loadTree, setPath, setChannels, select, highlight, fullscreen, isFullscreen, setPaneVisibility, getState, onEmit }` mirrors the commands for hosts that inline the `<script>` instead of using an iframe (`setPaneVisibility(boolean)`; `fullscreen(on?)` best-effort enter / always-works exit; `isFullscreen()`). `getState()` → `{ path:[hostId…], sif, shown, selected, paneShown }`; set `onEmit = fn` to receive the outgoing `evt` messages without postMessage.
 
 **Host gotchas:** `loadTree` children may be lazy — a unit with no `children` still drills (vsm.html generates placeholder R-1 children locally, which carry **no** host id), so feed a real sub-tree on the `drill` event if the host needs identified sub-units. After an `add`, reconcile the `tempId`/`local:<n>` placeholder with a real host id (a follow-up `loadTree` or `setPath` is the simplest path).
 
@@ -323,6 +324,7 @@ where `parentId` / `sifId` = the current SIF host id, and `path` = host ids from
 - The `<svg>` carries explicit `width`/`height` + `preserveAspectRatio` (Safari renders a blank stage without them — see 12.11).
 - **Integration bridge is implemented** (see §12.9): the iframe + `postMessage` contract plus a `window.VSM` inline mirror, verified end-to-end. `node` now carries an optional `hostId`; `tree` is a `let` (replaceable via `loadTree`). Standalone behavior and visuals are unchanged.
 - **Collapsible details pane** (for embedded mode): a compact panel button in the top control bar + the `setPaneVisibility` host command hide/show the sidebar; hiding frees the width to the diagram (auto re-centre/reflow, click targets stay precise). Emits `paneVisibilityChanged`. Standalone default = visible.
+- **Full-screen mode (2026-06-20, ported from the E2E editor):** a **⛶ toggle button** at the top of the `#zoomctl` widget + the **`F`** key (⌘/Ctrl+F stays the browser's find; `F` ignored while typing). Uses the Fullscreen API on `document.documentElement` (webkit fallback, failures swallowed); the icon swaps to a collapse glyph and the view re-fits (`fitView`) on enter/exit. Bridge: `{cmd:'fullscreen', on?}` + `window.VSM.fullscreen(on?)` / `isFullscreen()`, and a `{evt:'fullscreenchange', fullscreen}` emit. **Embed caveat:** the host `<iframe>` must carry `allow="fullscreen"`; `postMessage`-enter has no user gesture so the reliable enter is the button/`F` (exit always works). 2 Playwright specs in `asset-tests/vsm.spec.js`.
 - **Canvas pan + zoom** (Miro/Maps-style; *geometric*, distinct from the recursion drill): floating `+ / % / −` control at the bottom-right, **mouse-wheel = zoom at cursor**, **drag = pan**, the `%` chip resets to fit. **The SVG fills the whole stage** (`.stage svg{width:100%;height:100%}`) and the **viewBox is computed each render to match the stage's aspect ratio** while framing the content (`CONTENT={x:130,y:34,w:652}`, `h=baseViewH=H-36`) — so the *entire viewport is the canvas* and zoom/pan use all of it (no fixed narrow drawing box). State: module `zoom` (1=fit) + `panX`/`panY` (view-centre offset, content units); helpers `fitVB()/curVB()/clampView()/applyVB()/zoomAround()`. Clicks/drill/shape-editor stay accurate (`getScreenCTM`); a pan-drag suppresses the trailing click (the flag is cleared on each fresh `mousedown`). View **resets to fit** on recursion navigation (drill / breadcrumb / `loadTree` / `setPath`, via `resetView()`) and **on frame/iframe resize**; **persists** across non-nav renders. Currently **local** — no bridge command (could add `setView`/`resetView`).
 - **Fit vs. the portrait aspect:** at fit, the content is framed to the stage aspect — so on a *wide/landscape* frame the **portrait** diagram (~0.89) is centred with side gaps (inherent: filling the width while keeping the whole diagram visible isn't possible without cropping/scrolling). The win of the full-stage canvas is that **zooming/panning now use the entire viewport** instead of a narrow box. To open the standalone view diagram-first, use `?pane=hidden` and give the iframe full width/height.
 

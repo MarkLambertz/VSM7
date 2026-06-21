@@ -1,4 +1,5 @@
 import {
+  createChannelVarietyModel,
   createImplementationItem,
   createKeyBuyingCriterion,
   getStep5ContributionKey,
@@ -142,6 +143,7 @@ export function createSampleWorkspace() {
   sample.step6.communicationChannels[5].synchronicity = "Weak";
   sample.step6.communicationChannels[5].security = "Strong";
   sample.step6.communicationChannels[5].observation = "Strategic and operative planning need earlier synchronization.";
+  sample.step6.channelVarietyModel = createChannelVarietyModel(sample, sample.step6.communicationChannels);
 
   const role = createRole();
   role.name = "Portfolio Manager";

@@ -26,7 +26,9 @@ This slice focuses on the canonical VSM data model and the SCT-centered flow:
 - Step II: manageability assessment
 - Step III: success-critical tasks
 - Step IV: central/decentral allocation and accountability
-- Step V-VII: structured capture for meetings, communication checks, representation, and implementation
+- Step V: R0/SIF contribution mapping to VSM systems
+- Step VI: E2E robustness routes anchored to one primary SCT, with optional related SCTs for real cross-task processes, plus a canonical per-SIF variety check covering all seven vertical VSM loops and downloadable route/check outcomes
+- Step VII: roles, meetings, RASIC accountability, and representation
 - Downloadable Word/Excel-compatible outcomes plus project JSON
 - Browser localStorage persistence for workshop/project data
 

@@ -47,7 +47,7 @@ function getStepVisual(token, title) {
       title: "Channel robustness radar",
       kind: "channels",
       caption: "Closed-loop robustness across the channel criteria",
-      items: ["Capacity", "Intelligibility", "Synchronicity", "Security"]
+      items: ["Capacity", "Clarity", "Synchronicity", "Feedback"]
     },
     "Step VII": {
       title: "Role constellation",

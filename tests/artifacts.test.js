@@ -78,6 +78,13 @@ test("export builders produce safe artifacts without completeness grading", () =
   assert.match(step4.content, /Accountable organization/);
   assert.match(step5.content, /VSM System/);
   assert.match(step5.content, /Contribution/);
+  assert.match(buildStepOutcome(workspace, "step6").content, /E2E Robustness Findings/);
+  assert.match(buildStepOutcome(workspace, "step6").content, /Communication Variety Checks/);
+  assert.match(buildStepOutcome(workspace, "step6").content, /Communication &amp; Meetings/);
+  assert.match(buildStepOutcome(workspace, "step6").content, />Artifact</);
+  assert.match(buildStepOutcome(workspace, "step6").content, />Role</);
+  assert.match(buildStepOutcome(workspace, "step6").content, /S5-S1 algedonic signal/);
+  assert.match(buildStepOutcome(workspace, "step6").content, /Unrated/);
   assert.match(buildStepOutcome(workspace, "step3").content, /SCT ID/);
   assert.match(buildStepOutcome(workspace, "step3").content, /Tool or Methodological Approach/);
   assert.match(step7.content, /Representation/);

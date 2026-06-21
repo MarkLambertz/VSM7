@@ -121,7 +121,7 @@ The SCT lifecycle answers progressively richer steering questions:
 - Step III defines the SCT: **What must permanently be done?**
 - Step IV decomposes the SCT into contributions by recursion level and organizational unit: **Where are contributions required?**
 - Step V allocates VSM system numbers to the R0/System-in-Focus contributions: **Which steering function performs each SIF contribution?**
-- Step VI connects contributions through communication channels and later E2E process routes: **How must information and work flow?**
+- Step VI connects contributions through communication channels and E2E process routes: **How must information and work flow?**
 - Step VII allocates roles, responsibilities, and RASIC relationships: **Who is accountable and involved?**
 
 Important modeling boundaries:
@@ -145,8 +145,21 @@ Important modeling boundaries:
 - The Step V mapping lens should distinguish the doctrinal view (S2-S5 steering systems, S1 treated as self-organizing) from the pragmatic view (S1 can be mapped when the R0 SCT contribution describes operative work).
 - Meeting landscapes and roles belong in Step VII, not Step V.
 - Step VI has two distinct scopes:
-  - variety checks between VSM systems,
-  - and a later robustness check for E2E processes based on SCTs and their contributions, inspired by a Flight Levels flight-route simulation.
+  - `6.1 E2E Process Robustness Check`: a Flight Levels-inspired route editor based on the selected SCT and its actual Step IV contributions,
+  - `6.2 Communication Variety Checks`: robustness checks between VSM systems.
+- Step VI communication variety checks use one fixed canonical vertical-loop checklist for every System-in-Focus. Instantiate all seven loops per SIF; do not infer, filter, or remove loops from existing workshop data. The checklist covers S5-S1 algedonic, S3-S1 command, S3-S1 resource bargain, S3*-S1 audit, S2-S1 coordination, S4-S3 homeostat, and S5-S4/S3 normative communication.
+- The communication variety editor ships as front-end-owned `channel-variety-check.html`; its bridge and model contract are documented in front-end-owned `CHANNEL-VARIETY-BRIEFING.md`. Host code owns embedding, stable per-SIF loop identities, persistence, legacy migration, reports, and export orchestration. Request visual or bridge changes from the front-end owner instead of editing either file.
+- Preserve canonical communication-loop ids and ratings across SIF or organizational renames. Missing or informal loops remain visible and rateable; absence is a diagnostic result, not a reason to filter a loop out.
+- The Step VI E2E editor ships as `e2e-robustness-check.html` and is front-end-owned. Its bridge contract is documented in `FLIGHT-ROUTE-BRIEFING.md` section 8. Host-side agents must not edit either file; request front-end changes from the front-end owner.
+- Persist each authored E2E route in the canonical workspace by its primary SCT id. The host owns recursion levels and SCT contribution context; the editor owns route nodes, links, call-outs, and findings. Restore the host copy through `loadModel` and reconcile lanes through stable Step I ids.
+- An E2E route describes the **HOW** for a primary SCT's **WHAT**. The facilitator may explicitly add related SCTs when a real process crosses SCT boundaries. Store only stable references in `meta.primarySctId` and `meta.relatedSctIds`; never duplicate SCTs or their contributions into route-owned domain records.
+- Send cross-SCT context to the editor through `setSCTContext`. Every primary/related SCT object carries its canonical `id`, human-readable `displayId` (for example `SCT-001`), and mutable `name`; canonical contribution references continue to use `sctId` and `sctName`. `displayId` is runtime context only and must never replace stable ids in persisted relationships. Preserve the editor's optional `node.contribSctId` origin hint and the canonical `contribId` verbatim.
+- Related SCT names must resolve live from canonical SCT data. Removing a related SCT must not delete placed route steps; preserve the route evidence and let the editor flag the source as unavailable. SCT splits and merges must rewire valid SCT/contribution references through stable ids.
+- Transition call-outs on cross-lane links capture robustness observations and hand-off risks.
+- Step VI E2E routes may contain structured human-authored findings on a route step or connection. Preserve the frame-minted route, node, link, callout, and finding ids verbatim; legacy routes without a `findings` collection migrate to `findings: []`.
+- E2E findings are workshop observations, not automatic organizational truth. They become transformation-backlog candidates only and require an explicit human action before a backlog item is created.
+- A backlog item created from an E2E finding must retain `source: { kind: "e2e-finding", routeId, findingId }`. If the finding or route later disappears, keep the backlog item and visibly flag its source as removed or detached rather than silently deleting work.
+- SCT split and merge operations must preserve route evidence through stable route identities. A split receives a new route identity while preserving the copied route's internal element/finding ids; a merge keeps one active route and archives additional routes as detached evidence.
 - Step VII enriches the same SCTs and contributions with roles and RASIC accountability. Meeting landscapes and organizational charts are additional Step VII derivations, not replacements for SCT-based accountability.
 - Renaming or moving a Step I organizational unit must preserve its downstream SCT contributions through stable references.
 - Deleting a referenced organizational unit must never silently delete downstream SCT contributions. Require explicit confirmation and preserve or clearly flag affected contribution data.

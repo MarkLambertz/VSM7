@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Communication Variety Checks</title>
+<style>
+  :root{ --ink:#222a33; --muted:#6b7480; --line:#e4e8ec; --bg:#fff; --panel:#fbfcfd; --sel:#2f6fed; }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;color:var(--ink);background:var(--bg);display:flex;flex-direction:column}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line)}
+  .ttl strong{font-size:15px;font-weight:600;display:block}
+  .ttl span{font-size:11.5px;color:var(--muted)}
+  .iconbtn{width:30px;height:26px;border:1px solid var(--line);background:#fff;border-radius:7px;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:center;padding:0}
+  .iconbtn:hover{background:#eef4f9}
+  .iconbtn.on{color:var(--sel)}
+  #dlmenu{position:absolute;right:0;top:32px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 4px 14px rgba(20,30,50,.13);overflow:hidden;z-index:20;min-width:80px}
+  #dlmenu[hidden]{display:none}
+  #dlmenu button{display:block;width:100%;text-align:left;padding:7px 12px;border:none;background:none;font:inherit;font-size:12.5px;cursor:pointer;color:var(--ink)}
+  #dlmenu button:hover{background:#eef4f9}
+  .main{flex:1;min-height:0;overflow:auto;padding:16px 18px}
+  .summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .metric{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 13px;min-width:140px}
+  .metric .ml{font-size:11.5px;color:var(--muted)}
+  .metric .mv{font-size:24px;font-weight:600;line-height:1.15}
+  .weak{flex:1;min-width:260px;display:flex;gap:10px;align-items:flex-start;border-radius:10px;padding:9px 13px;background:#fcf0ee;border:1px solid #f0cfc9}
+  .weak.ok{background:#eef7ea;border-color:#cfe6c4}
+  .weak .wi{font-size:17px;line-height:1.2}
+  .weak .wl{font-size:11.5px;color:#a3402f}
+  .weak.ok .wl{color:#3f7a35}
+  .weak .wn{font-size:14px;font-weight:600}
+  .weak .wr{font-size:12px;color:var(--muted)}
+  .grid{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+  .matrixcol{flex:1.6;min-width:360px}
+  .sidecol{flex:1;min-width:280px}
+  .matrix{display:grid;grid-template-columns:minmax(180px,1.5fr) repeat(4,minmax(60px,88px));border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .gi{border-bottom:0.5px solid #eef1f4;display:flex;align-items:center;justify-content:center;padding:7px 5px;min-height:42px}
+  .gi.lh{justify-content:flex-start;padding-left:12px}
+  .gi.hc{background:var(--panel);font-size:10px;color:var(--muted);font-weight:600;text-align:center;line-height:1.2;min-height:38px;overflow-wrap:break-word}
+  .gi.hc[data-tip]{cursor:help;text-decoration:underline dotted #b6c0cb;text-underline-offset:3px}
+  .gi.hc[data-tip]:hover,.gi.hc[data-tip]:focus-visible{color:#2a3340;outline:none}
+  .ctip{position:fixed;transform:translateX(-50%);max-width:230px;background:#222a33;color:#fff;font-size:11px;font-weight:500;line-height:1.45;padding:7px 10px;border-radius:8px;box-shadow:0 5px 18px rgba(20,30,50,.22);z-index:60;pointer-events:none}
+  .ctip::before{content:"";position:absolute;left:50%;top:-5px;transform:translateX(-50%);border:5px solid transparent;border-top:0;border-bottom-color:#222a33}
+  .gisel{background:#f2f7ff}
+  .loopcell{display:flex;align-items:center;gap:9px;background:none;border:none;padding:0;cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+  .chip{font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;white-space:nowrap;flex:none}
+  .syschips{display:inline-flex;gap:3px;flex:none}
+  .llabel{font-size:12.5px;line-height:1.25}
+  .cell{width:34px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;font-weight:700;padding:0}
+  .card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+  .card h3{margin:0 0 6px;font-size:12px;font-weight:600;color:var(--muted)}
+  #radar{max-width:300px;margin:0 auto}
+  #vsmframe{width:100%;height:420px;border:1px solid var(--line);border-radius:8px;display:block;background:#fff}
+  .leg{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;color:var(--muted);margin-top:4px}
+  .leg span{display:inline-flex;align-items:center;gap:5px}
+  .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .fld{display:block;width:100%;border:1px solid var(--line);border-radius:7px;padding:6px 8px;font:inherit;font-size:12.5px;color:var(--ink);margin-bottom:8px}
+  .fld:focus{outline:none;border-color:#cfe0ee;background:#f7fbff}
+  textarea.fld{resize:vertical;min-height:54px}
+  .lab{font-size:11px;color:var(--muted);margin:0 0 3px}
+  .guideq{font-size:12.5px;font-weight:500;color:#3a424c;margin:2px 0 11px}
+  .hint{font-size:12px;color:var(--muted);font-style:italic}
+  .dot{font-size:12px}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="ttl"><strong>Communication variety checks</strong><span>Channel robustness · capacity · clarity · synchronicity · feedback</span></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div id="dlwrap" style="position:relative">
+        <button id="btnDl" class="iconbtn" type="button" title="Download outcome" aria-label="Download outcome"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5 V9.5 M4.5 6.5 L8 10 L11.5 6.5 M3 13 H13"/></svg></button>
+        <div id="dlmenu" hidden><button type="button" data-export="png">PNG</button><button type="button" data-export="svg">SVG</button></div>
+      </div>
+      <button id="btnFs" class="iconbtn" type="button" title="Full screen (F)" aria-label="Full screen (F)"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6 V2.5 H6 M10 2.5 H13.5 V6 M13.5 10 V13.5 H10 M6 13.5 H2.5 V10"/></svg></button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="summary">
+      <div class="metric"><div class="ml">Closed-loop robustness</div><div class="mv" id="overall">—</div></div>
+      <div class="weak" id="weak"><div class="wi" id="weakIcon">⚠</div><div><div class="wl" id="weakLbl">Weakest link — viability is capped here</div><div class="wn" id="weakName">—</div><div class="wr" id="weakReason">—</div></div></div>
+    </div>
+    <div class="grid">
+      <div class="matrixcol"><div class="matrix" id="matrix"></div>
+        <div class="leg">
+          <span><span class="sw" style="background:#EDF6E0;border:1px solid #6fa12f"></span>pass ✓</span>
+          <span><span class="sw" style="background:#FBF0DC;border:1px solid #d89a3a"></span>caution ~</span>
+          <span><span class="sw" style="background:#FCEBEB;border:1px solid #cf5757"></span>weak ✕</span>
+          <span>click a cell to cycle · click a loop for detail</span>
+        </div>
+        <div class="card" id="detail" style="margin-top:12px"></div>
+      </div>
+      <div class="sidecol">
+        <div class="card"><h3>Viable System Model</h3><iframe id="vsmframe" title="Viable System Model" allow="fullscreen" scrolling="no"></iframe><div class="hint" style="margin-top:2px">Select a loop on the left to light up its channel.</div></div>
+        <div class="card"><h3>Channel robustness radar</h3><div id="radar"></div>
+          <div class="leg"><span><span class="sw" style="background:#1D9E75"></span>all channels</span><span><span class="sw" style="border-top:2px dashed #5a6470;width:14px;height:0"></span>selected loop</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+"use strict";
+/* ======================================================================
+   Communication Variety Checks — standalone, self-contained (vanilla).
+   Step VI substep 2: rate each VSM loop's channel against four
+   criteria (capacity ≈ requisite variety, clarity ≈ transduction,
+   synchronicity ≈ timeliness, feedback ≈ closed loop / response returns). Owns its own state;
+   the VSM7 host drives it over an iframe/postMessage bridge (window.CVC).
+
+   INTEGRATION BRIDGE  (mirrors vsm.html §12.9 / e2e-robustness-check.html)
+   HOST -> frame  ( iframe.contentWindow.postMessage(msg,'*') )
+     { cmd:'loadModel', model }   restore the full model (loops + ratings + notes)
+     { cmd:'setLoops',  loops }   loops=[{id,sys,label}] for this SIF (stable host ids);
+                                  existing ratings/notes are preserved by id across a re-feed
+     { cmd:'setMeta',   meta }    { sct?, sifName? } (display only)
+     { cmd:'select',    id }      select a loop by id (null clears)
+     { cmd:'fullscreen',on }      true enter / false exit / omit toggle. Exit always works;
+                                  entering needs a user gesture — use the button / F key.
+                                  NEEDS the host iframe to carry allow="fullscreen".
+     { cmd:'export', format, requestId, filename? }   format='png'|'svg'. Renders the outcome
+                                  (matrix + radar + weakest-link) off-screen and replies with
+                                  exportReady (or exportError) carrying the same requestId.
+                                  The host orchestrates the actual download (the in-editor
+                                  download button is hidden when embedded).
+   frame -> HOST  ( posted to window.parent '*'; also window.CVC.onEmit(msg) when inlined )
+     { evt:'ready', api:1 }
+     { evt:'change', model }      debounced — the ratings/notes to persist (authoritative)
+     { evt:'select', ref }        ref={id,label}|null
+     { evt:'fullscreenchange', fullscreen }
+     { evt:'exportReady', requestId, format, filename, mimeType, blob }   blob = structured-clone Blob
+     { evt:'exportError', requestId, format, message }
+   The 4 criteria are fixed; ratings are 0=unrated,1=weak,2=caution,3=pass.
+   ====================================================================== */
+const KEY='cvcChecks1';
+const CRIT=[
+  {k:'capacity',label:'Capacity',tip:'Requisite variety — can the channel carry enough variety, in time? (Ashby)'},
+  {k:'clarity',label:'Clarity',tip:'Is the message clear and understood end to end? (transduction)'},
+  {k:'synchronicity',label:'Synchronicity',tip:'Is it timely relative to what it regulates?'},
+  {k:'feedback',label:'Feedback',tip:'Does a response come back and close the loop? (acknowledgment, correction, confirmation)'}
+];
+const REASON=['capacity below requisite variety','not understood end to end (transduction loss)','too slow / out of sync','open loop — no response returns'];
+function splitLabel(lab){ if(lab.length<=14) return [lab]; const i=Math.round(lab.length*0.6); return [lab.slice(0,i), lab.slice(i)]; }   // wrap very long single-word labels onto two lines (none of the current four exceed 14)
+const SYSCOL={   // canonical VSM7 system colours — ref vsm.html (--s5/--s4/--s3/--s2); 3* shares System 3's red
+  'S2':['#FFCC50','#5e4708'], 'S3':['#FF5534','#ffffff'], 'S3*':['#FF5534','#ffffff'], 'S4':['#7BCA79','#16451a'], 'S5':['#A0C0D5','#27465b'] };
+const GREY=['#e9edf1','#444441'];
+function sysChipsHTML(sys){ return '<span class="syschips">'+String(sys||'').split('/').map(p=>{const s=p.trim(),ch=SYSCOL[s]||GREY;return `<span class="chip" style="background:${ch[0]};color:${ch[1]}">${esc(s)}</span>`;}).join('')+'</span>'; }
+function sysChipsSVG(sys,x,cy){ let out='',cx=x; String(sys||'').split('/').forEach(p=>{const s=p.trim(),ch=SYSCOL[s]||GREY,cw=s.length*7+12; out+=`<rect x="${cx}" y="${cy-9}" width="${cw}" height="18" rx="9" fill="${ch[0]}"/><text x="${cx+cw/2}" y="${cy+4}" text-anchor="middle" font-size="11" font-weight="700" fill="${ch[1]}">${esc(s)}</text>`; cx+=cw+4;}); return {svg:out, w:Math.max(0,cx-x-4)}; }
+const RAG={1:{bg:'#FCEBEB',bd:'#cf5757',fg:'#791F1F',g:'✕',name:'weak'},2:{bg:'#FBF0DC',bd:'#d89a3a',fg:'#633806',g:'~',name:'caution'},3:{bg:'#EDF6E0',bd:'#6fa12f',fg:'#27500A',g:'✓',name:'pass'}};
+const NEXT={0:3,3:2,2:1,1:0};   // click cycles: unrated -> pass -> caution -> weak -> unrated
+
+function L(id,sys,label,r,note,ch){ return {id,sys,label,communication:'',artifact:'',role:'',ratings:r||[0,0,0,0],note:note||'',vsmChannel:ch||''}; }   // communication/artifact/role = per-loop free-text detail; vsmChannel = which vsm.html channel this loop lights up (f e d b g · s4env h34 h5)
+function defaultModel(){ return { meta:{sct:'',sifName:''}, loops:[
+  L('l-s2s1','S2','S2–S1 coordination',[3,3,2,3],'','f'),
+  L('l-s3s1i','S3','S3–S1 intervention',[3,3,3,2],'','e'),
+  L('l-s3s1r','S3','S3–S1 resource bargain',[2,3,3,3],'','d'),
+  L('l-s3star','S3*','S3*–S1 real-life information',[3,2,1,3],'Audit probe runs quarterly — real-life picture is often stale by the time it lands.','b'),
+  L('l-s4env','S4','S4–environment sensing',[2,3,3,3],'','s4env'),
+  L('l-s4s3','S4/S3','S4–S3 strategy & planning',[3,2,3,3],'','h34'),   // homeostat: bilateral, both systems on the chip
+  L('l-s5n','S5','S5–S4/S3 normative parameters',[3,3,3,2],'','h5'),
+  L('l-s5alg','S5','S5–S1 algedonic signal',[1,2,2,3],'Alarm path shares the routine reporting queue — can saturate exactly when it matters.','g')
+]};}
+
+function normalize(m){ const o={meta:{},loops:[]};
+  o.meta = (m&&m.meta&&typeof m.meta==='object') ? m.meta : {};
+  const ls = (m&&Array.isArray(m.loops)) ? m.loops : [];
+  o.loops = ls.map(l=>({ id:String(l.id), sys:l.sys!=null?String(l.sys):'', label:l.label!=null?String(l.label):String(l.id),
+    communication:l.communication!=null?String(l.communication):'', artifact:l.artifact!=null?String(l.artifact):'', role:l.role!=null?String(l.role):'',
+    ratings:(Array.isArray(l.ratings)?l.ratings:[]).slice(0,4).map(v=>([0,1,2,3].includes(+v)?+v:0)).concat([0,0,0,0]).slice(0,4),
+    note:l.note!=null?String(l.note):'', vsmChannel:l.vsmChannel!=null?String(l.vsmChannel):'' }));
+  return o;
+}
+function load(){ try{ const r=localStorage.getItem(KEY); if(r) return normalize(JSON.parse(r)); }catch(_){} return null; }
+
+let model = load() || defaultModel();
+let selectedId = null;
+let _silent = false;
+const HOOKS = { change(){}, select(){}, fs(){} };
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(model)); }catch(_){} if(!_silent) HOOKS.change(); }
+
+/* ---------- derived diagnostics ---------- */
+function compute(){
+  let sum=0,n=0; const col=[[],[],[],[]];
+  const rows=model.loops.map(l=>{ let mn=9,mi=0,c=0,ls=0;
+    l.ratings.forEach((v,ci)=>{ if(v>0){ sum+=v;n++;col[ci].push(v);c++;ls+=v; if(v<mn){mn=v;mi=ci;} } });
+    return {l,min:c?mn:9,mi,rated:c,lsum:ls}; });
+  const overall = n? Math.round(sum/(n*3)*100) : null;
+  const agg = col.map(a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/(a.length*3)*100):0);
+  const rankable = rows.filter(r=>r.rated>0 && r.min<3).sort((a,b)=>(a.min-b.min)||(a.lsum-b.lsum));
+  return {overall, agg, weak:rankable[0]||null};
+}
+function loopRadar(l){ if(!l) return null; if(!l.ratings.some(v=>v>0)) return null; return l.ratings.map(v=>v>0?Math.round(v/3*100):0); }
+
+/* ---------- render ---------- */
+const matrixEl=document.getElementById('matrix'), radarEl=document.getElementById('radar'), detailEl=document.getElementById('detail');
+function cellStyle(v){ if(v>0){const r=RAG[v];return `background:${r.bg};border:1.5px solid ${r.bd};color:${r.fg}`;} return 'background:transparent;border:1.5px dashed #cfd6de;color:#aeb6bf'; }
+
+function renderMatrix(){
+  let h=`<div class="gi hc lh">Loop</div>`+CRIT.map(c=>`<div class="gi hc" data-tip="${esc(c.tip)}" tabindex="0">${splitLabel(c.label).map(esc).join('<br>')}</div>`).join('');
+  model.loops.forEach((l,li)=>{ const sd=l.id===selectedId, sc=sd?' gisel':'';
+    h+=`<div class="gi lh${sc}"><button class="loopcell" data-loopsel="${li}">${sysChipsHTML(l.sys)}<span class="llabel">${esc(l.label)}</span></button></div>`;
+    l.ratings.forEach((v,ci)=>{ const r=v>0?RAG[v]:null;
+      h+=`<div class="gi${sc}"><button class="cell" data-cell data-loop="${li}" data-crit="${ci}" title="${CRIT[ci].label}: ${r?r.name:'unrated'}" aria-label="${esc(l.label)} ${CRIT[ci].label} ${r?r.name:'unrated'}" style="${cellStyle(v)}">${r?r.g:''}</button></div>`; });
+  });
+  matrixEl.innerHTML=h;
+}
+function renderSummary(d){
+  document.getElementById('overall').textContent = d.overall==null?'—':d.overall+'%';
+  const box=document.getElementById('weak');
+  if(d.weak){ box.classList.remove('ok'); document.getElementById('weakIcon').textContent='⚠';
+    document.getElementById('weakLbl').textContent='Weakest link — viability is capped here';
+    document.getElementById('weakName').textContent=d.weak.l.label;
+    document.getElementById('weakReason').textContent=REASON[d.weak.mi];
+  } else { box.classList.add('ok'); document.getElementById('weakIcon').textContent='✓';
+    document.getElementById('weakLbl').textContent=d.overall==null?'Nothing rated yet':'All rated channels pass';
+    document.getElementById('weakName').textContent=d.overall==null?'Start rating the channels':'No weak link';
+    document.getElementById('weakReason').textContent=d.overall==null?'click the cells below':'every loop meets all four criteria';
+  }
+}
+function radarInner(cx,cy,R,agg,sel){   // returns the radar's SVG elements at (cx,cy) — shared by the live view and the export
+  const ang=i=>(-90+i*90)*Math.PI/180, P=(i,v)=>[cx+R*(v/100)*Math.cos(ang(i)),cy+R*(v/100)*Math.sin(ang(i))];
+  const poly=vals=>[0,1,2,3].map(i=>{const p=P(i,vals[i]);return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ');
+  let s='';
+  [25,50,75,100].forEach(t=>{ s+=`<polygon points="${poly([t,t,t,t])}" fill="${t===100?'#fbfcfd':'none'}" stroke="#e6e9ee" stroke-width="1"/>`; });
+  [0,1,2,3].forEach(i=>{const e=P(i,100);s+=`<line x1="${cx}" y1="${cy}" x2="${e[0].toFixed(1)}" y2="${e[1].toFixed(1)}" stroke="#e6e9ee" stroke-width="1"/>`;});
+  if(sel) s+=`<polygon points="${poly(sel)}" fill="none" stroke="#5a6470" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+  s+=`<polygon points="${poly(agg)}" fill="rgba(29,158,117,0.16)" stroke="#1D9E75" stroke-width="2"/>`;
+  [0,1,2,3].forEach(i=>{const p=P(i,agg[i]);s+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.8" fill="#1D9E75"/>`;});
+  const LP=[[cx,cy-R-14,'middle'],[cx+R+12,cy-2,'start'],[cx,cy+R+22,'middle'],[cx-R-12,cy-2,'end']];
+  [0,1,2,3].forEach(i=>{ const [x,y,a]=LP[i], w=splitLabel(CRIT[i].label);   // wrap long single-word labels so the compact radar doesn't clip
+    w.forEach((ln,k)=>{ s+=`<text x="${x}" y="${y+k*11}" text-anchor="${a}" font-size="11" font-weight="600" fill="#4a5560">${esc(ln)}</text>`; });
+    s+=`<text x="${x}" y="${y+(w.length-1)*11+13}" text-anchor="${a}" font-size="11" fill="#8a93a0">${agg[i]}%</text>`; });
+  return s;
+}
+function renderRadar(agg){ const sel=loopRadar(model.loops.find(l=>l.id===selectedId));
+  radarEl.innerHTML=`<svg viewBox="0 0 340 250" width="100%" preserveAspectRatio="xMidYMid meet" font-family="inherit" role="img" aria-label="Channel robustness radar across the four criteria">${radarInner(170,120,80,agg,sel)}</svg>`; }
+/* ---------- live VSM: drive the embedded vsm.html to highlight the selected loop's channel ---------- */
+const VSM_SRC=(()=>{ const u=(new URLSearchParams(location.search).get('vsm')||'vsm'); return u+(u.includes('?')?'&':'?')+'pane=hidden&chrome=min'; })();   // host points the embed at vsm.html via ?vsm=<url>; default = the sibling 'vsm'
+let vsmReady=false; const vsmFrame=()=>document.getElementById('vsmframe');
+// per-loop view: keep the loop's OWN channel + system(s) visible, dim everything else (units always stay). Defined loop by loop with Mark.
+// S1-facing loops keep 'units'; the three metasystem loops (s4env, h34, h5) omit it so the operational units recede.
+const CH2SHOW={
+  f:     ['f','s2','units','a','c'],                      // S2–S1 coordination — CONFIRMED: coordination channel + S2 + units + env-overlaps (a) + operational-deps (c) — all S2 coordination, all amber
+  e:     ['e','s3','units'],                              // S3–S1 command/intervention — CONFIRMED: S3 box + command channel + units
+  d:     ['d','s3','units'],                              // S3–S1 resource bargain — CONFIRMED: S3 box + resource channel + units
+  b:     ['b','s3s','feed3s','s3','units'],               // S3*–S1 audit — CONFIRMED: S3* + audit channel + S3→S3* feed + S3 box + units
+  g:     ['g','s5box','units'],                           // S5–S1 algedonic — CONFIRMED: alarm rises from the units straight to S5, hierarchy bypassed
+  s4env: ['s4env','s4box'],                               // S4↔environment — CONFIRMED: S4 box + future eye; units hidden
+  h34:   ['h34','s3','s4box','sp43'],                     // S3–S4 homeostat — CONFIRMED: S3+S4 boxes + homeostat + green spine; units hidden
+  h5:    ['h5','s5box','s4box','s3','sp54','sp43','h34']  // S5→S4/S3 normative — CONFIRMED: S5+S4+S3 + arms + spine + S3/S4 homeostat; units hidden
+};
+function vsmHighlight(){ const f=vsmFrame(); if(!vsmReady||!f||!f.contentWindow) return;
+  const l=model.loops.find(x=>x.id===selectedId), tok=l&&l.vsmChannel;
+  const els= tok ? (CH2SHOW[tok]||[tok]) : null;   // expand the channel token into its full show-set
+  f.contentWindow.postMessage({cmd:'highlight', els}, '*'); }
+window.addEventListener('message',e=>{ const f=vsmFrame(); if(!f||e.source!==f.contentWindow) return; const m=e.data;   // the embedded vsm.html announced ready → show all channels, then highlight the current loop
+  if(m&&m.evt==='ready'){ vsmReady=true; f.contentWindow.postMessage({cmd:'setChannels', shown:{a:true,b:true,c:true,d:true,e:true,f:true,g:true}}, '*'); vsmHighlight(); } });
+{ const f=vsmFrame(); if(f) f.src=VSM_SRC; }   // start loading the embedded diagram (after the ready-listener is registered)
+function renderDetail(){
+  const l=model.loops.find(x=>x.id===selectedId);
+  if(!l){ detailEl.innerHTML=`<h3>Loop detail</h3><div class="hint">Select a loop to record how it's run and an observation.</div>`; return; }
+  detailEl.innerHTML=`<h3>Loop detail</h3>
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">${sysChipsHTML(l.sys)}<span style="font-size:13.5px;font-weight:600">${esc(l.label)}</span></div>
+    <div class="guideq">How are you running and changing this loop?</div>
+    <div class="lab">Communication &amp; Meetings</div><input class="fld" data-f="communication" placeholder="e.g. weekly sync · escalation call" value="${esc(l.communication)}">
+    <div class="lab">Artifact</div><input class="fld" data-f="artifact" placeholder="e.g. shared dashboard · RACI · backlog" value="${esc(l.artifact)}">
+    <div class="lab">Role</div><input class="fld" data-f="role" placeholder="e.g. who runs / owns this channel" value="${esc(l.role)}">
+    <div class="lab">Observation</div><textarea class="fld" data-f="note" placeholder="What's strong or fragile about this channel?">${esc(l.note)}</textarea>`;
+}
+function renderAll(){ const d=compute(); renderMatrix(); renderSummary(d); vsmHighlight(); renderRadar(d.agg); renderDetail(); }
+
+/* ---------- outcome export (PNG / SVG): host orchestrates via the bridge; standalone uses the toolbar button ---------- */
+function clip(s,n){ s=String(s||''); return s.length>n? s.slice(0,n-1)+'…':s; }
+function buildExportSVG(){
+  const d=compute(), pad=28, W=900, critW=72, labelX=pad, critX=pad+250, mW=250+critW*4;
+  const headY=92, rowsTop=104, rowH=40, n=model.loops.length, matrixBottom=rowsTop+n*rowH;
+  const rcx=pad+mW+(W-pad-(pad+mW))/2, rcy=250, R=90;
+  let s='';   // body content; the <svg> wrapper + height are computed last so the per-loop detail can extend it
+  s+=`<text x="${pad}" y="34" font-size="19" font-weight="700" fill="#222a33">Communication variety checks</text>`;
+  const sub=[model.meta&&model.meta.sifName, model.meta&&model.meta.sct].filter(Boolean).join('  ·  ')||'Channel robustness · capacity · clarity · synchronicity · feedback';
+  s+=`<text x="${pad}" y="56" font-size="12.5" fill="#6b7480">${esc(sub)}</text>`;
+  s+=`<text x="${W-pad}" y="30" text-anchor="end" font-size="12" fill="#6b7480">Closed-loop robustness</text>`;
+  s+=`<text x="${W-pad}" y="54" text-anchor="end" font-size="22" font-weight="700" fill="#222a33">${d.overall==null?'—':d.overall+'%'}</text>`;
+  s+=`<text x="${labelX}" y="${headY}" font-size="11" font-weight="600" fill="#6b7480">Loop</text>`;
+  CRIT.forEach((c,i)=>{ s+=`<text x="${critX+i*critW+critW/2}" y="${headY}" text-anchor="middle" font-size="10" font-weight="600" fill="#6b7480">${esc(c.label)}</text>`; });
+  s+=`<line x1="${pad}" y1="${headY+8}" x2="${pad+mW}" y2="${headY+8}" stroke="#e4e8ec"/>`;
+  model.loops.forEach((l,li)=>{ const ry=rowsTop+li*rowH, cy=ry+rowH/2, cs=sysChipsSVG(l.sys, labelX, cy);
+    s+=cs.svg;
+    s+=`<text x="${labelX+cs.w+8}" y="${cy+4}" font-size="12" fill="#222a33">${esc(clip(l.label,33))}</text>`;
+    l.ratings.forEach((v,ci)=>{ const ccx=critX+ci*critW+critW/2, r=v>0?RAG[v]:null;
+      if(r){ s+=`<rect x="${ccx-15}" y="${cy-12}" width="30" height="24" rx="6" fill="${r.bg}" stroke="${r.bd}" stroke-width="1.3"/><text x="${ccx}" y="${cy+5}" text-anchor="middle" font-size="13" font-weight="700" fill="${r.fg}">${r.g}</text>`; }
+      else { s+=`<rect x="${ccx-15}" y="${cy-12}" width="30" height="24" rx="6" fill="none" stroke="#cfd6de" stroke-width="1.3" stroke-dasharray="3 2"/>`; } });
+    s+=`<line x1="${pad}" y1="${ry+rowH}" x2="${pad+mW}" y2="${ry+rowH}" stroke="#eef1f4"/>`; });
+  s+=`<text x="${rcx}" y="${rowsTop-2}" text-anchor="middle" font-size="11" font-weight="600" fill="#6b7480">Channel robustness radar</text>`;
+  s+=radarInner(rcx,rcy,R,d.agg,null);
+  const wy=matrixBottom+28;
+  if(d.weak) s+=`<text x="${pad}" y="${wy}" font-size="12.5" fill="#a3402f"><tspan font-weight="700">Weakest link:</tspan> ${esc(d.weak.l.label)} — ${esc(REASON[d.weak.mi])}. Viability is capped by the most fragile channel.</text>`;
+  else if(d.overall!=null) s+=`<text x="${pad}" y="${wy}" font-size="12.5" font-weight="700" fill="#3f7a35">All rated channels pass.</text>`;
+  const lgy=wy+22, lg=[['#EDF6E0','#6fa12f','pass ✓'],['#FBF0DC','#d89a3a','caution ~'],['#FCEBEB','#cf5757','weak ✕']]; let lx=pad;
+  lg.forEach(a=>{ s+=`<rect x="${lx}" y="${lgy-10}" width="12" height="12" rx="3" fill="${a[0]}" stroke="${a[1]}"/><text x="${lx+18}" y="${lgy}" font-size="11" fill="#6b7480">${a[2]}</text>`; lx+=String(a[2]).length*6+44; });
+  // ---- per-loop detail (only loops with any free-text) ----
+  const baseBottom=Math.max(matrixBottom+72, rcy+R+30); let bottom=baseBottom;
+  const withText=model.loops.filter(l=>l.communication||l.artifact||l.role||l.note);
+  if(withText.length){
+    let dy=baseBottom+10; s+=`<line x1="${pad}" y1="${dy}" x2="${W-pad}" y2="${dy}" stroke="#e4e8ec"/>`; dy+=22;
+    s+=`<text x="${pad}" y="${dy}" font-size="13" font-weight="700" fill="#222a33">Per-loop detail</text>`; dy+=24;
+    withText.forEach(l=>{ const cs=sysChipsSVG(l.sys,pad,dy);
+      s+=cs.svg+`<text x="${pad+cs.w+8}" y="${dy+4}" font-size="12.5" font-weight="700" fill="#222a33">${esc(clip(l.label,42))}</text>`; dy+=20;
+      [['Communication & Meetings',l.communication],['Artifact',l.artifact],['Role',l.role],['Observation',l.note]].forEach(([lab,val])=>{ if(!val) return;
+        s+=`<text x="${pad+12}" y="${dy}" font-size="11" fill="#5b636c"><tspan font-weight="600" fill="#3a424c">${esc(lab)}: </tspan>${esc(clip(val,108))}</text>`; dy+=16; });
+      dy+=12; });
+    bottom=dy;
+  }
+  const H=Math.round(Math.max(baseBottom,bottom));
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif"><rect x="0" y="0" width="${W}" height="${H}" fill="#ffffff"/>${s}</svg>`;
+}
+function exportSVGBlob(){ return new Blob([buildExportSVG()],{type:'image/svg+xml;charset=utf-8'}); }
+function exportPNGBlob(){ return new Promise((resolve,reject)=>{ const svg=buildExportSVG(), m=/width="(\d+)" height="(\d+)"/.exec(svg)||[], w=+m[1]||900, h=+m[2]||500, scale=2;
+  const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml;charset=utf-8'})), img=new Image();
+  img.onload=()=>{ try{ const cv=document.createElement('canvas'); cv.width=w*scale; cv.height=h*scale; const c=cv.getContext('2d'); c.fillStyle='#fff'; c.fillRect(0,0,cv.width,cv.height); c.setTransform(scale,0,0,scale,0,0); c.drawImage(img,0,0); URL.revokeObjectURL(url); cv.toBlob(b=>b?resolve(b):reject(new Error('PNG encoding failed')),'image/png'); }catch(e){ URL.revokeObjectURL(url); reject(e);} };
+  img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('SVG rasterization failed')); }; img.src=url; }); }
+function exportFilename(format){ const base=((model.meta&&(model.meta.sifName||model.meta.sct))||'channel-variety-checks').toString().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'channel-variety-checks'; return base+'.'+(format==='svg'?'svg':'png'); }
+function downloadBlob(blob,fn){ const url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url; a.download=fn||'export'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500); }
+async function exportAndDownload(format){ try{ const blob=(format==='svg')?exportSVGBlob():await exportPNGBlob(); downloadBlob(blob, exportFilename(format)); }catch(e){ alert('Export failed: '+((e&&e.message)||e)); } }
+
+/* ---------- interactions ---------- */
+matrixEl.addEventListener('click', e=>{
+  const cell=e.target.closest('[data-cell]');
+  if(cell){ const l=model.loops[+cell.dataset.loop], ci=+cell.dataset.crit; l.ratings[ci]=NEXT[l.ratings[ci]]; selectedId=l.id; renderAll(); save(); HOOKS.select(); return; }
+  const lb=e.target.closest('[data-loopsel]');
+  if(lb){ const id=model.loops[+lb.dataset.loopsel].id; selectedId=(selectedId===id)?null:id; renderAll(); HOOKS.select(); }   // toggle: click the selected loop again → back to the default VSM view
+});
+/* criteria-header tooltips — float free of the matrix (which is overflow:hidden) so the explanation is fully visible */
+const critTip=document.createElement('div'); critTip.className='ctip'; critTip.hidden=true; document.body.appendChild(critTip);
+function showCritTip(h){ critTip.textContent=h.dataset.tip; critTip.hidden=false; const r=h.getBoundingClientRect();
+  critTip.style.left=Math.round(r.left+r.width/2)+'px'; critTip.style.top=Math.round(r.bottom+8)+'px'; }
+function hideCritTip(){ critTip.hidden=true; }
+matrixEl.addEventListener('mouseover', e=>{ const h=e.target.closest('.hc[data-tip]'); if(h) showCritTip(h); });
+matrixEl.addEventListener('mouseout', e=>{ const h=e.target.closest('.hc[data-tip]'); if(h && !h.contains(e.relatedTarget)) hideCritTip(); });
+matrixEl.addEventListener('focusin', e=>{ const h=e.target.closest('.hc[data-tip]'); if(h) showCritTip(h); });
+matrixEl.addEventListener('focusout', e=>{ if(e.target.closest('.hc[data-tip]')) hideCritTip(); });
+
+detailEl.addEventListener('input', e=>{ const t=e.target, l=model.loops.find(x=>x.id===selectedId); if(!l||!t.dataset.f) return;
+  if(['communication','artifact','role','note'].includes(t.dataset.f)){ l[t.dataset.f]=t.value; save(); } });
+
+/* ---------- full-screen mode (host iframe needs allow="fullscreen") ---------- */
+function fsEl(){ return document.fullscreenElement || document.webkitFullscreenElement || null; }
+function isFs(){ return !!fsEl(); }
+function enterFs(){ const el=document.documentElement, req=el.requestFullscreen||el.webkitRequestFullscreen; if(req){ try{ const p=req.call(el); if(p&&p.catch) p.catch(()=>{}); }catch(_){} } }
+function exitFs(){ const ex=document.exitFullscreen||document.webkitExitFullscreen; if(ex){ try{ const p=ex.call(document); if(p&&p.catch) p.catch(()=>{}); }catch(_){} } }
+function toggleFs(){ isFs()?exitFs():enterFs(); }
+function setFs(on){ on===false?exitFs():on===true?enterFs():toggleFs(); }
+const FS_IN='<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6 V2.5 H6 M10 2.5 H13.5 V6 M13.5 10 V13.5 H10 M6 13.5 H2.5 V10"/></svg>';
+const FS_OUT='<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2.5 V6 H2.5 M13.5 6 H10 V2.5 M10 13.5 V10 H13.5 M2.5 10 H6 V13.5"/></svg>';
+function updateFsBtn(){ const b=document.getElementById('btnFs'); if(!b) return; const on=isFs(); b.classList.toggle('on',on); b.innerHTML=on?FS_OUT:FS_IN; b.title=on?'Exit full screen (F / Esc)':'Full screen (F)'; b.setAttribute('aria-label',b.title); }
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{ updateFsBtn(); HOOKS.fs(isFs()); }));
+document.getElementById('btnFs').onclick=toggleFs; updateFsBtn();
+{ const dlMenu=document.getElementById('dlmenu');
+  document.getElementById('btnDl').onclick=e=>{ e.stopPropagation(); dlMenu.hidden=!dlMenu.hidden; };
+  dlMenu.addEventListener('click',e=>{ const b=e.target.closest('[data-export]'); if(!b) return; dlMenu.hidden=true; exportAndDownload(b.dataset.export); });
+  document.addEventListener('click',e=>{ if(!e.target.closest('#dlwrap')) dlMenu.hidden=true; }); }
+window.addEventListener('keydown',e=>{ const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA'||t.isContentEditable)) return;
+  if((e.key==='f'||e.key==='F')&&!e.metaKey&&!e.ctrlKey&&!e.altKey){ e.preventDefault(); toggleFs(); } });
+
+/* ---------- integration bridge ---------- */
+const BRIDGE=(()=>{
+  const inFrame=!!(window.parent && window.parent!==window), TARGET='*';
+  if(inFrame){ const w=document.getElementById('dlwrap'); if(w) w.style.display='none'; }   // embedded → the host orchestrates downloads via the export command
+  function postToHost(msg){ try{ if(inFrame) window.parent.postMessage(msg,TARGET);}catch(_){}
+    try{ if(window.CVC && typeof window.CVC.onEmit==='function') window.CVC.onEmit(msg);}catch(_){} }
+  function loadModel(m){ if(!m||typeof m!=='object'||!Array.isArray(m.loops)) return; _silent=true; model=normalize(m); selectedId=null; save(); renderAll(); _silent=false; }
+  function setLoops(loops){ if(!Array.isArray(loops)) return; _silent=true; const prev={}; model.loops.forEach(l=>prev[l.id]=l);
+    model.loops=loops.map(x=>{ const id=String(x.id), old=prev[id];
+      return { id, sys:x.sys!=null?String(x.sys):(old?old.sys:''), label:x.label!=null?String(x.label):(old?old.label:id),
+        vsmChannel:x.vsmChannel!=null?String(x.vsmChannel):(old?old.vsmChannel:''),
+        communication:old?old.communication:'', artifact:old?old.artifact:'', role:old?old.role:'', ratings:old?old.ratings.slice():[0,0,0,0], note:old?old.note:'' }; });
+    if(selectedId && !model.loops.some(l=>l.id===selectedId)) selectedId=null; save(); renderAll(); _silent=false; }
+  function setMeta(meta){ if(meta&&typeof meta==='object'){ model.meta=Object.assign({},model.meta,meta); save(); } }
+  function selectRef(id){ selectedId = id==null?null:String(id); const l=model.loops.find(x=>x.id===selectedId); if(id!=null&&!l) selectedId=null; renderAll(); }
+  window.addEventListener('message',e=>{ const m=e.data; if(!m||typeof m!=='object'||!m.cmd) return;
+    if(m.cmd==='loadModel') loadModel(m.model);
+    else if(m.cmd==='setLoops') setLoops(m.loops);
+    else if(m.cmd==='setMeta') setMeta(m.meta);
+    else if(m.cmd==='select') selectRef(m.id);
+    else if(m.cmd==='fullscreen') setFs(m.on);
+    else if(m.cmd==='export') hostExport(m);
+  });
+  async function hostExport(m){ const format=(m&&m.format==='svg')?'svg':'png', requestId=m&&m.requestId, filename=(m&&m.filename)||exportFilename(format);
+    try{ const blob=(format==='svg')?exportSVGBlob():await exportPNGBlob(); const mimeType=(format==='svg')?'image/svg+xml':'image/png'; postToHost({evt:'exportReady', requestId, format, filename, mimeType, blob}); }
+    catch(e){ postToHost({evt:'exportError', requestId, format, message:String((e&&e.message)||e)}); } }
+  let _ct=null;
+  const api={
+    ready:()=>postToHost({evt:'ready',api:1}),
+    change:()=>{ clearTimeout(_ct); _ct=setTimeout(()=>postToHost({evt:'change',model:JSON.parse(JSON.stringify(model))}),120); },
+    select:()=>{ const l=model.loops.find(x=>x.id===selectedId); postToHost({evt:'select', ref:l?{id:l.id,label:l.label}:null}); },
+    fsChanged:(on)=>postToHost({evt:'fullscreenchange',fullscreen:!!on}),
+  };
+  HOOKS.change=api.change; HOOKS.select=api.select; HOOKS.fs=api.fsChanged;
+  window.CVC={ loadModel, setLoops, setMeta, select:selectRef, fullscreen:on=>setFs(on), isFullscreen:()=>isFs(), export:o=>hostExport(o||{}), onEmit:null, getState:()=>JSON.parse(JSON.stringify(model)) };
+  return api;
+})();
+
+renderAll();
+BRIDGE.ready();
+</script>
+</body>
+</html>

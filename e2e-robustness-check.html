@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E2E Robustness Check</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#eef1f4; --panel:#fff; --line:#dfe3e8; --ink:#222a33; --muted:#6b7480;
+  --step:#F4D03F; --stepst:#cbab2c; --trig:#7CC07F; --trigst:#5fa463; --res:#4E8FE0; --resst:#3a72bd;
+  --link:#46566f; --sel:#2f6fed; --laneA:#ffffff; --laneB:#f5f7f9; --grid:#e9edf1;
+  --ctx:#5a86c8; --ctxbg:#eef4ff; --trn:#d68b2a; --trnbg:#fff4e3;
+}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:var(--ink);
+  background:var(--bg);display:flex;flex-direction:column;height:100vh;overflow:hidden;font-size:13px}
+
+/* toolbar (light) */
+#bar{display:flex;align-items:center;gap:8px;padding:7px 12px;background:#fff;color:var(--ink);flex-shrink:0;border-bottom:1px solid var(--line)}
+#bar .ttl{font-weight:700;font-size:13.5px;letter-spacing:.2px;color:var(--ink)}
+#bar .sct{font-size:11px;color:var(--muted);margin-left:2px;border-left:1px solid var(--line);padding-left:10px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bar .sp{flex:1}
+#bar button{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:7px;padding:5px 9px;font-size:12px;
+  cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+#bar button:hover:not(:disabled){background:#f1f3f5;border-color:#cfd5db}
+#bar button:disabled{opacity:.4;cursor:not-allowed}
+#bar .hint{font-size:11px;color:var(--muted);max-width:430px;line-height:1.3}
+#exportWrap{position:relative;display:inline-flex}
+.exmenu{position:absolute;top:calc(100% + 5px);right:0;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 4px 14px rgba(20,30,50,.16);padding:4px;z-index:30;display:flex;flex-direction:column;min-width:134px}
+.exmenu[hidden]{display:none}
+.exmenu button{border:none;background:#fff;color:var(--ink);text-align:left;padding:6px 9px;border-radius:6px;font-size:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.exmenu button:hover{background:#f1f3f5}
+.exmenu .k{color:var(--muted);font-size:10.5px}
+
+.main{flex:1;display:flex;min-height:0}
+.stage{flex:1;min-width:0;min-height:0;overflow:hidden;position:relative;cursor:grab;background:var(--bg)}
+#wrap{width:100%;height:100%}
+.stage svg{width:100%;height:100%;display:block}
+body.panning *{cursor:grabbing !important}
+
+/* svg element styles */
+.node{cursor:grab}
+.node .nbox{stroke-width:1.6}
+.node.step .nbox{fill:var(--step);stroke:var(--stepst)}
+.node.trigger .nbox{fill:var(--trig);stroke:var(--trigst)}
+.node.result .nbox{fill:var(--res);stroke:var(--resst)}
+.node text{pointer-events:none;font-size:12px;font-weight:600}
+.node.step text{fill:#2b2b1e}
+.node.trigger text,.node.result text{fill:#fff}
+.node .chandle{fill:#fff;stroke:var(--sel);stroke-width:2;opacity:0;cursor:crosshair}
+.node:hover .chandle,.node.sel .chandle{opacity:1}
+.node .cdot{fill:#fff;stroke:var(--sel);stroke-width:2;opacity:0;pointer-events:none}
+.node:hover .cdot,.node.sel .cdot{opacity:1}
+body.connecting .node .cdot{opacity:1}
+.node.sel .nbox{stroke:var(--sel);stroke-width:2.4}
+.lanelbl{font-size:12px;font-weight:700;fill:#3a424c}
+.lanesub{font-size:9.5px;font-weight:600;fill:#94a0ac;text-transform:uppercase;letter-spacing:.4px}
+.link{fill:none;stroke:var(--link);stroke-width:2;stroke-linejoin:round}
+.link.sel{stroke:var(--sel);stroke-width:2.6}
+.linkhit{fill:none;stroke:transparent;stroke-width:14;cursor:pointer}
+#rubber{fill:none;stroke:var(--sel);stroke-width:2;stroke-dasharray:5 4;pointer-events:none}
+#marquee{fill:rgba(47,111,237,.10);stroke:var(--sel);stroke-width:1;stroke-dasharray:4 3;pointer-events:none}
+
+/* call-outs */
+.callout{cursor:grab}
+.callout .cobox{stroke-width:1.4}
+.callout.context .cobox{fill:var(--ctxbg);stroke:#9bb8e6}
+.callout.transition .cobox{fill:var(--trnbg);stroke:#e3a44d}
+.callout .cohdr{font-size:8px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;pointer-events:none}
+.callout.context .cohdr{fill:#3f73c4}
+.callout.transition .cohdr{fill:#c9831f}
+.callout .cotext{font-size:10.5px;fill:#37434f;font-weight:500;pointer-events:none}
+.callout.sel .cobox{stroke:var(--sel);stroke-width:2.2}
+.co-leader{stroke:#b3bcc6;stroke-width:1;stroke-dasharray:3 2;fill:none}
+.co-leader.transition{stroke:#dca957}
+
+/* zoom control */
+#zoomctl{position:absolute;right:11px;bottom:11px;z-index:6;display:flex;flex-direction:column;
+  background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 2px 7px rgba(20,30,50,.12);overflow:hidden}
+#zoomctl button{width:52px;height:25px;border:none;border-top:1px solid var(--line);background:#fff;cursor:pointer;color:var(--ink);
+  font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+#zoomctl button:first-child{border-top:none}
+#zoomctl button:hover{background:#eef4f9}
+#zoomctl button.modebtn{font-size:11.5px;font-weight:600}
+#zoomctl button.modebtn.on{background:#eaf1fc;color:#2f6fed}
+#zoomctl #btnFs.on{color:#2f6fed}
+#zoomctl #zpct{font-size:9px;font-weight:700;color:var(--muted)}
+#propPop{position:absolute;z-index:8;width:238px;max-width:calc(100% - 16px);max-height:calc(100% - 16px);overflow:auto;
+  background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 26px rgba(20,30,50,.20);cursor:default}
+#propPop[hidden]{display:none}
+#propPopHd{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:7px 7px 7px 12px;border-bottom:1px solid var(--line);background:#fbfcfe;border-radius:10px 10px 0 0}
+#propPopTtl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+#propClose{border:none;background:none;cursor:pointer;font-size:18px;line-height:1;color:var(--muted);
+  width:23px;height:23px;border-radius:6px;display:flex;align-items:center;justify-content:center;padding:0;flex:none}
+#propClose:hover{background:#eef1f5;color:var(--ink)}
+#propPop #propBody{padding:11px 12px 12px}
+
+/* right panel */
+.panel{width:264px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto}
+body.panel-hidden .panel{display:none}
+.sec{padding:12px 13px;border-bottom:1px solid var(--line)}
+.sec h3{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:8px}
+.sec .expl{font-size:11px;color:var(--muted);line-height:1.5}
+.fld{display:block;width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 7px;font-size:12px;font-family:inherit;color:var(--ink);margin-bottom:6px}
+.fld:focus{outline:none;border-color:#cfe0ee;background:#f7fbff}
+textarea.fld{resize:vertical;line-height:1.4}
+.lane-row{display:flex;align-items:baseline;gap:8px;padding:4px 1px;border-bottom:1px solid #f1f3f6}
+.lane-row:last-child{border-bottom:none}
+.lane-row .rlvl{font-size:9.5px;font-weight:700;letter-spacing:.3px;color:#9aa4af;min-width:30px;text-transform:uppercase}
+.lane-row .rname{font-size:12px;color:var(--ink);font-weight:500}
+.contrib-h{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:11px 0 5px}
+.contrib-h span{font-weight:600;text-transform:none;letter-spacing:0;opacity:.85}
+.contrib-lane{display:flex;gap:6px;align-items:flex-start;margin-bottom:5px}
+.contrib-lane .rlvl{font-size:9px;font-weight:700;color:#9aa4af;min-width:28px;padding-top:3px}
+.contrib-lane .chips{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+.chip{border:1px solid #d7dde4;background:#f7f9fb;border-radius:20px;padding:2px 8px;font-size:11px;cursor:pointer;color:#3a4450;font-family:inherit}
+.chip:hover{background:#eef4fb;border-color:#b9cbe0}
+.chip.done{opacity:.6;color:#6b9a6e;border-color:#cfe3d0;background:#f3f9f3;cursor:default}
+/* cross-SCT: grouped contributions palette */
+.sctg{margin:0 0 6px}
+.sctg.primary{margin-bottom:9px}
+.sctg-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:9px 0 5px}
+.sctg-tag{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#2f6fed;background:#e7f0fd;border:1px solid #cfe0fb;border-radius:4px;padding:1px 5px}
+.sctg-id{font-size:10px;font-weight:800;color:#3a424c;letter-spacing:.2px}
+.sctg-name{font-size:10px;font-weight:600;color:var(--muted)}
+.sctg-count{font-size:9px;font-weight:700;color:#9aa4af;margin-left:auto;background:#eef1f5;border-radius:9px;padding:0 6px}
+.sctg-empty{font-size:10px;color:#9aa4af;font-style:italic;margin:1px 0 3px 2px}
+details.sctg.related{border:1px solid var(--line);border-radius:8px;padding:3px 8px 6px;background:#fcfdfe}
+details.sctg.related>summary{list-style:none;cursor:pointer;margin:4px 0}
+details.sctg.related>summary::-webkit-details-marker{display:none}
+details.sctg.related>summary::before{content:'▸';font-size:9px;color:#9aa4af;margin-right:2px}
+details.sctg.related[open]>summary::before{content:'▾'}
+.sctsrc{font-size:11px;color:#3a424c;background:#f3f6fb;border:1px solid #e2e9f3;border-radius:6px;padding:5px 8px;margin-bottom:8px}
+.sctsrc .pri{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#2f6fed;margin-left:4px}
+.sctsrc.gone{color:#9a5a12;background:#fdf4e7;border-color:#eccfa0}
+.nsct{pointer-events:none}
+.nsct rect{fill:#e7f0fd;stroke:#bcd5f5;stroke-width:1}
+.nsct text{font-size:8px;font-weight:700;fill:#2f6fed;letter-spacing:.2px}
+.nsct.gone rect{fill:#fdf2e7;stroke:#e9b777;stroke-dasharray:3 2}
+.nsct.gone text{fill:#c2731a}
+.linkend{fill:#fff;stroke:var(--sel);stroke-width:2.5;cursor:grab}
+.linkend:hover{fill:#eaf1fc}
+.prop-empty{font-size:11px;color:var(--muted);font-style:italic}
+.pbtn{display:inline-block;border:1px solid var(--line);background:#fff;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;color:var(--ink);margin-bottom:4px}
+.pbtn:hover{background:#f1f3f5}
+.pbtn.del{color:#c23a22;border-color:#eecfc8}
+.pbtn.del:hover{background:#fdf2f0}
+.kpill{display:inline-block;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:20px;color:#fff;margin-bottom:7px}
+.swatches{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px}
+.swatch{width:20px;height:20px;border-radius:5px;border:1px solid rgba(0,0,0,.18);cursor:pointer;padding:0;font-size:11px;line-height:1;color:#6b7480;display:flex;align-items:center;justify-content:center}
+.swatch.def{background:#fff}
+.swatch.on{outline:2px solid var(--sel);outline-offset:1px}
+.fhdr{font-size:11px;font-weight:700;color:#5b6470;margin:11px 0 5px}
+.fcard{border:1px solid var(--line);border-radius:7px;padding:7px;margin-bottom:7px;background:#fcfdfe}
+.frow{display:flex;gap:5px}
+.frow .fld{flex:1;min-width:0;margin-bottom:6px}
+.fcard .fnote{margin-bottom:6px}
+.fcard .pbtn{margin-bottom:0}
+.fmarkbtn{color:#b06a00;border-color:#e8c98f}
+.fmarkbtn:hover{background:#fdf6e8}
+.fmark{cursor:pointer}
+
+/* inline edit input over a node */
+#inlineEdit{position:fixed;display:none;z-index:50;border:2px solid var(--sel);border-radius:7px;
+  text-align:center;font:600 12px/1.25 -apple-system,system-ui,sans-serif;color:#2b2b1e;padding:2px 4px;resize:none;background:#fffdf0}
+#inlineCo{position:fixed;display:none;z-index:50;border:2px solid var(--sel);border-radius:6px;box-sizing:border-box;
+  font:500 11px/1.3 -apple-system,system-ui,sans-serif;color:#37434f;padding:5px 7px;resize:none;background:#fff;overflow:hidden}
+</style>
+</head>
+<body>
+<div id="bar">
+  <span class="ttl">E2E Robustness Check</span>
+  <span class="sct" id="sctLbl"></span>
+  <span class="sp"></span>
+  <span class="hint">Dbl-click a box → edit its text · dbl-click a lane → add step · drag the blue dot → connect · select a link, drag its end → re-route · arrows scroll (shift+arrows move a step) · F full screen · ⌫ delete · ⌘Z undo</span>
+  <button id="bAdd">+ Step</button>
+  <button id="bUndo" title="Undo (⌘Z)">↶</button>
+  <button id="bRedo" title="Redo (⌘⇧Z)">↷</button>
+  <button id="bDel" title="Delete (⌫)">🗑</button>
+  <span id="exportWrap">
+    <button id="bExport" title="Export the route (PNG / SVG)">⤓ Export</button>
+    <div id="exportMenu" class="exmenu" hidden>
+      <button type="button" data-export="png">PNG <span class="k">image</span></button>
+      <button type="button" data-export="svg">SVG <span class="k">vector</span></button>
+    </div>
+  </span>
+  <button id="bPane" title="Toggle panel">▦</button>
+</div>
+<div class="main">
+  <div class="stage"><div id="wrap"></div>
+    <div id="propPop" hidden aria-label="Properties">
+      <div id="propPopHd"><span id="propPopTtl">Properties</span><button id="propClose" type="button" title="Close (Esc)" aria-label="Close properties">×</button></div>
+      <div id="propBody"></div>
+    </div>
+    <div id="zoomctl">
+      <button id="btnFs" type="button" aria-label="Full screen (F)" title="Full screen (F)"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6 V2.5 H6 M10 2.5 H13.5 V6 M13.5 10 V13.5 H10 M6 13.5 H2.5 V10"/></svg></button>
+      <button id="btnFull" class="modebtn" type="button" aria-label="Full view — the whole route" title="Full — the whole route in view">Full</button>
+      <button id="btnFit" class="modebtn" type="button" aria-label="Fit — lanes fill the height" title="Fit — lanes fill the viewport height">Fit</button>
+      <button id="zin" type="button" aria-label="Zoom in" title="Zoom in">+</button>
+      <button id="zout" type="button" aria-label="Zoom out" title="Zoom out">−</button>
+      <button id="zpct" type="button" aria-label="Reset to full view" title="Reset to full view">100%</button>
+    </div>
+  </div>
+  <aside class="panel">
+    <div class="sec">
+      <h3>SCT — the WHAT</h3>
+      <input class="fld" id="sctName" placeholder="Success-Critical Task">
+      <div class="expl">The SCT defines <b>what</b> must be done. The flight route below is the <b>how</b> — how it flows across the recursion levels.</div>
+      <div id="contribWrap"></div>
+    </div>
+  </aside>
+</div>
+<input id="inlineEdit" maxlength="80">
+<textarea id="inlineCo" maxlength="240"></textarea>
+<script>
+"use strict";
+
+/* ============================ data model ============================ */
+let _id = 0; const uid = p => (p||'x') + (++_id);
+function defaultModel(){
+  const L = [
+    {id:'l1', name:'Corporate', sub:'R+1'},
+    {id:'l2', name:'Business Sector (SIF)', sub:'R0'},
+    {id:'l3', name:'Operations / Delivery', sub:'R-1'},
+    {id:'l4', name:'Plant / ICO', sub:'R-2'},
+    {id:'l5', name:'Provider', sub:'R-3'},
+  ];
+  const n = (id,kind,laneId,col,label)=>({id,kind,laneId,col,label});
+  const N = [
+    n('t','trigger','l2',0,'Trigger of Work'),
+    n('s1','step','l1',1,'Set architecture & strategy'),
+    n('s2','step','l3',2,'Plan the delivery'),
+    n('s3','step','l4',3,'Build at the plant'),
+    n('s4','step','l5',4,'Provider contribution'),
+    n('s5','step','l3',5,'Integrate & verify'),
+    n('s6','step','l2',6,'Sign-off'),
+    n('r','result','l1',7,'Result'),
+  ];
+  const link=(a,b)=>({id:uid('k'),from:a,to:b});
+  const K = [link('t','s1'),link('s1','s2'),link('s2','s3'),link('s3','s4'),link('s4','s5'),link('s5','s6'),link('s6','r')];
+  const C = [
+    {id:uid('c'), kind:'transition', target:{type:'link', id:K[2].id}, text:'Hand-off to the plant — is the spec complete & the channel reliable?', dx:0, dy:-60},
+  ];
+  const F = [
+    {id:uid('fd'), target:{type:'node', id:'s3'}, category:'bottleneck', severity:'high', note:'Plant capacity is the constraint — work queues before build.'},
+  ];
+  return {meta:{name:'E2E flight route', sct:'SCT-005 · Partner Management'}, lanes:L, nodes:N, links:K, callouts:C, findings:F};
+}
+
+const KEY = 'e2eRobustness1';
+function load(){ try{ const s=localStorage.getItem(KEY); if(s){const m=JSON.parse(s); if(m&&m.lanes) return m;} }catch(_){} return null; }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(model)); }catch(_){} if(!_silent) HOOKS.change(); }
+let model = load() || defaultModel();
+if(!Array.isArray(model.callouts)) model.callouts=[];
+model.callouts.forEach(c=>{ if(!Number.isFinite(c.dx)) c.dx=0; if(!Number.isFinite(c.dy)) c.dy=0; });   // call-out positions are always numeric (a host-fed call-out without dx/dy must not break dragging)
+if(!Array.isArray(model.findings)) model.findings=[];   // backward compatible: routes without findings load with []
+if(!model.meta) model.meta={};
+if(!Array.isArray(model.meta.relatedSctIds)) model.meta.relatedSctIds=[];   // cross-SCT: a legacy/single-SCT route normalizes missing related SCTs to []
+bumpId(); dedupeIds();   // advance the id counter past EVERY existing id (not just links), then repair any duplicate ids — fixes the cross-session id collision that glued two boxes to one id
+
+/* ---- selection (multi) + drag state ---- */
+let sel = [];                 // [{type:'node'|'link'|'callout', id}]
+let clipboard = null;         // {nodes:[...], links:[...]}
+let dragNodes = null;         // Map(id -> {x,y}) free positions while dragging
+const selHas = (t,id)=> sel.some(s=>s.type===t&&s.id===id);
+const selNodeIds = ()=> sel.filter(s=>s.type==='node').map(s=>s.id);
+const setSel = (t,id)=> { sel=[{type:t,id}]; };
+const clearSel = ()=> { sel=[]; };
+function toggleSel(t,id){ const i=sel.findIndex(s=>s.type===t&&s.id===id); if(i>=0) sel.splice(i,1); else sel.push({type:t,id}); }
+function selOneNode(){ return (sel.length===1&&sel[0].type==='node') ? nodeById(sel[0].id) : null; }
+function selOneLink(){ return (sel.length===1&&sel[0].type==='link') ? model.links.find(x=>x.id===sel[0].id) : null; }
+function selOneCallout(){ return (sel.length===1&&sel[0].type==='callout') ? model.callouts.find(x=>x.id===sel[0].id) : null; }
+
+/* ---- host-fed context (SCT + per-recursion-level contributions); host-owned, NOT part of the authored route ---- */
+/* runtime SCT context (fed by the host, NOT persisted in the model): one primary SCT + optional related SCTs;
+   each contribution is tagged with its origin sctId/sctName. `active` flips true once a host feeds an SCT context. */
+let context = { primary:{id:'SCT-005', name:'SCT-005 · Partner Management'}, related:[], active:false, collapsed:new Set(), contributions:[
+  {id:'cn1',laneId:'l1',label:'Set partner strategy',  sctId:'SCT-005',sctName:'SCT-005 · Partner Management'},
+  {id:'cn2',laneId:'l2',label:'Define partner scope',  sctId:'SCT-005',sctName:'SCT-005 · Partner Management'},
+  {id:'cn3',laneId:'l3',label:'Plan & run delivery',   sctId:'SCT-005',sctName:'SCT-005 · Partner Management'},
+  {id:'cn4',laneId:'l4',label:'Produce at plant',      sctId:'SCT-005',sctName:'SCT-005 · Partner Management'},
+  {id:'cn5',laneId:'l5',label:'Provider SLA & quality',sctId:'SCT-005',sctName:'SCT-005 · Partner Management'},
+] };
+/* bridge emit hooks (wired by BRIDGE once it inits) + guards */
+const HOOKS = { change(){}, select(){}, pane(){}, fs(){} };
+let _silent=false, _lastSelSig='[]', paneVisible=true;
+
+/* ============================ undo / redo ============================ */
+let undoStack = [], redoStack = [];
+const snapModel = () => JSON.stringify(model);
+function pushUndo(){ undoStack.push(snapModel()); if(undoStack.length>120) undoStack.shift(); redoStack.length=0; refreshBar(); }
+function undo(){ if(!undoStack.length) return; redoStack.push(snapModel()); model = JSON.parse(undoStack.pop()); clearSel(); save(); render(); }
+function redo(){ if(!redoStack.length) return; undoStack.push(snapModel()); model = JSON.parse(redoStack.pop()); clearSel(); save(); render(); }
+
+/* ============================ geometry ============================ */
+const HEAD_W=170, LANE_H=116, COL_W=176, COL0=HEAD_W+26, TOPPAD=22, NW=132, NH=56;
+const f = n => (+n).toFixed(1);
+const laneIndex = id => model.lanes.findIndex(l=>l.id===id);
+const nodeById = id => model.nodes.find(n=>n.id===id);
+const colX = c => COL0 + c*COL_W + COL_W/2;
+const laneY = i => TOPPAD + i*LANE_H + LANE_H/2;
+function nodeCenter(n){
+  if(dragNodes && dragNodes.has(n.id)) return dragNodes.get(n.id);
+  const i = laneIndex(n.laneId); return {x: colX(n.col), y: laneY(i<0?0:i)};
+}
+function nodeRect(n){ const c=nodeCenter(n); return {x:c.x-NW/2, y:c.y-NH/2, w:NW, h:NH}; }
+function maxCol(){ return model.nodes.reduce((m,n)=>Math.max(m,n.col),0); }
+function contentBox(){
+  const cols = Math.max(maxCol()+2, 7), lanes = model.lanes.length;
+  return {x:0, y:0, w: COL0 + cols*COL_W + 20, h: TOPPAD*2 + lanes*LANE_H};
+}
+function linkMid(k){ const a=nodeById(k.from),b=nodeById(k.to); if(!a||!b)return null;
+  const A=nodeRect(a),B=nodeRect(b),sx=A.x+A.w,sy=A.y+A.h/2,tx=B.x,ty=B.y+B.h/2;
+  if(Math.abs(sy-ty)<0.5) return {x:(sx+tx)/2, y:sy};
+  const midX=tx>sx+30?(sx+tx)/2:sx+34; return {x:midX, y:(sy+ty)/2}; }
+function calloutAnchor(co){
+  if(co.target.type==='node'){ const n=nodeById(co.target.id); if(!n)return null; const r=nodeRect(n); return {ax:r.x+r.w/2, ay:r.y}; }
+  const k=model.links.find(x=>x.id===co.target.id); if(!k)return null; const m=linkMid(k); return m?{ax:m.x, ay:m.y}:null;
+}
+function calloutLayout(co){ const an=calloutAnchor(co); if(!an)return null;
+  const lines=wrapLabel(co.text||'', 26, 4), lh=13, padTop=17, padBot=8, bw=160;
+  const bh=padTop + Math.max(1,lines.length)*lh + padBot;
+  return {an, cx:an.ax+(co.dx||0), cy:an.ay+(co.dy||0), bw, bh, lines, lh, padTop}; }
+
+/* ============================ pan / zoom (canvas fills stage, no grey) ====== */
+let zoom=1, panX=0, panY=0, viewMode='all', userZoomed=false;
+const curSvg = () => document.querySelector('#wrap svg');
+function stageWH(){ const s=document.querySelector('.stage'); return [Math.max(1,(s?s.clientWidth:innerWidth)), Math.max(1,(s?s.clientHeight:innerHeight))]; }
+function fitVB(){
+  const C=contentBox(), wh=stageWH(), A=wh[0]/wh[1], Ac=C.w/C.h; let w,h;
+  if(A>=Ac){ h=C.h; w=C.h*A; } else { w=C.w; h=C.w/A; }
+  return {x:C.x+C.w/2-w/2, y:C.y+C.h/2-h/2, w, h};
+}
+function coverZoom(){ const C=contentBox(),F=fitVB(); return Math.max(F.w/C.w, F.h/C.h); }
+function zClamp(z){ const fz=coverZoom(); return Math.max(1, Math.min(Math.max(fz*4,6), z)); }   // floor = Fit (z=1, whole route); ceiling well past Fill
+function curVB(){ const F=fitVB(),C=contentBox(),w=F.w/zoom,h=F.h/zoom;
+  return {x:C.x+C.w/2+panX-w/2, y:C.y+C.h/2+panY-h/2, w, h}; }
+function clampView(){ zoom=zClamp(zoom);
+  const C=contentBox(),F=fitVB(),w=F.w/zoom,h=F.h/zoom,cx=C.x+C.w/2,cy=C.y+C.h/2; let ccx=cx+panX,ccy=cy+panY;
+  if(w>=C.w-0.5) ccx=cx; else ccx=Math.min(C.x+C.w-w/2, Math.max(C.x+w/2, ccx));
+  if(h>=C.h-0.5) ccy=cy; else ccy=Math.min(C.y+C.h-h/2, Math.max(C.y+h/2, ccy));
+  panX=ccx-cx; panY=ccy-cy; }
+function applyVB(){ clampView(); const svg=curSvg(); if(svg){const v=curVB(); svg.setAttribute('viewBox',`${f(v.x)} ${f(v.y)} ${f(v.w)} ${f(v.h)}`);}
+  const p=document.getElementById('zpct'); if(p)p.textContent=Math.round(zoom/coverZoom()*100)+'%';
+  const bf=document.getElementById('btnFull'), bl=document.getElementById('btnFit');
+  if(bf) bf.classList.toggle('on', viewMode==='all'&&!userZoomed);
+  if(bl) bl.classList.toggle('on', viewMode==='fill'&&!userZoomed);
+  positionPropPop(); }
+function zoomAround(factor,ux,uy){ userZoomed=true; const vb=curVB(),nz=zClamp(zoom*factor),rf=nz/zoom; if(Math.abs(rf-1)<1e-3)return;
+  const w=vb.w/rf,h=vb.h/rf,nx=ux-(ux-vb.x)/rf,ny=uy-(uy-vb.y)/rf,C=contentBox();
+  zoom=nz; panX=(nx+w/2)-(C.x+C.w/2); panY=(ny+h/2)-(C.y+C.h/2); applyVB(); }
+function zoomCentre(fac){ const vb=curVB(); zoomAround(fac, vb.x+vb.w/2, vb.y+vb.h/2); }
+function panBy(dx,dy){ userZoomed=true; panX+=dx; panY+=dy; applyVB(); }   // arrow-key scrolling (clamped to content; no-op when everything already fits)
+function fitAllView(){ viewMode='all'; userZoomed=false; zoom=1; panX=0; panY=0; applyVB(); }                                   // whole route, centred (may pad top/bottom)
+function fillView(){ viewMode='fill'; userZoomed=false; zoom=coverZoom(); const C=contentBox(),F=fitVB(),w=F.w/zoom; panX=w/2-C.w/2; panY=0; applyVB(); }  // lanes fill height, park at Trigger
+function refit(){ viewMode==='fill' ? fillView() : fitAllView(); }
+function setFit(mode){ const m=String(mode||'').toLowerCase(); (m==='fill'||m==='fit'||m==='lanes'||m==='height') ? fillView() : fitAllView(); }
+/* ---- full-screen mode (works standalone; embedded needs the host iframe to carry allow="fullscreen") ---- */
+function fsEl(){ return document.fullscreenElement || document.webkitFullscreenElement || null; }
+function isFs(){ return !!fsEl(); }
+function enterFs(){ const el=document.documentElement, req=el.requestFullscreen||el.webkitRequestFullscreen; if(req){ try{ const p=req.call(el); if(p&&p.catch) p.catch(()=>{}); }catch(_){} } }
+function exitFs(){ const ex=document.exitFullscreen||document.webkitExitFullscreen; if(ex){ try{ const p=ex.call(document); if(p&&p.catch) p.catch(()=>{}); }catch(_){} } }
+function toggleFs(){ isFs()?exitFs():enterFs(); }
+function setFs(on){ on===false?exitFs():on===true?enterFs():toggleFs(); }   // host bridge: enter needs a user gesture, exit always works
+const FS_IN='<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6 V2.5 H6 M10 2.5 H13.5 V6 M13.5 10 V13.5 H10 M6 13.5 H2.5 V10"/></svg>';
+const FS_OUT='<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2.5 V6 H2.5 M13.5 6 H10 V2.5 M10 13.5 V10 H13.5 M2.5 10 H6 V13.5"/></svg>';
+function updateFsBtn(){ const b=document.getElementById('btnFs'); if(!b) return; const on=isFs(); b.classList.toggle('on',on); b.innerHTML=on?FS_OUT:FS_IN; b.title=on?'Exit full screen (F / Esc)':'Full screen (F)'; b.setAttribute('aria-label',b.title); }
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{ updateFsBtn(); requestAnimationFrame(()=>{ userZoomed?applyVB():refit(); }); HOOKS.fs(isFs()); }));
+function toUser(cx,cy){ const svg=curSvg(); if(!svg||!svg.getScreenCTM()) return {x:0,y:0}; const m=svg.getScreenCTM().inverse(); return {x:cx*m.a+cy*m.c+m.e, y:cx*m.b+cy*m.d+m.f}; }
+/* which box is under a screen point — by geometry, so overlays (markers, call-outs, link handles) can't block a connection drop */
+function nodeAtPoint(clientX, clientY){ const u=toUser(clientX,clientY); let best=null, bestD=Infinity;
+  for(let i=model.nodes.length-1;i>=0;i--){ const n=model.nodes[i], r=nodeRect(n);
+    if(u.x>=r.x&&u.x<=r.x+r.w&&u.y>=r.y&&u.y<=r.y+r.h) return n.id;                              // inside a box wins
+    const px=Math.max(r.x,Math.min(u.x,r.x+r.w)), py=Math.max(r.y,Math.min(u.y,r.y+r.h));
+    const d=Math.hypot(u.x-px,u.y-py); if(d<bestD){ bestD=d; best=n.id; } }
+  return bestD<=14 ? best : null; }                                                              // small forgiveness near a box
+
+/* ============================ render ============================ */
+function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function wrapLabel(t,max,maxLines){ const words=(t||'').split(/\s+/); const lines=[]; let cur='';
+  for(const w of words){ if(!cur) cur=w; else if((cur+' '+w).length<=max) cur+=' '+w; else {lines.push(cur);cur=w;} if(lines.length>=maxLines-1 && cur.length>max){break;} }
+  if(cur) lines.push(cur);
+  if(lines.length>maxLines){ lines.length=maxLines; lines[maxLines-1]=lines[maxLines-1].replace(/.{0,1}$/,'…'); }
+  return lines.slice(0,maxLines);
+}
+function linkPath(k){ const a=nodeById(k.from), b=nodeById(k.to); if(!a||!b) return '';
+  const A=nodeRect(a), B=nodeRect(b); const sx=A.x+A.w, sy=A.y+A.h/2; const tx=B.x, ty=B.y+B.h/2;
+  if(Math.abs(sy-ty)<0.5) return `M ${f(sx)} ${f(sy)} L ${f(tx)} ${f(ty)}`;
+  const midX = tx>sx+30 ? (sx+tx)/2 : sx+34;
+  return `M ${f(sx)} ${f(sy)} L ${f(midX)} ${f(sy)} L ${f(midX)} ${f(ty)} L ${f(tx)} ${f(ty)}`;
+}
+function linkEnds(k){ const a=nodeById(k.from), b=nodeById(k.to); if(!a||!b) return null;
+  const A=nodeRect(a), B=nodeRect(b); return {sx:A.x+A.w, sy:A.y+A.h/2, tx:B.x, ty:B.y+B.h/2}; }
+const NODE_COLORS=['#F4D03F','#7FB1EA','#86CB9A','#F0A08C','#C0A6E8','#73C9B6','#CBD1D8','#F1B873'];
+function darken(hex,fr){ hex=String(hex).replace('#',''); if(hex.length===3) hex=hex.split('').map(c=>c+c).join('');
+  const n=parseInt(hex,16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.round(r*(1-fr)); g=Math.round(g*(1-fr)); b=Math.round(b*(1-fr));
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); }
+/* ---- findings: structured workshop markers (Lean flash) ---- */
+const FINDING_CATS=[{v:'bottleneck',t:'Bottleneck'},{v:'handoff-risk',t:'Hand-off risk'},{v:'delay',t:'Delay'},{v:'capacity-gap',t:'Capacity gap'},{v:'quality-risk',t:'Quality risk'},{v:'other',t:'Other'}];
+const SEV={low:'#e3b008',medium:'#ef9f27',high:'#e24b4a'};
+const FBOLT='M2,-8 L-6,1.5 L-1,1.5 L-3,8 L6,-2.5 L1,-2.5 Z';
+function findingById(id){ return (model.findings||[]).find(x=>x.id===id); }
+function findingsFor(tt,ti){ return (model.findings||[]).filter(x=>x.target&&x.target.type===tt&&x.target.id===ti); }
+function maxSeverity(fs){ const rk={low:0,medium:1,high:2}; let s='low'; fs.forEach(x=>{ if(rk[x.severity]>rk[s]) s=x.severity; }); return s; }
+function findingsByTarget(){ const m=new Map(); (model.findings||[]).forEach(x=>{ if(!x.target)return; const k=x.target.type+':'+x.target.id; if(!m.has(k)) m.set(k,{type:x.target.type,id:x.target.id,fs:[]}); m.get(k).fs.push(x); }); return m; }
+function findingAnchor(tt,ti){ if(tt==='node'){ const n=nodeById(ti); if(!n)return null; const r=nodeRect(n); return {x:r.x+r.w-10, y:r.y+11}; }
+  const k=model.links.find(x=>x.id===ti); if(!k)return null; const m=linkMid(k); return m?{x:m.x+12, y:m.y-12}:null; }
+function findingBoltInner(fs){ const col=SEV[maxSeverity(fs)];
+  let g=`<path d="${FBOLT}" fill="#ffffff" stroke="#ffffff" stroke-width="3.6" stroke-linejoin="round"/><path d="${FBOLT}" fill="${col}" stroke="${darken(col,0.28)}" stroke-width="0.8" stroke-linejoin="round"/>`;
+  if(fs.length>1) g+=`<circle cx="8.5" cy="-8.5" r="6.6" fill="#2f3a4a"/><text x="8.5" y="-5.6" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">${fs.length}</text>`;
+  return g; }
+function render(){
+  const C=contentBox(), vb=curVB();
+  let s=`<svg viewBox="${f(vb.x)} ${f(vb.y)} ${f(vb.w)} ${f(vb.h)}" width="${f(C.w)}" height="${f(C.h)}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`;
+  s+=`<defs><marker id="arr" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0L10,5L0,10Z" fill="var(--link)"/></marker></defs>`;
+  model.lanes.forEach((l,i)=>{ const y=TOPPAD+i*LANE_H;
+    s+=`<rect x="0" y="${f(y)}" width="${f(C.w)}" height="${LANE_H}" fill="${i%2?'var(--laneB)':'var(--laneA)'}"/>`;
+    s+=`<line x1="0" y1="${f(y)}" x2="${f(C.w)}" y2="${f(y)}" stroke="var(--grid)" stroke-width="1"/>`;
+    s+=`<text class="lanesub" x="16" y="${f(y+22)}">${esc(l.sub||'')}</text>`;
+    s+=`<text class="lanelbl" x="16" y="${f(y+40)}">${esc(l.name)}</text>`;
+  });
+  const lastY=TOPPAD+model.lanes.length*LANE_H;
+  s+=`<line x1="0" y1="${f(lastY)}" x2="${f(C.w)}" y2="${f(lastY)}" stroke="var(--grid)" stroke-width="1"/>`;
+  s+=`<line x1="${HEAD_W}" y1="0" x2="${HEAD_W}" y2="${f(lastY)}" stroke="var(--line)" stroke-width="1.4"/>`;
+  const cols=Math.max(maxCol()+2,7);
+  for(let c=0;c<=cols;c++){ const x=COL0+c*COL_W; if(x>=C.w-2)break; s+=`<line x1="${f(x)}" y1="0" x2="${f(x)}" y2="${f(lastY)}" stroke="var(--grid)" stroke-width="1" stroke-dasharray="2 5"/>`; }
+  model.links.forEach(k=>{ const d=linkPath(k); if(!d)return; const is=selHas('link',k.id);
+    s+=`<path class="linkhit" data-link="${k.id}" d="${d}"/><path class="link ${is?'sel':''}" d="${d}" marker-end="url(#arr)"/>`;});
+  model.nodes.forEach(n=>{ const r=nodeRect(n), is=selHas('node',n.id);
+    const lines=wrapLabel(n.label, n.kind==='step'?18:16, 3); const lh=14, ty=r.y+r.h/2-(lines.length-1)*lh/2+4;
+    let colA='', txtA='';
+    if(n.color){ colA=` style="fill:${n.color}${is?'':';stroke:'+darken(n.color,0.32)}"`; txtA=' style="fill:#2b2b1e"'; }
+    s+=`<g class="node ${n.kind} ${is?'sel':''}" data-node="${n.id}">`;
+    s+=`<rect class="nbox" x="${f(r.x)}" y="${f(r.y)}" width="${NW}" height="${NH}" rx="${n.kind==='step'?6:14}"${colA}/>`;
+    lines.forEach((ln,j)=>{ s+=`<text x="${f(r.x+r.w/2)}" y="${f(ty+j*lh)}" text-anchor="middle"${txtA}>${esc(ln)}</text>`; });
+    const bdg=nodeBadge(n);   // compact SCT tag for cross-SCT routes — only on related / unavailable steps (primary stays clean)
+    if(bdg && (!bdg.primary || !bdg.available)){ const lbl=bdg.available?(bdg.displayId||'SCT'):'SCT', t=bdg.available?lbl:('⚠ '+lbl), bw=Math.max(24,t.length*5.4+9);
+      s+=`<g class="nsct ${bdg.available?'related':'gone'}"><rect x="${f(r.x+1)}" y="${f(r.y-14)}" width="${f(bw)}" height="12.5" rx="3"/><text x="${f(r.x+1+bw/2)}" y="${f(r.y-4.6)}" text-anchor="middle">${esc(t)}</text></g>`; }
+    s+=`<circle class="cdot" cx="${f(r.x)}" cy="${f(r.y+r.h/2)}" r="6"/>`;
+    s+=`<circle class="chandle" data-handle="${n.id}" cx="${f(r.x+r.w)}" cy="${f(r.y+r.h/2)}" r="6"/>`;
+    s+=`</g>`;
+  });
+  // endpoint handles on the selected link — drag an end onto another box to re-route
+  model.links.forEach(k=>{ if(!selHas('link',k.id)) return; const E=linkEnds(k); if(!E)return;
+    s+=`<circle class="linkend" data-link="${k.id}" data-end="from" cx="${f(E.sx)}" cy="${f(E.sy)}" r="6.5"/>`;
+    s+=`<circle class="linkend" data-link="${k.id}" data-end="to" cx="${f(E.tx)}" cy="${f(E.ty)}" r="6.5"/>`; });
+  // call-outs (on top), each with a leader line to its anchor
+  model.callouts.forEach(co=>{ const L=calloutLayout(co); if(!L)return; const is=selHas('callout',co.id);
+    const x=L.cx-L.bw/2, y=L.cy-L.bh/2;
+    s+=`<line class="co-leader ${co.kind}" x1="${f(L.cx)}" y1="${f(L.cy)}" x2="${f(L.an.ax)}" y2="${f(L.an.ay)}"/>`;
+    s+=`<g class="callout ${co.kind} ${is?'sel':''}" data-callout="${co.id}">`;
+    s+=`<rect class="cobox" x="${f(x)}" y="${f(y)}" width="${L.bw}" height="${f(L.bh)}" rx="6"/>`;
+    s+=`<text class="cohdr" x="${f(x+9)}" y="${f(y+12)}">${co.kind==='transition'?'⚠ Hand-off':'Note'}</text>`;
+    if(co.text){ L.lines.forEach((ln,j)=>{ s+=`<text class="cotext" x="${f(x+9)}" y="${f(y+L.padTop+10+j*L.lh)}">${esc(ln)}</text>`; }); }
+    else { s+=`<text class="cotext" x="${f(x+9)}" y="${f(y+L.padTop+10)}" opacity="0.5">(double-click to edit…)</text>`; }
+    s+=`</g>`;
+  });
+  // finding markers (Lean flash) on top — clicking selects the affected element
+  findingsByTarget().forEach(t=>{ const a=findingAnchor(t.type,t.id); if(!a)return;
+    s+=`<g class="fmark" data-ftype="${t.type}" data-ftid="${t.id}" transform="translate(${f(a.x)},${f(a.y)})">${findingBoltInner(t.fs)}<circle r="14" fill="transparent"/></g>`; });
+  s+=`</svg>`;
+  document.getElementById('wrap').innerHTML=s;
+  applyVB(); renderPanel(); refreshBar();
+  const _sig=JSON.stringify(sel); if(_sig!==_lastSelSig){ _lastSelSig=_sig; HOOKS.select(); }
+}
+
+/* ============================ side panel ============================ */
+function renderPanel(){
+  document.getElementById('sctName').value = model.meta.sct||'';
+  document.getElementById('sctLbl').textContent = model.meta.sct||'';
+  renderContrib();
+  const pb=document.getElementById('propBody'); let h='';
+  const one=selOneNode(), oneL=selOneLink(), oneC=selOneCallout();
+  if(one){ const col={trigger:'var(--trig)',step:'#caa92b',result:'var(--res)'}[one.kind];
+    h=`<span class="kpill" style="background:${col}">${one.kind}</span>
+      <div class="expl" style="margin-bottom:8px">“${esc(one.label)}” <span style="opacity:.75">— double-click the box (or press Enter) to edit its text.</span></div>
+      ${nodeSctLineHTML(one)}
+      <select class="fld" id="pLane">${model.lanes.map(l=>`<option value="${l.id}" ${l.id===one.laneId?'selected':''}>${esc((l.sub?l.sub+' · ':'')+l.name)}</option>`).join('')}</select>
+      <div class="expl" style="margin:8px 0 4px">Colour</div>
+      <div class="swatches">${NODE_COLORS.map(c=>`<button class="swatch${(one.color||'').toLowerCase()===c.toLowerCase()?' on':''}" data-color="${c}" style="background:${c}" aria-label="Set colour ${c}"></button>`).join('')}<button class="swatch def${one.color?'':' on'}" data-color="" title="Default colour for this kind" aria-label="Default colour">⟲</button></div>
+      ${findingsPanelHTML('node', one.id)}
+      <button class="pbtn" id="pAddCo">+ Context call-out</button><br>
+      <button class="pbtn del" id="pDel">Delete ${one.kind}</button>`;
+  } else if(oneL){ const a=nodeById(oneL.from),b=nodeById(oneL.to), hop=a&&b&&a.laneId!==b.laneId;
+    h=`<span class="kpill" style="background:var(--link)">connection</span>
+      <div class="expl" style="margin-bottom:8px">${esc(a?a.label:'?')} → ${esc(b?b.label:'?')}${hop?' <b>· lane hand-off</b>':''}</div>
+      ${findingsPanelHTML('link', oneL.id)}
+      <button class="pbtn" id="pAddCoT">+ Transition call-out${hop?' (hand-off)':''}</button><br>
+      <button class="pbtn del" id="pDelLink">Delete connection</button>`;
+  } else if(oneC){ const isT=oneC.kind==='transition';
+    h=`<span class="kpill" style="background:${isT?'var(--trn)':'var(--ctx)'}">${isT?'transition note':'context note'}</span>
+      <textarea class="fld" id="pCoText" rows="4" placeholder="${isT?'Robustness note — is this hand-off / channel reliable? what could break?':'Note about this step…'}">${esc(oneC.text)}</textarea>
+      <div class="expl" style="margin:-1px 0 8px">${isT?'Transition notes capture your Step VI robustness assessment of this hand-off.':'Context for this step.'}</div>
+      <button class="pbtn del" id="pDelCo">Delete call-out</button>`;
+  } else if(sel.length>1){
+    h=`<div class="expl" style="margin-bottom:8px"><b>${sel.length}</b> items selected</div>
+      <button class="pbtn del" id="pDelMulti">Delete selected</button>`;
+  } else { h=`<div class="prop-empty">Nothing selected. Click a step, connection or call-out — or double-click a lane to add a step.</div>`; }
+  pb.innerHTML=h;
+  updatePropPop();
+}
+/* ---- floating Properties popover, anchored to the selected element (replaces the side-pane Properties) ---- */
+function userToStage(ux,uy){ const svg=curSvg(), st=document.querySelector('.stage'); if(!svg||!svg.getScreenCTM()||!st) return {x:0,y:0};
+  const m=svg.getScreenCTM(), sr=st.getBoundingClientRect();
+  return { x: ux*m.a+uy*m.c+m.e - sr.left, y: ux*m.b+uy*m.d+m.f - sr.top }; }
+function selAnchorPx(){ const one=selOneNode(), oneL=selOneLink(), oneC=selOneCallout(); let r=null;   // element box in user coords
+  if(one) r=nodeRect(one);
+  else if(oneL){ const a=nodeById(oneL.from), b=nodeById(oneL.to);   // span both nodes so the popover never covers the re-route endpoint handles
+    if(a&&b){ const ra=nodeRect(a), rb=nodeRect(b); r={x:Math.min(ra.x,rb.x), y:Math.min(ra.y,rb.y), w:Math.max(ra.x+ra.w,rb.x+rb.w)-Math.min(ra.x,rb.x), h:Math.max(ra.y+ra.h,rb.y+rb.h)-Math.min(ra.y,rb.y)}; } }
+  else if(oneC){ const L=calloutLayout(oneC); if(L) r={x:L.cx-L.bw/2,y:L.cy-L.bh/2,w:L.bw,h:L.bh}; }
+  else if(sel.length>1){ const ns=sel.map(s=>s.type==='node'?nodeById(s.id):null).filter(Boolean);
+    if(ns.length){ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; ns.forEach(n=>{const q=nodeRect(n);x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x+q.w);y1=Math.max(y1,q.y+q.h);}); r={x:x0,y:y0,w:x1-x0,h:y1-y0}; } }
+  if(!r) return null;
+  const p1=userToStage(r.x,r.y), p2=userToStage(r.x+r.w,r.y+r.h);
+  return {x:Math.min(p1.x,p2.x), y:Math.min(p1.y,p2.y), w:Math.abs(p2.x-p1.x), h:Math.abs(p2.y-p1.y)}; }
+function propPopTitle(){ const one=selOneNode(), oneL=selOneLink(), oneC=selOneCallout();
+  if(one) return one.kind==='trigger'?'Trigger':one.kind==='result'?'Result':'Step';
+  if(oneL) return 'Connection'; if(oneC) return oneC.kind==='transition'?'Transition note':'Context note';
+  if(sel.length>1) return sel.length+' items selected'; return 'Properties'; }
+function positionPropPop(){ const pop=document.getElementById('propPop'), st=document.querySelector('.stage'); if(!pop||pop.hidden||!st) return;
+  const a=selAnchorPx(); if(!a){ pop.hidden=true; return; }
+  const pw=pop.offsetWidth, ph=pop.offsetHeight, gap=12, m=8, stW=st.clientWidth, stH=st.clientHeight;
+  let x=a.x+a.w+gap; if(x+pw>stW-m) x=a.x-pw-gap; x=Math.max(m, Math.min(x, stW-pw-m));   // right of the element, else left, clamped
+  let y=a.y; y=Math.max(m, Math.min(y, stH-ph-m));                                          // align tops, clamped
+  pop.style.left=Math.round(x)+'px'; pop.style.top=Math.round(y)+'px'; }
+function updatePropPop(){ const pop=document.getElementById('propPop'); if(!pop) return;
+  const show=!!(selOneNode()||selOneLink()||selOneCallout()||sel.length>1); pop.hidden=!show;
+  if(show){ const t=document.getElementById('propPopTtl'); if(t) t.textContent=propPopTitle(); positionPropPop(); } }
+function refreshBar(){ document.getElementById('bUndo').disabled=!undoStack.length; document.getElementById('bRedo').disabled=!redoStack.length;
+  document.getElementById('bDel').disabled=!sel.length; }
+function renderContrib(){
+  const wrap=document.getElementById('contribWrap'); if(!wrap) return;
+  const cs=context.contributions||[], multi=(context.related||[]).length>0;
+  if(!cs.length && !multi){ wrap.innerHTML=''; return; }
+  const placed=new Set(model.nodes.map(n=>n.contribId).filter(Boolean));
+  let h;
+  if(!multi){ h='<div class="contrib-h">Contributions <span>· click to place as a step</span></div>'+laneChipsHTML(cs, placed); }   // single SCT → unchanged appearance
+  else { h='<div class="contrib-h">Contributions <span>· grouped by SCT · click to place</span></div>'+sctGroups().map(g=>sctGroupHTML(g,placed)).join(''); }
+  wrap.innerHTML=h;
+  wrap.querySelectorAll('details.sctg').forEach(d=>{ d.addEventListener('toggle',()=>{ const id=d.dataset.sct; if(d.open) context.collapsed.delete(id); else context.collapsed.add(id); }); });   // persist collapse across re-renders
+}
+function laneChipsHTML(items, placed){ let h='';
+  model.lanes.forEach(l=>{ const xs=items.filter(c=>c.laneId===l.id); if(!xs.length) return;
+    h+=`<div class="contrib-lane"><span class="rlvl">${esc(l.sub||'')}</span><div class="chips">`;
+    xs.forEach(c=>{ const done=placed.has(c.id);
+      h+=`<button class="chip${done?' done':''}" data-contrib="${esc(c.id)}" title="${done?'Already in the route':'Add as a step in '+esc(l.name)}">${esc(c.label)}${done?' ✓':''}</button>`; });
+    h+='</div></div>'; });
+  return h; }
+/* ---- cross-SCT helpers: resolve a placed step's SCT origin, detect a multi-SCT route, group the palette ---- */
+function sctById(id){ if(!id) return null; if(context.primary && context.primary.id===id) return context.primary; return (context.related||[]).find(r=>r.id===id)||null; }
+function primarySctId(){ return (context.primary&&context.primary.id) || model.meta.primarySctId || model.meta.sctId || ''; }
+function nodeContribSctId(n){ if(n.contribSctId) return n.contribSctId; const c=(context.contributions||[]).find(x=>x.id===n.contribId); return c?(c.sctId||''):''; }
+function nodeSct(n){ const id=nodeContribSctId(n); if(!id) return null; const s=sctById(id); return {id, displayId:s?(s.displayId||''):'', name:s?s.name:'', available: !context.active || !!s}; }
+function nodeSctIds(){ const set=new Set(); model.nodes.forEach(n=>{ const id=nodeContribSctId(n); if(id) set.add(id); }); return set; }
+function routeIsMultiSct(){ if((context.related&&context.related.length>0) || ((model.meta.relatedSctIds||[]).length>0)) return true;
+  const ids=nodeSctIds(), p=primarySctId(); if(p) ids.add(p); return ids.size>1; }   // a step from a (now-removed) SCT still differs from the primary → still multi-SCT
+function nodeBadge(n){ if(!routeIsMultiSct()) return null; const info=nodeSct(n); if(!info) return null; return {id:info.id, displayId:info.displayId, name:info.name, available:info.available, primary:info.id===primarySctId()}; }
+function stripId(name,id){ name=name||''; id=id||''; return (id && name.indexOf(id)===0) ? name.slice(id.length).replace(/^[\s·:–-]+/,'') : name; }
+function nodeSctLineHTML(n){ if(!routeIsMultiSct()) return ''; const info=nodeSct(n); if(!info) return '';
+  if(!info.available) return `<div class="sctsrc gone">⚠ <b>Source SCT unavailable</b> — the step and its reference are kept.</div>`;
+  const num=info.displayId, nm=stripId(info.name||'', num),                                          // show the readable displayId, never the canonical id
+    lead = num ? `<b>${esc(num)}</b>` : (nm?`<b>${esc(nm)}</b>`:'a related SCT'), tail = (num&&nm)?' · '+esc(nm):'';
+  return `<div class="sctsrc">From ${lead}${tail}${info.id===primarySctId()?' <span class="pri">primary</span>':''}</div>`; }
+function sctGroups(){ const cs=context.contributions||[], out=[];
+  if(context.primary && (context.primary.id||context.primary.name)) out.push({sct:context.primary, primary:true, items:cs.filter(c=>c.sctId===context.primary.id)});
+  (context.related||[]).forEach(r=> out.push({sct:r, primary:false, items:cs.filter(c=>c.sctId===r.id)}) ); return out; }
+function sctGroupHTML(g, placed){ const key=g.sct.id||'', num=g.sct.displayId||'', nm=stripId(g.sct.name||'', num);   // num = readable displayId (never the canonical id); key = canonical id for collapse state only (not shown)
+  const idHTML = num ? `<span class="sctg-id">${esc(num)}</span>` : '';
+  const nmHTML = nm ? `<span class="sctg-name">${esc(nm)}</span>` : (num?'':`<span class="sctg-name">SCT</span>`);
+  const head = idHTML+nmHTML;
+  const body = g.items.length ? laneChipsHTML(g.items, placed) : '<div class="sctg-empty">No contributions</div>';
+  if(g.primary) return `<div class="sctg primary"><div class="sctg-h"><span class="sctg-tag">Primary</span>${head}</div>${body}</div>`;
+  const open = !context.collapsed.has(key);
+  return `<details class="sctg related" data-sct="${esc(key)}"${open?' open':''}><summary class="sctg-h">${head}<span class="sctg-count">${g.items.length}</span></summary>${body}</details>`; }
+function findingsPanelHTML(tt,ti){
+  const fs=findingsFor(tt,ti);
+  let h=`<div class="fhdr">Findings${fs.length?' ('+fs.length+')':''}</div>`;
+  fs.forEach(fd=>{ h+=`<div class="fcard">
+      <div class="frow">
+        <select class="fld fcat" data-fid="${fd.id}" title="Category">${FINDING_CATS.map(c=>`<option value="${c.v}" ${fd.category===c.v?'selected':''}>${c.t}</option>`).join('')}</select>
+        <select class="fld fsev" data-fid="${fd.id}" title="Severity">${['low','medium','high'].map(sv=>`<option value="${sv}" ${fd.severity===sv?'selected':''}>${sv[0].toUpperCase()+sv.slice(1)}</option>`).join('')}</select>
+      </div>
+      <input class="fld fnote" data-fid="${fd.id}" placeholder="Observation (optional)…" value="${esc(fd.note||'')}">
+      <button class="pbtn del fdel" data-fid="${fd.id}">Delete finding</button>
+    </div>`; });
+  h+=`<button class="pbtn fmarkbtn" id="pAddFinding">⚡ Mark finding</button>`;
+  return h;
+}
+function setPane(visible){ paneVisible=!!visible; document.body.classList.toggle('panel-hidden', !paneVisible); requestAnimationFrame(()=> userZoomed?applyVB():refit()); HOOKS.pane(paneVisible); }
+
+/* ============================ export (PNG / SVG) ============================
+   Builds a self-contained, chrome-free SVG from the model — all styles inlined
+   (no CSS classes / vars, so it survives download + canvas raster) — sized to the
+   ACTUAL route bounds (+ padding), white background, no handles/zoom/panel.
+   Pure read of the model; never touches editor state, zoom, pane, or selection. */
+function exportNodeColors(n,C){ if(n.color) return {fill:n.color,stroke:darken(n.color,0.32),text:'#2b2b1e'};
+  if(n.kind==='trigger') return {fill:C.trig,stroke:C.trigst,text:'#ffffff'};
+  if(n.kind==='result') return {fill:C.res,stroke:C.resst,text:'#ffffff'};
+  return {fill:C.step,stroke:C.stepst,text:'#2b2b1e'}; }
+function buildExportSVG(){
+  const cs=getComputedStyle(document.documentElement), V=(n,d)=>(cs.getPropertyValue(n).trim()||d);
+  const C={ step:V('--step','#F4D03F'),stepst:V('--stepst','#cbab2c'),trig:V('--trig','#7CC07F'),trigst:V('--trigst','#5fa463'),
+    res:V('--res','#4E8FE0'),resst:V('--resst','#3a72bd'),link:V('--link','#46566f'),laneA:V('--laneA','#ffffff'),laneB:V('--laneB','#f5f7f9'),
+    grid:V('--grid','#e9edf1'),line:V('--line','#dfe3e8'),ctxbg:V('--ctxbg','#eef4ff'),trnbg:V('--trnbg','#fff4e3'),ink:V('--ink','#222a33'),muted:V('--muted','#6b7480') };
+  const PAD=30, multiSct=routeIsMultiSct(), TH=multiSct?66:46, nLanes=model.lanes.length, laneBottom=TOPPAD+nLanes*LANE_H;
+  let minX=0,minY=TOPPAD,maxX=-1e9,maxY=laneBottom;
+  model.nodes.forEach(n=>{ const r=nodeRect(n); minX=Math.min(minX,r.x); minY=Math.min(minY,r.y); maxX=Math.max(maxX,r.x+r.w); maxY=Math.max(maxY,r.y+r.h); });
+  model.callouts.forEach(co=>{ const L=calloutLayout(co); if(!L)return;
+    minX=Math.min(minX,L.cx-L.bw/2,L.an.ax); minY=Math.min(minY,L.cy-L.bh/2,L.an.ay);
+    maxX=Math.max(maxX,L.cx+L.bw/2,L.an.ax); maxY=Math.max(maxY,L.cy+L.bh/2,L.an.ay); });
+  if(maxX<0) maxX=COL0+COL_W*1.6;                 // empty route: lanes only, sensible width
+  const laneL=Math.min(0,minX)-6, laneR=maxX+16; minX=laneL; maxX=laneR;
+  const titleTop=minY-TH, vbX=minX-PAD, vbY=titleTop-PAD, vbW=(maxX-minX)+PAD*2, vbH=(maxY-titleTop)+PAD*2;
+  const g=n=>(+n).toFixed(1);
+  const titleStr = (model.meta.sct||'').trim() || 'Untitled route';   // meta.sct is the readable label (displayId · name); never expose the canonical/UUID sctId
+  let s=`<svg xmlns="http://www.w3.org/2000/svg" width="${g(vbW)}" height="${g(vbH)}" viewBox="${g(vbX)} ${g(vbY)} ${g(vbW)} ${g(vbH)}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif">`;
+  s+=`<rect x="${g(vbX)}" y="${g(vbY)}" width="${g(vbW)}" height="${g(vbH)}" fill="#ffffff"/>`;
+  s+=`<defs><marker id="xarr" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0L10,5L0,10Z" fill="${C.link}"/></marker></defs>`;
+  s+=`<text x="${g(laneL+2)}" y="${g(titleTop+15)}" font-size="10" font-weight="700" letter-spacing="0.7" fill="${C.muted}">E2E FLIGHT ROUTE</text>`;
+  s+=`<text x="${g(laneL+2)}" y="${g(titleTop+34)}" font-size="16" font-weight="700" fill="${C.ink}">${esc(titleStr)}</text>`;
+  if(multiSct){ const ids=[], pid=primarySctId(); if(pid) ids.push(pid);   // participating-SCTs line so a cross-SCT route is understandable
+    (context.related||[]).forEach(r=>{ if(ids.indexOf(r.id)<0) ids.push(r.id); });
+    (model.meta.relatedSctIds||[]).forEach(id=>{ if(ids.indexOf(id)<0) ids.push(id); });
+    nodeSctIds().forEach(id=>{ if(ids.indexOf(id)<0) ids.push(id); });
+    const parts=ids.filter(Boolean).map(id=>{ const sc=sctById(id), isP=(id===pid);   // resolve to the readable displayId/name; never emit the canonical id
+      if(!sc) return context.active ? 'Source SCT unavailable' : 'SCT';
+      const num=sc.displayId||'', nm=stripId(sc.name||'', num);
+      return (num||'SCT')+(nm?' '+nm:'')+(isP?' (primary)':''); });
+    s+=`<text x="${g(laneL+2)}" y="${g(titleTop+52)}" font-size="10.5" font-weight="600" fill="${C.muted}">${esc('SCTs:  '+parts.join('    ·    '))}</text>`; }
+  model.lanes.forEach((l,i)=>{ const y=TOPPAD+i*LANE_H;
+    s+=`<rect x="${g(laneL)}" y="${g(y)}" width="${g(laneR-laneL)}" height="${LANE_H}" fill="${i%2?C.laneB:C.laneA}"/>`;
+    s+=`<line x1="${g(laneL)}" y1="${g(y)}" x2="${g(laneR)}" y2="${g(y)}" stroke="${C.grid}" stroke-width="1"/>`;
+    s+=`<text x="${g(laneL+16)}" y="${g(y+22)}" font-size="9.5" font-weight="600" letter-spacing="0.4" fill="#94a0ac">${esc((l.sub||'').toUpperCase())}</text>`;
+    s+=`<text x="${g(laneL+16)}" y="${g(y+40)}" font-size="12" font-weight="700" fill="#3a424c">${esc(l.name)}</text>`; });
+  s+=`<line x1="${g(laneL)}" y1="${g(laneBottom)}" x2="${g(laneR)}" y2="${g(laneBottom)}" stroke="${C.grid}" stroke-width="1"/>`;
+  s+=`<line x1="${HEAD_W}" y1="${g(TOPPAD)}" x2="${HEAD_W}" y2="${g(laneBottom)}" stroke="${C.line}" stroke-width="1.4"/>`;
+  for(let c=0;;c++){ const x=COL0+c*COL_W; if(x>laneR)break; if(x>=HEAD_W) s+=`<line x1="${g(x)}" y1="${g(TOPPAD)}" x2="${g(x)}" y2="${g(laneBottom)}" stroke="${C.grid}" stroke-width="1" stroke-dasharray="2 5"/>`; }
+  model.links.forEach(k=>{ const d=linkPath(k); if(d) s+=`<path d="${d}" fill="none" stroke="${C.link}" stroke-width="2" stroke-linejoin="round" marker-end="url(#xarr)"/>`; });
+  model.nodes.forEach(n=>{ const r=nodeRect(n), nc=exportNodeColors(n,C), lines=wrapLabel(n.label,n.kind==='step'?18:16,3), lh=14, ty=r.y+r.h/2-(lines.length-1)*lh/2+4;
+    s+=`<rect x="${g(r.x)}" y="${g(r.y)}" width="${NW}" height="${NH}" rx="${n.kind==='step'?6:14}" fill="${nc.fill}" stroke="${nc.stroke}" stroke-width="1.6"/>`;
+    lines.forEach((ln,j)=>{ s+=`<text x="${g(r.x+r.w/2)}" y="${g(ty+j*lh)}" text-anchor="middle" font-size="12" font-weight="600" fill="${nc.text}">${esc(ln)}</text>`; });
+    const bdg=nodeBadge(n);   // compact SCT tag on cross-SCT (non-primary / unavailable) steps
+    if(bdg && (!bdg.primary || !bdg.available)){ const lbl=bdg.available?(bdg.displayId||'SCT'):'SCT', t=bdg.available?lbl:('⚠ '+lbl), bw=Math.max(24,t.length*5.4+9),
+      bg=bdg.available?'#e7f0fd':'#fdf2e7', bs=bdg.available?'#bcd5f5':'#e9b777', tc=bdg.available?'#2f6fed':'#c2731a';
+      s+=`<rect x="${g(r.x+1)}" y="${g(r.y-14)}" width="${g(bw)}" height="12.5" rx="3" fill="${bg}" stroke="${bs}" stroke-width="1"${bdg.available?'':' stroke-dasharray="3 2"'}/>`;
+      s+=`<text x="${g(r.x+1+bw/2)}" y="${g(r.y-4.6)}" text-anchor="middle" font-size="8" font-weight="700" fill="${tc}">${esc(t)}</text>`; } });
+  model.callouts.forEach(co=>{ const L=calloutLayout(co); if(!L)return; const isT=co.kind==='transition', x=L.cx-L.bw/2, y=L.cy-L.bh/2;
+    s+=`<line x1="${g(L.cx)}" y1="${g(L.cy)}" x2="${g(L.an.ax)}" y2="${g(L.an.ay)}" stroke="${isT?'#dca957':'#b3bcc6'}" stroke-width="1" stroke-dasharray="3 2" fill="none"/>`;
+    s+=`<rect x="${g(x)}" y="${g(y)}" width="${L.bw}" height="${g(L.bh)}" rx="6" fill="${isT?C.trnbg:C.ctxbg}" stroke="${isT?'#e3a44d':'#9bb8e6'}" stroke-width="1.4"/>`;
+    s+=`<text x="${g(x+9)}" y="${g(y+12)}" font-size="8" font-weight="800" letter-spacing="0.5" fill="${isT?'#c9831f':'#3f73c4'}">${isT?'⚠ HAND-OFF':'NOTE'}</text>`;
+    if(co.text) L.lines.forEach((ln,j)=>{ s+=`<text x="${g(x+9)}" y="${g(y+L.padTop+10+j*L.lh)}" font-size="10.5" font-weight="500" fill="#37434f">${esc(ln)}</text>`; }); });
+  findingsByTarget().forEach(t=>{ const a=findingAnchor(t.type,t.id); if(!a)return; s+=`<g transform="translate(${g(a.x)},${g(a.y)})">${findingBoltInner(t.fs)}</g>`; });
+  s+=`</svg>`;
+  return {svg:s, w:vbW, h:vbH};
+}
+function exportSVGBlob(){ return new Blob([buildExportSVG().svg], {type:'image/svg+xml;charset=utf-8'}); }
+function exportPNGBlob(){ return new Promise((resolve,reject)=>{
+  const {svg,w,h}=buildExportSVG(), scale=Math.max(1,Math.min(2,8000/w,8000/h));
+  const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml;charset=utf-8'})), img=new Image();
+  img.onload=()=>{ try{ const cv=document.createElement('canvas'); cv.width=Math.round(w*scale); cv.height=Math.round(h*scale);
+      const ctx=cv.getContext('2d'); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,cv.width,cv.height); ctx.setTransform(scale,0,0,scale,0,0); ctx.drawImage(img,0,0);
+      URL.revokeObjectURL(url); cv.toBlob(b=>{ b?resolve(b):reject(new Error('PNG encoding failed')); },'image/png'); }
+    catch(e){ URL.revokeObjectURL(url); reject(e); } };
+  img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('SVG rasterization failed')); };
+  img.src=url; }); }
+function exportFilename(format){ const base=(model.meta.sct||'e2e-flight-route').toString().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'e2e-flight-route'; return base+'.'+(format==='svg'?'svg':'png'); }   // readable base; never the canonical/UUID sctId
+function downloadBlob(blob, filename){ const url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url; a.download=filename||'export'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500); }
+async function exportAndDownload(format){ try{ const blob = (format==='svg')? exportSVGBlob() : await exportPNGBlob(); downloadBlob(blob, exportFilename(format)); }catch(e){ console.error('Export failed:',e); alert('Export failed: '+((e&&e.message)||e)); } }
+
+/* ============================ mutations ============================ */
+function addStepAt(laneId, col, edit){ pushUndo(); col=freeCol(laneId, col); const n={id:uid('s'),kind:'step',laneId,col,label:'New step'}; model.nodes.push(n);
+  setSel('node',n.id); save(); render(); if(edit) startRename(n.id); }
+function addStepFromContrib(cid){ const c=(context.contributions||[]).find(x=>x.id===cid); if(!c) return;
+  if(!model.lanes.some(l=>l.id===c.laneId)) return; pushUndo();
+  const n={id:uid('s'),kind:'step',laneId:c.laneId,col:freeCol(c.laneId, maxCol()+1),label:c.label,contribId:c.id};
+  if(c.sctId) n.contribSctId=c.sctId;   // stable SCT-origin id: lets the step's source survive even if that SCT later leaves the host selection
+  model.nodes.push(n); setSel('node',n.id); save(); render(); }
+function deleteSelected(){ if(!sel.length) return;
+  const nIds=new Set(sel.filter(s=>s.type==='node').map(s=>s.id));
+  const kIds=new Set(sel.filter(s=>s.type==='link').map(s=>s.id));
+  const cIds=new Set(sel.filter(s=>s.type==='callout').map(s=>s.id));
+  // links that will go (selected links + links touching a deleted node) — to flag findings on them
+  const remLinks=new Set([...kIds]); model.links.forEach(k=>{ if(nIds.has(k.from)||nIds.has(k.to)) remLinks.add(k.id); });
+  const affected=(model.findings||[]).filter(fd=> fd.target && ((fd.target.type==='node'&&nIds.has(fd.target.id))||(fd.target.type==='link'&&remLinks.has(fd.target.id))) );
+  if(affected.length && !confirm(affected.length+' finding'+(affected.length>1?'s':'')+' attached to the deleted element'+(nIds.size+kIds.size>1?'s':'')+' will be removed too.\n\nDelete anyway?')) return;
+  pushUndo();
+  if(nIds.size){ model.nodes=model.nodes.filter(n=>!nIds.has(n.id)); model.links=model.links.filter(k=>!nIds.has(k.from)&&!nIds.has(k.to)); }
+  if(kIds.size){ model.links=model.links.filter(k=>!kIds.has(k.id)); }
+  model.callouts=model.callouts.filter(co=> !cIds.has(co.id)
+    && !(co.target.type==='node'&&nIds.has(co.target.id))
+    && !(co.target.type==='link'&&kIds.has(co.target.id)) );
+  model.findings=(model.findings||[]).filter(fd=>{ if(!fd.target) return false;
+    if(fd.target.type==='node') return model.nodes.some(n=>n.id===fd.target.id);
+    return model.links.some(k=>k.id===fd.target.id); });   // drop findings on removed nodes/links (incl. cascade)
+  clearSel(); save(); render(); }
+function connect(from,to){ if(from===to) return; if(model.links.some(k=>k.from===from&&k.to===to)) return;
+  pushUndo(); model.links.push({id:uid('k'),from,to}); save(); render(); }
+function snapNodeTo(n, ux, uy){ const li=Math.max(0,Math.min(model.lanes.length-1, Math.round((uy-TOPPAD-LANE_H/2)/LANE_H)));
+  const col=Math.max(0, Math.round((ux-COL0-COL_W/2)/COL_W)); n.laneId=model.lanes[li].id; n.col=col; }
+/* keep cells unique — boxes must never stack exactly */
+function freeCol(laneId, col, excludeId){ const occ=new Set(model.nodes.filter(n=>n.id!==excludeId&&n.laneId===laneId).map(n=>n.col));
+  if(!occ.has(col)) return col;
+  for(let d=1;d<=400;d++){ if(!occ.has(col+d)) return col+d; if(col-d>=0&&!occ.has(col-d)) return col-d; } return col; }
+function resolveOverlaps(movedIds){ const moved=new Set(movedIds), occ=new Set();
+  model.nodes.forEach(n=>{ if(!moved.has(n.id)) occ.add(n.laneId+'#'+n.col); });
+  movedIds.forEach(id=>{ const n=nodeById(id); if(!n) return; let c=n.col;
+    if(occ.has(n.laneId+'#'+c)){ found: for(let d=1;d<=400;d++){ for(const cc of [c+d,c-d]){ if(cc>=0&&!occ.has(n.laneId+'#'+cc)){ c=cc; break found; } } } }
+    n.col=c; occ.add(n.laneId+'#'+c); }); }
+function nudge(dCol,dLane){ const ns=selNodeIds().map(nodeById).filter(Boolean); if(!ns.length) return; pushUndo();
+  ns.forEach(n=>{ n.col=Math.max(0,n.col+dCol); const i=laneIndex(n.laneId)+dLane; if(i>=0&&i<model.lanes.length) n.laneId=model.lanes[i].id; });
+  save(); render(); }
+function addCallout(kind, ttype, tid){ pushUndo();
+  const co={id:uid('c'), kind, target:{type:ttype,id:tid}, text:'', dx:0, dy: ttype==='node'?-66:-54};
+  model.callouts.push(co); sel=[{type:'callout',id:co.id}]; save(); render(); startCalloutEdit(co.id); }
+function addFinding(ttype, tid){ pushUndo();
+  const fd={id:uid('fd'), target:{type:ttype,id:tid}, category:'bottleneck', severity:'medium', note:''};
+  model.findings.push(fd); save(); render();
+  requestAnimationFrame(()=>{ const el=document.querySelector(`.fnote[data-fid="${fd.id}"]`); if(el) el.focus(); }); }
+function deleteFinding(fid){ if(!findingById(fid)) return; pushUndo(); model.findings=(model.findings||[]).filter(x=>x.id!==fid); save(); render(); }
+/* copy / paste / duplicate (preserve internal links; trigger/result clones become steps) */
+function snapshotSel(){ const ns=selNodeIds().map(nodeById).filter(Boolean); const ids=new Set(ns.map(n=>n.id));
+  return {nodes:ns.map(n=>({tmp:n.id,kind:n.kind,laneId:n.laneId,col:n.col,label:n.label,color:n.color})),
+          links:model.links.filter(k=>ids.has(k.from)&&ids.has(k.to)).map(k=>({from:k.from,to:k.to}))}; }
+function instantiate(spec, colOff){ if(!spec||!spec.nodes.length) return; pushUndo(); const map={}, news=[];
+  spec.nodes.forEach(n=>{ const id=uid('s'); map[n.tmp]=id; news.push(id);
+    model.nodes.push({id, kind:(n.kind==='trigger'||n.kind==='result')?'step':n.kind, laneId:n.laneId, col:n.col+colOff, label:n.label, ...(n.color?{color:n.color}:{})}); });
+  (spec.links||[]).forEach(k=>{ if(map[k.from]&&map[k.to]) model.links.push({id:uid('k'),from:map[k.from],to:map[k.to]}); });
+  sel=news.map(id=>({type:'node',id})); save(); render(); }
+function copySelection(){ const s=snapshotSel(); if(s.nodes.length) clipboard=s; }
+function pasteClipboard(){ instantiate(clipboard,1); }
+function duplicateSelection(){ instantiate(snapshotSel(),1); }
+
+/* ============================ inline rename ============================ */
+let renameId=null, renameCancel=false;
+function startRename(id){ const n=nodeById(id); if(!n) return; const el=document.querySelector(`.node[data-node="${id}"] rect.nbox`); if(!el) return;
+  const r=el.getBoundingClientRect(); const inp=document.getElementById('inlineEdit');
+  inp.style.display='block'; inp.style.left=r.left+'px'; inp.style.top=r.top+'px'; inp.style.width=r.width+'px'; inp.style.height=r.height+'px';
+  inp.value=n.label; renameId=id; renameCancel=false; inp.focus(); inp.select(); }
+function commitRename(){ const inp=document.getElementById('inlineEdit'); if(renameId==null){ inp.style.display='none'; return; }
+  const n=nodeById(renameId); renameId=null; inp.style.display='none';
+  if(n && !renameCancel && inp.value.trim() && inp.value!==n.label){ pushUndo(); n.label=inp.value.trim(); save(); render(); } }
+/* in-box inline editing for call-outs (same idea as steps) */
+let coEditId=null, coEditCancel=false;
+function startCalloutEdit(id){ const co=model.callouts.find(x=>x.id===id); if(!co) return;
+  const el=document.querySelector(`.callout[data-callout="${id}"] rect.cobox`); if(!el) return;
+  const r=el.getBoundingClientRect(); const ta=document.getElementById('inlineCo');
+  ta.style.display='block'; ta.style.left=r.left+'px'; ta.style.top=r.top+'px'; ta.style.width=r.width+'px'; ta.style.height=r.height+'px';
+  ta.value=co.text||''; coEditId=id; coEditCancel=false; ta.focus(); ta.select(); }
+function commitCalloutEdit(){ const ta=document.getElementById('inlineCo'); if(coEditId==null){ ta.style.display='none'; return; }
+  const co=model.callouts.find(x=>x.id===coEditId); coEditId=null; ta.style.display='none';
+  if(co && !coEditCancel && ta.value!==co.text){ pushUndo(); co.text=ta.value; save(); render(); } }
+
+/* ============================ interaction ============================ */
+const stage=document.querySelector('.stage');
+let gesture=null;
+/* manual double-click detection — native dblclick is unreliable because selecting re-renders the SVG between clicks */
+let lastTap=null;
+function isDbl(kind,id){ const now=Date.now(); const d=lastTap&&lastTap.kind===kind&&lastTap.id===id&&(now-lastTap.t)<450; lastTap=d?null:{kind,id,t:now}; return d; }
+stage.addEventListener('mousedown',e=>{
+  if(e.button!==0||e.target.closest('#zoomctl')||e.target.closest('#propPop')) return;
+  { const _r=document.getElementById('rubber'); if(_r) _r.remove(); }   // clear any stale rubber from an interrupted drag
+  const handle=e.target.closest('.chandle');
+  let fromId = handle ? handle.dataset.handle : null;
+  if(!fromId && !e.target.closest('.linkend')){ const u=toUser(e.clientX,e.clientY);   // chandle may be hidden under a call-out/marker — detect the right-edge port by geometry
+    for(let i=model.nodes.length-1;i>=0;i--){ const n=model.nodes[i], r=nodeRect(n); if(Math.abs(u.x-(r.x+r.w))<=9 && Math.abs(u.y-(r.y+r.h/2))<=10){ fromId=n.id; break; } } }
+  if(fromId){ document.body.classList.add('connecting'); gesture={kind:'connect', from:fromId}; const c=nodeCenter(nodeById(fromId));
+    const rb=document.createElementNS('http://www.w3.org/2000/svg','path'); rb.id='rubber'; curSvg().appendChild(rb);
+    gesture.sx=c.x+NW/2; gesture.sy=c.y; return; }
+  const lend=e.target.closest('.linkend');
+  if(lend){ const id=lend.dataset.link, end=lend.dataset.end, k=model.links.find(x=>x.id===id);
+    if(k){ document.body.classList.add('connecting'); const E=linkEnds(k); const fx=end==='to'?E.sx:E.tx, fy=end==='to'?E.sy:E.ty;
+      gesture={kind:'relink', id, end, fx, fy};
+      const rb=document.createElementNS('http://www.w3.org/2000/svg','path'); rb.id='rubber'; curSvg().appendChild(rb);
+      rb.setAttribute('d',`M ${f(fx)} ${f(fy)} L ${f(end==='to'?E.tx:E.sx)} ${f(end==='to'?E.ty:E.sy)}`); }
+    return; }
+  const fm=e.target.closest('.fmark');
+  if(fm){ const t=fm.dataset.ftype, id=fm.dataset.ftid; if(e.shiftKey) toggleSel(t,id); else setSel(t,id); render(); return; }
+  const coEl=e.target.closest('.callout');
+  if(coEl){ const id=coEl.dataset.callout;
+    if(e.shiftKey){ toggleSel('callout',id); render(); return; }
+    if(!selHas('callout',id)) setSel('callout',id);
+    const co=model.callouts.find(x=>x.id===id);
+    gesture={kind:'dragcallout', id, odx:(co&&Number.isFinite(co.dx))?co.dx:0, ody:(co&&Number.isFinite(co.dy))?co.dy:0, u0:toUser(e.clientX,e.clientY), sx:e.clientX, sy:e.clientY, moved:false}; render(); return; }
+  const nodeEl=e.target.closest('.node');
+  if(nodeEl){ const id=nodeEl.dataset.node;
+    if(e.shiftKey){ toggleSel('node',id); render(); return; }
+    if(!selHas('node',id)) setSel('node',id);
+    const ids=selNodeIds(), origins={}; ids.forEach(i=>{const c=nodeCenter(nodeById(i)); origins[i]={x:c.x,y:c.y};});
+    gesture={kind:'dragnode', id, ids, origins, u0:toUser(e.clientX,e.clientY), sx:e.clientX, sy:e.clientY, moved:false};
+    render(); return; }
+  const linkEl=e.target.closest('.linkhit');
+  if(linkEl){ const id=linkEl.dataset.link; if(e.shiftKey) toggleSel('link',id); else setSel('link',id); render(); return; }
+  if(e.shiftKey){ const u=toUser(e.clientX,e.clientY); gesture={kind:'marquee', x0:u.x, y0:u.y, add:sel.slice(), rect:null};
+    const mq=document.createElementNS('http://www.w3.org/2000/svg','rect'); mq.id='marquee'; curSvg().appendChild(mq); return; }
+  const wh=stageWH(), vb=curVB(); gesture={kind:'pan', px:panX, py:panY, sx:e.clientX, sy:e.clientY, sw:wh[0], sh:wh[1], vw:vb.w, vh:vb.h, moved:false};
+});
+window.addEventListener('mousemove',e=>{
+  if(!gesture) return;
+  if(gesture.kind==='pan'){ const dx=e.clientX-gesture.sx, dy=e.clientY-gesture.sy; if(!gesture.moved&&Math.hypot(dx,dy)<4)return;
+    gesture.moved=true; document.body.classList.add('panning'); panX=gesture.px-dx*(gesture.vw/gesture.sw); panY=gesture.py-dy*(gesture.vh/gesture.sh); applyVB(); return; }
+  if(gesture.kind==='dragnode'){ const dx=e.clientX-gesture.sx, dy=e.clientY-gesture.sy; if(!gesture.moved&&Math.hypot(dx,dy)<4)return;
+    gesture.moved=true; document.body.classList.add('panning'); const u=toUser(e.clientX,e.clientY), ddx=u.x-gesture.u0.x, ddy=u.y-gesture.u0.y;
+    dragNodes=new Map(); gesture.ids.forEach(i=>dragNodes.set(i,{x:gesture.origins[i].x+ddx, y:gesture.origins[i].y+ddy})); render(); return; }
+  if(gesture.kind==='dragcallout'){ const dx=e.clientX-gesture.sx, dy=e.clientY-gesture.sy; if(!gesture.moved&&Math.hypot(dx,dy)<4)return;
+    if(!gesture.moved){ gesture.moved=true; document.body.classList.add('panning'); pushUndo(); }
+    const u=toUser(e.clientX,e.clientY), co=model.callouts.find(x=>x.id===gesture.id);
+    if(co){ co.dx=gesture.odx+(u.x-gesture.u0.x); co.dy=gesture.ody+(u.y-gesture.u0.y); } render(); return; }
+  if(gesture.kind==='marquee'){ const u=toUser(e.clientX,e.clientY); const x=Math.min(gesture.x0,u.x),y=Math.min(gesture.y0,u.y),w=Math.abs(u.x-gesture.x0),h=Math.abs(u.y-gesture.y0);
+    gesture.rect={x,y,w,h}; const mq=document.getElementById('marquee'); if(mq){mq.setAttribute('x',f(x));mq.setAttribute('y',f(y));mq.setAttribute('width',f(w));mq.setAttribute('height',f(h));} return; }
+  if(gesture.kind==='connect'){ const u=toUser(e.clientX,e.clientY); const rb=document.getElementById('rubber');
+    if(rb) rb.setAttribute('d',`M ${f(gesture.sx)} ${f(gesture.sy)} L ${f(u.x)} ${f(u.y)}`); return; }
+  if(gesture.kind==='relink'){ const u=toUser(e.clientX,e.clientY); const rb=document.getElementById('rubber');
+    if(rb) rb.setAttribute('d',`M ${f(gesture.fx)} ${f(gesture.fy)} L ${f(u.x)} ${f(u.y)}`); return; }
+});
+window.addEventListener('mouseup',e=>{
+  if(!gesture) return; const g=gesture; gesture=null; document.body.classList.remove('panning'); document.body.classList.remove('connecting');
+  if(g.kind==='pan'){ if(!g.moved){
+      if(isDbl('empty','')){ const u=toUser(e.clientX,e.clientY); if(u.x>=COL0-20){
+        const li=Math.max(0,Math.min(model.lanes.length-1, Math.round((u.y-TOPPAD-LANE_H/2)/LANE_H)));
+        const col=Math.max(0, Math.round((u.x-COL0-COL_W/2)/COL_W)); addStepAt(model.lanes[li].id, col, true); return; } }
+      clearSel(); render(); } return; }
+  if(g.kind==='dragnode'){ if(g.moved){ pushUndo(); g.ids.forEach(i=>{const n=nodeById(i),p=dragNodes&&dragNodes.get(i); if(n&&p) snapNodeTo(n,p.x,p.y);}); resolveOverlaps(g.ids); dragNodes=null; save(); render(); }
+    else if(e.shiftKey){ render(); }
+    else { const dbl=isDbl('node',g.id); setSel('node',g.id); render(); if(dbl) startRename(g.id); } return; }
+  if(g.kind==='dragcallout'){ if(g.moved){ save(); render(); return; }
+    if(e.shiftKey){ render(); return; }
+    const dbl=isDbl('callout',g.id); setSel('callout',g.id); render();
+    if(dbl){ startCalloutEdit(g.id); } return; }
+  if(g.kind==='marquee'){ const mq=document.getElementById('marquee'); if(mq) mq.remove(); const r=g.rect;
+    if(r&&r.w>3&&r.h>3){ const hits=model.nodes.filter(n=>{const c=nodeCenter(n); return c.x>=r.x&&c.x<=r.x+r.w&&c.y>=r.y&&c.y<=r.y+r.h;}).map(n=>({type:'node',id:n.id}));
+      sel=g.add.concat(hits.filter(hp=>!g.add.some(s=>s.type==='node'&&s.id===hp.id))); }
+    render(); return; }
+  if(g.kind==='connect'){ const rb=document.getElementById('rubber'); if(rb) rb.remove();
+    const nid=nodeAtPoint(e.clientX, e.clientY); if(nid && nid!==g.from) connect(g.from, nid); return; }
+  if(g.kind==='relink'){ const rb=document.getElementById('rubber'); if(rb) rb.remove();
+    const nid=nodeAtPoint(e.clientX, e.clientY);
+    if(nid){ const k=model.links.find(x=>x.id===g.id);
+      if(k){ const other=g.end==='to'?k.from:k.to;
+        const dup=model.links.some(x=>x!==k && (g.end==='to' ? (x.from===k.from&&x.to===nid) : (x.from===nid&&x.to===k.to)));
+        if(nid!==other && !dup){ pushUndo(); if(g.end==='to') k.to=nid; else k.from=nid; save(); } } }
+    render(); return; }
+});
+stage.addEventListener('wheel',e=>{ const svg=curSvg(); if(!svg||!svg.getScreenCTM())return; e.preventDefault();
+  const u=toUser(e.clientX,e.clientY); zoomAround(Math.pow(1.0015,-e.deltaY), u.x, u.y); },{passive:false});
+
+/* ============================ keyboard ============================ */
+window.addEventListener('keydown',e=>{
+  if(renameId!=null){ if(e.key==='Enter'){e.preventDefault();document.getElementById('inlineEdit').blur();} else if(e.key==='Escape'){renameCancel=true;document.getElementById('inlineEdit').blur();} return; }
+  const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA')) return;
+  const mod=e.metaKey||e.ctrlKey, k=e.key.toLowerCase();
+  if(mod&&k==='z'){ e.preventDefault(); if(e.shiftKey) redo(); else undo(); return; }
+  if(mod&&k==='y'){ e.preventDefault(); redo(); return; }
+  if(mod&&k==='c'){ copySelection(); return; }
+  if(mod&&k==='v'){ e.preventDefault(); pasteClipboard(); return; }
+  if(mod&&k==='d'){ e.preventDefault(); duplicateSelection(); return; }
+  if(mod&&k==='a'){ e.preventDefault(); sel=model.nodes.map(n=>({type:'node',id:n.id})); render(); return; }
+  if(k==='f'&&!mod){ e.preventDefault(); toggleFs(); return; }
+  if((e.key==='Enter'||e.key==='F2')&&!mod){ const n=selOneNode(); if(n){ e.preventDefault(); startRename(n.id); return; } const c=selOneCallout(); if(c){ e.preventDefault(); startCalloutEdit(c.id); } return; }
+  if(e.key==='Delete'||e.key==='Backspace'){ if(sel.length){ e.preventDefault(); deleteSelected(); } return; }
+  if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='ArrowUp'||e.key==='ArrowDown'){ e.preventDefault();
+    if(e.shiftKey){ nudge(e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:0, e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0); }   // shift = move the selected step
+    else { const vb=curVB(), sx=vb.w*0.18, sy=vb.h*0.18;                                                                    // plain = scroll the canvas
+      panBy(e.key==='ArrowLeft'?-sx:e.key==='ArrowRight'?sx:0, e.key==='ArrowUp'?-sy:e.key==='ArrowDown'?sy:0); }
+    return; }
+  if(e.key==='Escape'){ clearSel(); render(); }
+});
+document.getElementById('inlineEdit').addEventListener('blur', commitRename);
+{ const _co=document.getElementById('inlineCo');
+  _co.addEventListener('blur', commitCalloutEdit);
+  _co.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); _co.blur(); } else if(e.key==='Escape'){ coEditCancel=true; _co.blur(); } }); }
+
+/* ============================ toolbar + panel events ============================ */
+document.getElementById('bAdd').onclick=()=>{ const sif=model.lanes[Math.min(1,model.lanes.length-1)]; addStepAt(sif.id, maxCol()+1, true); };
+document.getElementById('bUndo').onclick=undo;
+document.getElementById('bRedo').onclick=redo;
+document.getElementById('bDel').onclick=deleteSelected;
+document.getElementById('bPane').onclick=()=>setPane(!paneVisible);
+document.getElementById('zin').onclick=()=>zoomCentre(1.4);
+document.getElementById('zout').onclick=()=>zoomCentre(1/1.4);
+document.getElementById('btnFs').onclick=toggleFs; updateFsBtn();
+document.getElementById('btnFull').onclick=fitAllView;
+document.getElementById('btnFit').onclick=fillView;
+document.getElementById('zpct').onclick=fitAllView;
+document.getElementById('bExport').onclick=e=>{ e.stopPropagation(); const m=document.getElementById('exportMenu'); m.hidden=!m.hidden; };
+document.getElementById('exportMenu').addEventListener('click',e=>{ const b=e.target.closest('[data-export]'); if(!b) return; document.getElementById('exportMenu').hidden=true; exportAndDownload(b.dataset.export); });
+document.addEventListener('click',e=>{ const m=document.getElementById('exportMenu'); if(m && !m.hidden && !e.target.closest('#exportWrap')) m.hidden=true; });
+
+document.getElementById('sctName').addEventListener('input',e=>{ model.meta.sct=e.target.value; document.getElementById('sctLbl').textContent=e.target.value; save(); });
+document.querySelector('.panel').addEventListener('click',e=>{
+  const chip=e.target.closest('[data-contrib]'); if(chip){ addStepFromContrib(chip.dataset.contrib); return; }
+});
+document.getElementById('propPop').addEventListener('click',e=>{
+  if(e.target.closest('#propClose')){ clearSel(); render(); return; }
+  const sw=e.target.closest('.swatch'); if(sw){ const n=selOneNode(); if(n){ pushUndo(); const c=sw.dataset.color; if(c) n.color=c; else delete n.color; save(); render(); } return; }
+  const fdel=e.target.closest('.fdel'); if(fdel){ deleteFinding(fdel.dataset.fid); return; }
+  if(e.target.id==='pAddFinding'){ const n=selOneNode(), k=selOneLink(); if(n) addFinding('node',n.id); else if(k) addFinding('link',k.id); return; }
+  if(e.target.id==='pAddCo'){ const n=selOneNode(); if(n) addCallout('context','node',n.id); return; }
+  if(e.target.id==='pAddCoT'){ const k=selOneLink(); if(k) addCallout('transition','link',k.id); return; }
+  if(e.target.id==='pDel'||e.target.id==='pDelLink'||e.target.id==='pDelCo'||e.target.id==='pDelMulti'){ deleteSelected(); return; }
+});
+document.getElementById('propBody').addEventListener('input',e=>{
+  if(e.target.id==='pCoText'){ const co=selOneCallout(); if(co){ const ss=e.target.selectionStart, se=e.target.selectionEnd; co.text=e.target.value; save(); render(); const a=document.getElementById('pCoText'); if(a){a.focus(); a.setSelectionRange(ss,se);} } return; }
+  if(e.target.classList.contains('fnote')){ const fd=findingById(e.target.dataset.fid); if(fd){ fd.note=e.target.value; save(); } return; }   // live save, no re-render (note isn't on the marker)
+});
+document.getElementById('propBody').addEventListener('change',e=>{
+  if(e.target.id==='pLane'){ const n=selOneNode(); if(n){ pushUndo(); n.laneId=e.target.value; save(); render(); } return; }
+  if(e.target.classList.contains('fcat')){ const fd=findingById(e.target.dataset.fid); if(fd){ pushUndo(); fd.category=e.target.value; save(); render(); } return; }
+  if(e.target.classList.contains('fsev')){ const fd=findingById(e.target.dataset.fid); if(fd){ pushUndo(); fd.severity=e.target.value; save(); render(); } return; }
+});
+
+/* robust fit: ResizeObserver fits once the stage has a real size, then keeps the viewBox aspect correct on every resize (fixes the WebKit late-layout grey-area bug) */
+let _firstFit=false;
+const ro=new ResizeObserver(()=>{ if(!_firstFit){ _firstFit=true; refit(); } else { userZoomed?applyVB():refit(); } });
+ro.observe(stage);
+
+/* ======================================================================
+   INTEGRATION BRIDGE (P7) — iframe + postMessage   (contract: FLIGHT-ROUTE-BRIEFING.md §8)
+   Standalone-safe: inert when there is no parent frame. The host feeds the Step I
+   recursion levels (read-only) and the selected SCT + its contributions (context);
+   the frame emits the authored route back. IDs sent in setLanes/loadModel are used
+   as-is and round-trip in `change`; steps/links/call-outs the user creates get
+   frame-local, collision-safe string ids.
+
+   HOST -> frame   ( iframe.contentWindow.postMessage(msg,'*') )
+     { cmd:'loadModel', model }                full authored model {meta,lanes,nodes,links,callouts}
+     { cmd:'setLanes',  lanes }                lanes=[{id,name,sub}]  (Step I recursion levels, read-only here)
+     { cmd:'setSCT',    sct, contributions }   LEGACY single-SCT: sct={id,name}; contributions=[{id,laneId,label}] (treated as a 1-SCT context)
+     { cmd:'setSCTContext', primarySct, relatedScts, contributions }   CROSS-SCT: primarySct={id,displayId?,name}; relatedScts=[{id,displayId?,name}];
+                                               contributions=[{id,laneId,label,sctId,sctName}] (from all SCTs; id/sctId/laneId round-trip unchanged — these stay canonical).
+                                               displayId is the OPTIONAL readable label ("SCT-001"); it is shown in ALL user-facing spots (palette headings, step tags, popover, export legend/title) — the canonical id is NEVER displayed. displayId only on SCT objects, NOT on contributions (a step resolves its SCT via sctId→the SCT object). Absent displayId → neutral fallback (never a UUID); removed SCT → "Source SCT unavailable".
+                                               Sets meta.primarySctId + meta.relatedSctIds (canonical); meta.sct = readable "displayId · name". A placed step keeps contribId (+ additive canonical node.contribSctId for offline origin).
+     { cmd:'select',    ref }                  ref={type:'node'|'link'|'callout', id} | null
+     { cmd:'setFit',    mode }                 mode='all' (whole route, default) | 'fill' (lanes fill height)
+     { cmd:'export',    format, requestId, filename? }   format='png'|'svg'  ->  exportReady | exportError
+     { cmd:'setPaneVisibility', visible }
+   frame -> HOST   ( posted to window.parent '*'; also window.E2E.onEmit(msg) when inlined )
+     { evt:'ready', api:1 }
+     { evt:'change', model }                   debounced; the authored route to persist
+     { evt:'select', ref, count }              ref={type,id,name} | null
+     { evt:'exportReady', requestId, format, filename, mimeType, blob }   blob = structured-clone Blob
+     { evt:'exportError', requestId, format, message }
+     { evt:'paneVisibilityChanged', visible }
+   ====================================================================== */
+function bumpId(){ let mx=_id; const scan=id=>{ const m=/(\d+)$/.exec(String(id)); if(m) mx=Math.max(mx,+m[1]); };
+  (model.lanes||[]).forEach(l=>scan(l.id)); (model.nodes||[]).forEach(n=>scan(n.id)); (model.links||[]).forEach(k=>scan(k.id)); (model.callouts||[]).forEach(c=>scan(c.id)); (model.findings||[]).forEach(x=>scan(x.id)); _id=mx; }
+function dedupeIds(){ const seen=new Set(), pfx={nodes:'s',links:'k',callouts:'c',findings:'fd'};   // repair duplicate ids (cross-session collisions): keep the first, re-mint the rest
+  Object.keys(pfx).forEach(coll=>{ (model[coll]||[]).forEach(it=>{ if(it&&it.id!=null){ if(seen.has(it.id)) it.id=uid(pfx[coll]); seen.add(it.id); } }); }); }
+const BRIDGE = (()=>{
+  const inFrame=!!(window.parent && window.parent!==window), TARGET='*';
+  function postToHost(msg){ try{ if(inFrame) window.parent.postMessage(msg,TARGET);}catch(_){}
+    try{ if(window.E2E && typeof window.E2E.onEmit==='function') window.E2E.onEmit(msg);}catch(_){} }
+  function loadModel(m){ if(!m||typeof m!=='object'||!Array.isArray(m.lanes)) return; _silent=true;
+    model=JSON.parse(JSON.stringify(m)); if(!Array.isArray(model.callouts)) model.callouts=[]; if(!Array.isArray(model.findings)) model.findings=[]; if(!model.meta) model.meta={};
+    if(!Array.isArray(model.meta.relatedSctIds)) model.meta.relatedSctIds=[];   // cross-SCT: missing related SCTs normalize to [] (meta.primarySctId / relatedSctIds are preserved as-is otherwise)
+    model.callouts.forEach(c=>{ if(!Number.isFinite(c.dx)) c.dx=0; if(!Number.isFinite(c.dy)) c.dy=0; });
+    bumpId(); dedupeIds(); clearSel(); undoStack.length=0; redoStack.length=0; save(); render(); refit(); _silent=false; }
+  function setLanes(lanes){ if(!Array.isArray(lanes)) return; _silent=true;
+    model.lanes=lanes.map(l=>({id:String(l.id), name:l.name!=null?String(l.name):'Level', sub:l.sub!=null?String(l.sub):''}));
+    save(); render(); refit(); _silent=false; }
+  function normSct(s){ return {id:(s&&s.id!=null)?String(s.id):'', displayId:(s&&s.displayId!=null)?String(s.displayId):'', name:(s&&s.name!=null)?String(s.name):''}; }
+  function setSCTContext(d){ if(!d||typeof d!=='object') return; _silent=true;
+    const p=normSct(d.primarySct||{}); context.primary=p;
+    context.related = Array.isArray(d.relatedScts) ? d.relatedScts.map(normSct).filter(r=>r.id||r.name) : [];
+    context.contributions = Array.isArray(d.contributions) ? d.contributions.map(c=>({ id:String(c.id), laneId:String(c.laneId), label:c.label!=null?String(c.label):'',
+        sctId:c.sctId!=null?String(c.sctId):p.id, sctName:c.sctName!=null?String(c.sctName):'' })) : [];
+    context.active=true;
+    if(p.name||p.id||p.displayId){ const cn=stripId(p.name||'', p.displayId||''), lbl=p.displayId?(cn?p.displayId+' · '+cn:p.displayId):cn;   // meta.sct = readable "displayId · name"; meta.sctId/primarySctId stay the canonical (UUID) id
+      if(lbl) model.meta.sct=lbl; model.meta.sctId=p.id; model.meta.primarySctId=p.id; }
+    model.meta.relatedSctIds = context.related.map(r=>r.id);
+    save(); render(); _silent=false; }
+  function setSCT(d){ if(!d||typeof d!=='object') return; const sct=d.sct||{};   // LEGACY single-SCT → unified context (backward compatible)
+    setSCTContext({ primarySct:sct, relatedScts:[], contributions:(Array.isArray(d.contributions)?d.contributions:[]).map(c=>({id:c.id,laneId:c.laneId,label:c.label,sctId:(sct&&sct.id)||'',sctName:(sct&&sct.name)||''})) }); }
+  function selectRef(ref){ if(!ref) clearSel(); else if(ref.type&&ref.id!=null) sel=[{type:String(ref.type),id:String(ref.id)}]; render(); }
+  window.addEventListener('message',e=>{ const m=e.data; if(!m||typeof m!=='object'||!m.cmd) return;
+    if(m.cmd==='loadModel') loadModel(m.model);
+    else if(m.cmd==='setLanes') setLanes(m.lanes);
+    else if(m.cmd==='setSCT') setSCT(m);
+    else if(m.cmd==='setSCTContext') setSCTContext(m);
+    else if(m.cmd==='select') selectRef(m.ref);
+    else if(m.cmd==='setFit') setFit(m.mode);
+    else if(m.cmd==='export') hostExport(m);
+    else if(m.cmd==='setPaneVisibility') setPane(!!m.visible);
+    else if(m.cmd==='fullscreen') setFs(m.on);
+  });
+  async function hostExport(m){ const format=(m&&m.format==='svg')?'svg':'png', requestId=m&&m.requestId, filename=(m&&m.filename)||exportFilename(format);
+    try{ const blob = (format==='svg')? exportSVGBlob() : await exportPNGBlob(); const mimeType=(format==='svg')?'image/svg+xml':'image/png';
+      postToHost({evt:'exportReady', requestId, format, filename, mimeType, blob}); }
+    catch(e){ postToHost({evt:'exportError', requestId, format, message:String((e&&e.message)||e)}); } }
+  let _ct=null;
+  const api={
+    ready:()=>postToHost({evt:'ready',api:1}),
+    change:()=>{ clearTimeout(_ct); _ct=setTimeout(()=>postToHost({evt:'change',model:JSON.parse(JSON.stringify(model))}),120); },
+    select:()=>{ const s=sel.length===1?sel[0]:null; let name=null;
+      if(s){ if(s.type==='node'){const n=nodeById(s.id); name=n?n.label:null;} else if(s.type==='callout'){const c=model.callouts.find(x=>x.id===s.id); name=c?c.text:null;} }
+      postToHost({evt:'select', ref:s?{type:s.type,id:s.id,name:name}:null, count:sel.length}); },
+    paneChanged:(v)=>postToHost({evt:'paneVisibilityChanged',visible:!!v}),
+    fsChanged:(on)=>postToHost({evt:'fullscreenchange',fullscreen:!!on}),
+  };
+  HOOKS.change=api.change; HOOKS.select=api.select; HOOKS.pane=api.paneChanged; HOOKS.fs=api.fsChanged;
+  window.E2E={ loadModel, setLanes, setSCT, setSCTContext, select:selectRef, setFit, fullscreen:(on)=>setFs(on), isFullscreen:()=>isFs(), export:(o)=>hostExport(o||{}), setPaneVisibility:v=>setPane(!!v), onEmit:null,
+    getState:()=>JSON.parse(JSON.stringify(model)) };
+  return api;
+})();
+/* URL params for embedding: ?pane=hidden opens the panel collapsed; ?fit=all|fill sets the initial view */
+{ const _params=new URLSearchParams(location.search);
+  const _p=(_params.get('pane')||'').toLowerCase();
+  if(['hidden','collapsed','false','0'].includes(_p)){ paneVisible=false; document.body.classList.add('panel-hidden'); }
+  const _f=(_params.get('fit')||'').toLowerCase();
+  if(['fill','fit','lanes','height'].includes(_f)) viewMode='fill';
+  else if(['all','full','route','whole'].includes(_f)) viewMode='all'; }
+
+/* ============================ go ============================ */
+render(); refit();
+BRIDGE.ready();
+</script>
+</body>
+</html>

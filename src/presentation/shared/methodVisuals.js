@@ -209,7 +209,7 @@ function renderChannelsVisual() {
     <div class="visual-channel-loop">
       <div class="visual-loop-ring"><span>Loop</span></div>
       <div class="visual-channel-radar">
-        ${["Capacity", "Intelligibility", "Synchronicity", "Security"].map((item, index) => `
+        ${["Capacity", "Clarity", "Synchronicity", "Feedback"].map((item, index) => `
           <span class="is-${toneName(index)}">${escapeHtml(item)}</span>
         `).join("")}
       </div>

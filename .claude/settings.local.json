@@ -15,7 +15,14 @@
       "Bash(curl -sL \"https://i0.wp.com/i2insights.org/wp-content/uploads/2023/01/espinosa_illustration-simple-viable-system-model.jpg\" -o \"13_espinosa_simple.jpg\" --max-time 60)",
       "Read(//private/tmp/vsm-pdf/**)",
       "Bash(python3 -)",
-      "Bash(grep -n \"Canvas pan + zoom\\\\|Fit maximizes\\\\|module \\\\`view\\\\`\\\\|VB0 =\" VSM-VISUALIZATION-BRIEFING.md)"
+      "Bash(grep -n \"Canvas pan + zoom\\\\|Fit maximizes\\\\|module \\\\`view\\\\`\\\\|VB0 =\" VSM-VISUALIZATION-BRIEFING.md)",
+      "Bash(grep -nE \"<svg viewBox|baseViewH|preserveAspectRatio|width=\\\\\"\\\\\\\\\\\\$\\\\{|height=\\\\\"\\\\\\\\\\\\$\\\\{\" vsm.html)",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "Bash(curl -s \"http://localhost:7710/e2e-robustness-check.html\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('scripts:',JSON.stringify\\(p.scripts||{},null,1\\)\\); console.log\\('devDeps:',Object.keys\\(p.devDependencies||{}\\).join\\(', '\\)||'\\(none\\)'\\); console.log\\('deps:',Object.keys\\(p.dependencies||{}\\).join\\(', '\\)||'\\(none\\)'\\);\")",
+      "Bash(timeout 25 npm view @playwright/test version)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }

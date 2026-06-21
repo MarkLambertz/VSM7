@@ -15,6 +15,8 @@ import { renderStep2Assessment, renderStep2Remedies } from "./step2.js";
 import { renderStep3Register } from "./step3.js";
 import { renderStep4ContributionMatrix, renderStep4DecisionGuide } from "./step4.js";
 import { renderStep5Mapping } from "./step5.js?v=20260618-step5-copy-remove";
+import { renderStep6Channels, renderStep6E2ECheck } from "./step6.js?v=20260620-channel-loop-detail-fields";
+import { renderImplementationWorkspace } from "./implementation.js?v=20260619-e2e-findings";
 
 const focusStepMetadata = {
   step2: {
@@ -64,14 +66,14 @@ const focusStepMetadata = {
   },
   step6: {
     token: "Step VI",
-    title: "Communication Channels",
-    description: "Evaluate the robustness of communication loops through variety checks.",
-    artifact: "Communication variety checks.",
-    visual: "Channel robustness radar",
+    title: "Robust Flows & Channels",
+    description: "Trace success-critical work across recursion levels, then evaluate whether the communication loops can carry the required variety.",
+    artifact: "E2E robustness routes and communication variety checks.",
+    visual: "Closed-loop route map",
     visualKind: "channels",
-    visualItems: ["Capacity", "Intelligibility", "Synchronicity", "Security"],
-    coachNote: "Think in closed loops, not linear messages. Diagnose only the channels in doubt, then test capacity, intelligibility, synchronicity, and security.",
-    prompts: ["Which loops are too weak for the required variety?", "Where do capacity or intelligibility gaps appear?", "Which communication channels must be strengthened?"]
+    visualItems: ["Trigger", "Contributions", "Hand-offs", "Result", "Closed loops"],
+    coachNote: "The SCT is the what; the route is the how. Follow real hand-offs across recursion levels, capture transition risks, and then inspect whether the supporting communication loops are robust enough.",
+    prompts: ["Where does the route cross recursion levels?", "Which hand-offs create robustness risks?", "Can the communication loops carry the required variety?"]
   },
   step7: {
     token: "Step VII",
@@ -141,7 +143,7 @@ export function renderGenericFocusFullscreen(workspace, viewId, activeTileIndex,
         `).join("")}
       </div>
       <article class="step1-fullscreen-tile ${escapeAttr(tile.variant || "")}">
-        ${tile.variant === "is-explanation" ? "" : renderFullscreenTileHeader(tile, safeIndex, tiles.length)}
+        ${["is-explanation", "is-embedded-tool"].includes(tile.variant) ? "" : renderFullscreenTileHeader(tile, safeIndex, tiles.length)}
         <div class="fullscreen-tile-body">
           ${tile.content}
         </div>
@@ -216,7 +218,11 @@ function getGenericFocusTiles(workspace, viewId, context) {
       }), "is-matrix", "Map", metadata.title)
     ],
     step6: () => [
-      createTile("Channels", "Variety Checks", "Evaluate communication-loop robustness across capacity, intelligibility, synchronicity, and security.", renderStep6Channels(workspace), "is-matrix", "Checks", metadata.title)
+      createTile("Route", "E2E Process Robustness Check", "Trace how the selected SCT travels from trigger to result across the recursion structure.", renderStep6E2ECheck(workspace, {
+        fullscreen: true,
+        selectedSctId: context.selectedStep6SctId
+      }), "is-embedded-tool", "E2E Route", metadata.title),
+      createTile("Channels", "Communication Variety Checks", "Evaluate communication-loop robustness across capacity, clarity, synchronicity, and feedback.", renderStep6Channels(workspace, { fullscreen: true }), "is-embedded-tool", "Channels", metadata.title)
     ],
     step7: () => [
       createTile("Roles", "Roles, Functions, and Organizational Entities", "Represent the target organization through roles, entities, and linked SCTs.", renderStep7Roles(workspace), "is-matrix", "Roles", metadata.title),
@@ -336,33 +342,6 @@ function driverTextarea(key, value) {
   `;
 }
 
-function renderStep6Channels(workspace) {
-  return `
-    <section class="work-section fullscreen-matrix-section">
-      <div class="section-heading">
-        <h2>Variety Checks</h2>
-        <button class="ghost-button" data-action="export-step" data-step="step6">Download Outcome</button>
-      </div>
-      <div class="table-wrap wide evaluation-wrap">
-        <table>
-          <thead><tr><th>Loop</th><th>Channels used</th><th>Capacity</th><th>Intelligibility</th><th>Synchronicity</th><th>Security</th><th>Observation</th></tr></thead>
-          <tbody>${workspace.step6.communicationChannels.map((channel) => `
-            <tr>
-              <td><strong>${escapeHtml(channel.loop)}</strong></td>
-              <td>${cellInput("step6.communicationChannels", channel.id, "channelsUsed", channel.channelsUsed)}</td>
-              <td>${cellSelect("step6.communicationChannels", channel.id, "capacity", channel.capacity, ["", "Strong", "Adequate", "Weak"])}</td>
-              <td>${cellSelect("step6.communicationChannels", channel.id, "intelligibility", channel.intelligibility, ["", "Strong", "Adequate", "Weak"])}</td>
-              <td>${cellSelect("step6.communicationChannels", channel.id, "synchronicity", channel.synchronicity, ["", "Strong", "Adequate", "Weak"])}</td>
-              <td>${cellSelect("step6.communicationChannels", channel.id, "security", channel.security, ["", "Strong", "Adequate", "Weak"])}</td>
-              <td>${cellInput("step6.communicationChannels", channel.id, "observation", channel.observation)}</td>
-            </tr>
-          `).join("")}</tbody>
-        </table>
-      </div>
-    </section>
-  `;
-}
-
 function renderStep7Roles(workspace) {
   return `
     <section class="work-section fullscreen-matrix-section">
@@ -403,24 +382,5 @@ function renderStep7Notes(workspace) {
 }
 
 function renderImplementationBacklog(workspace) {
-  return `
-    <section class="work-section fullscreen-matrix-section">
-      ${tableHeader("Transformation Backlog", "add-implementation")}
-      <div class="table-wrap wide evaluation-wrap">
-        <table>
-          <thead><tr><th>Steering challenge</th><th>Dependency / requirement</th><th>Responsible</th><th>Due date</th><th>Status</th><th></th></tr></thead>
-          <tbody>${workspace.implementation.items.map((item) => `
-            <tr>
-              <td>${cellInput("implementation.items", item.id, "challenge", item.challenge)}</td>
-              <td>${cellInput("implementation.items", item.id, "requirement", item.requirement)}</td>
-              <td>${cellInput("implementation.items", item.id, "responsible", item.responsible)}</td>
-              <td>${cellInput("implementation.items", item.id, "dueDate", item.dueDate, "date")}</td>
-              <td>${cellSelect("implementation.items", item.id, "status", item.status, ["Open", "In progress", "Decided", "Done"])}</td>
-              <td>${removeButton("implementation.items", item.id)}</td>
-            </tr>
-          `).join("")}</tbody>
-        </table>
-      </div>
-    </section>
-  `;
+  return renderImplementationWorkspace(workspace, { fullscreen: true });
 }

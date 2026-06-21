@@ -87,6 +87,24 @@ export const communicationLoops = [
   "S5-S1 algedonic signal"
 ];
 
+export const canonicalChannelVarietyLoops = [
+  { id: "vsm-loop-s2-s1-coordination", sys: "S2", vsmChannel: "f", legacyLoop: "S2-S1 coordination", kind: "coordination" },
+  { id: "vsm-loop-s3-s1-command", sys: "S3", vsmChannel: "e", legacyLoop: "S3-S1 intervention", kind: "command" },
+  { id: "vsm-loop-s3-s1-resource-bargain", sys: "S3", vsmChannel: "d", legacyLoop: "S3-S1 resource bargain", kind: "resource-bargain" },
+  { id: "vsm-loop-s3star-s1-audit", sys: "S3*", vsmChannel: "b", legacyLoop: "S3*-S1 real-life information", kind: "audit" },
+  { id: "vsm-loop-s4-environment-sensing", sys: "S4", vsmChannel: "s4env", legacyLoop: "S4-environment sensing", kind: "environment-sensing" },
+  { id: "vsm-loop-s4-s3-homeostat", sys: "S4/S3", vsmChannel: "h34", legacyLoop: "S4-S3 strategy and planning", kind: "homeostat" },
+  { id: "vsm-loop-s5-s4-s3-normative", sys: "S5", vsmChannel: "h5", legacyLoop: "S5-S4/S3 normative parameters", kind: "normative" },
+  { id: "vsm-loop-s5-s1-algedonic", sys: "S5", vsmChannel: "g", legacyLoop: "S5-S1 algedonic signal", kind: "algedonic" }
+];
+
+export const channelVarietyCriteria = [
+  { key: "capacity", label: "Capacity" },
+  { key: "clarity", label: "Clarity" },
+  { key: "synchronicity", label: "Synchronicity" },
+  { key: "feedback", label: "Feedback" }
+];
+
 export const sixPackOfControl = [
   "Market Position",
   "Innovation",
@@ -206,7 +224,11 @@ export function createWorkspace() {
       assignments: createVsmSystemAssignments()
     },
     step6: {
-      communicationChannels: communicationLoops.map((loop) => createCommunicationChannel(loop))
+      communicationChannels: communicationLoops.map((loop) => createCommunicationChannel(loop)),
+      channelVarietyModel: createChannelVarietyModel(),
+      e2eRoutes: {},
+      e2eRouteIds: {},
+      detachedRoutes: {}
     },
     step7: {
       roles: [],
@@ -406,6 +428,22 @@ export function splitSuccessCriticalTask(workspace, taskId) {
     accountableOrganizationId: sourceAllocation.accountableOrganizationId || ""
   };
   duplicateStep5TaskAssignments(workspace, source.id, splitTask.id);
+  if (isPlainObject(workspace?.step6?.e2eRoutes?.[source.id])) {
+    workspace.step6.e2eRoutes[splitTask.id] = cloneJson(workspace.step6.e2eRoutes[source.id]);
+    remapStep6RouteSctReferences(workspace.step6.e2eRoutes[splitTask.id], source.id, splitTask.id);
+    workspace.step6.e2eRoutes[splitTask.id].meta = {
+      ...(isPlainObject(workspace.step6.e2eRoutes[splitTask.id].meta) ? workspace.step6.e2eRoutes[splitTask.id].meta : {}),
+      sctId: splitTask.id,
+      sct: splitTask.title || "Split SCT",
+      primarySctId: splitTask.id,
+      relatedSctIds: normalizeStep6RelatedSctIds(
+        workspace.step6.e2eRoutes[splitTask.id].meta?.relatedSctIds,
+        splitTask.id
+      )
+    };
+    workspace.step6.e2eRouteIds ||= {};
+    workspace.step6.e2eRouteIds[splitTask.id] = createId("e2e-route");
+  }
   return splitTask;
 }
 
@@ -430,6 +468,7 @@ export function mergeSuccessCriticalTasks(workspace, taskIds) {
   survivor.toolOrMethodologicalApproach = combineText(selectedTasks.map((task) => task.toolOrMethodologicalApproach));
   workspace.step4.allocations[survivor.id] = mergeAllocations(workspace, selectedTasks, survivor.id);
   mergeStep5TaskAssignments(workspace, survivor.id, removedIds);
+  preserveMergedStep6Routes(workspace, survivor, removedTasks);
   workspace.step3.successCriticalTasks = workspace.step3.successCriticalTasks.filter((task) => !removedIds.has(task.id));
 
   for (const removedId of removedIds) {
@@ -657,6 +696,421 @@ export function createCommunicationChannel(loop = "") {
   };
 }
 
+export function createChannelVarietyModel(workspace = null, legacyChannels = []) {
+  const labels = getCanonicalChannelVarietyLoops(workspace);
+  const legacyByLoop = new Map(
+    (Array.isArray(legacyChannels) ? legacyChannels : [])
+      .filter(isPlainObject)
+      .map((channel) => [String(channel.loop || ""), channel])
+  );
+
+  return {
+    meta: {
+      sifName: getChannelVarietySifName(workspace)
+    },
+    loops: labels.map((definition) => {
+      const legacy = legacyByLoop.get(definition.legacyLoop);
+      return {
+        id: definition.id,
+        sys: definition.sys,
+        vsmChannel: definition.vsmChannel,
+        label: definition.label,
+        communication: String(legacy?.channelsUsed || ""),
+        artifact: "",
+        role: "",
+        ratings: [
+          legacyChannelRating(legacy?.capacity),
+          legacyChannelRating(legacy?.intelligibility),
+          legacyChannelRating(legacy?.synchronicity),
+          legacyChannelRating(legacy?.security)
+        ],
+        note: String(legacy?.observation || "")
+      };
+    })
+  };
+}
+
+export function getStep6ChannelVarietyContext(workspace) {
+  const model = reconcileChannelVarietyModel(
+    workspace,
+    workspace?.step6?.channelVarietyModel,
+    workspace?.step6?.communicationChannels
+  );
+  return {
+    model,
+    loops: model.loops.map(({ id, sys, label, vsmChannel }) => ({ id, sys, label, vsmChannel })),
+    meta: { ...model.meta }
+  };
+}
+
+export function setStep6ChannelVarietyModel(workspace, model) {
+  if (!isPlainObject(workspace) || !isPlainObject(model)) {
+    return false;
+  }
+
+  workspace.step6 ||= {};
+  workspace.step6.channelVarietyModel = reconcileChannelVarietyModel(
+    workspace,
+    model,
+    workspace.step6.communicationChannels
+  );
+  reconcileChannelVarietySourceStatus(workspace, workspace.step6.channelVarietyModel);
+  return true;
+}
+
+export function getStep6ChannelVarietyWeaknessCandidates(workspace) {
+  const model = getStep6ChannelVarietyContext(workspace).model;
+  const items = Array.isArray(workspace?.implementation?.items) ? workspace.implementation.items : [];
+  const convertedSources = new Set(items
+    .filter((item) => item?.source?.kind === "channel-variety-weakness")
+    .map((item) => `${item.source.loopId}|${Number(item.source.criterionIndex)}`));
+  const candidates = [];
+
+  for (const loop of model.loops) {
+    loop.ratings.forEach((rating, criterionIndex) => {
+      if (Number(rating) !== 1 || !channelVarietyCriteria[criterionIndex]) {
+        return;
+      }
+      const criterion = channelVarietyCriteria[criterionIndex];
+      candidates.push({
+        loopId: loop.id,
+        loopLabel: loop.label,
+        system: loop.sys,
+        criterionIndex,
+        criterionKey: criterion.key,
+        criterionLabel: criterion.label,
+        observation: loop.note,
+        communication: loop.communication,
+        artifact: loop.artifact,
+        role: loop.role,
+        converted: convertedSources.has(`${loop.id}|${criterionIndex}`)
+      });
+    });
+  }
+
+  return candidates;
+}
+
+export function createImplementationItemFromChannelWeakness(workspace, loopId, criterionIndex) {
+  const normalizedIndex = Number(criterionIndex);
+  const candidate = getStep6ChannelVarietyWeaknessCandidates(workspace)
+    .find((item) => item.loopId === loopId && item.criterionIndex === normalizedIndex);
+  if (!candidate || candidate.converted) {
+    return null;
+  }
+
+  const item = createImplementationItem();
+  item.challenge = `${candidate.criterionLabel} weakness: ${candidate.loopLabel}`;
+  item.requirement = [
+    candidate.observation,
+    candidate.communication ? `Communication & meetings: ${candidate.communication}` : "",
+    candidate.artifact ? `Artifact: ${candidate.artifact}` : "",
+    candidate.role ? `Role: ${candidate.role}` : ""
+  ].filter(Boolean).join(" | ");
+  item.source = {
+    kind: "channel-variety-weakness",
+    loopId: candidate.loopId,
+    criterionIndex: candidate.criterionIndex
+  };
+  item.sourceStatus = "active";
+  workspace.implementation.items.push(item);
+  return item;
+}
+
+function reconcileChannelVarietyModel(workspace, savedModel, legacyChannels = []) {
+  const base = createChannelVarietyModel(workspace, legacyChannels);
+  const savedLoops = new Map(
+    (Array.isArray(savedModel?.loops) ? savedModel.loops : [])
+      .filter(isPlainObject)
+      .map((loop) => [String(loop.id || ""), loop])
+  );
+
+  return {
+    meta: {
+      ...(isPlainObject(savedModel?.meta) ? cloneJson(savedModel.meta) : {}),
+      sifName: getChannelVarietySifName(workspace)
+    },
+    loops: base.loops.map((loop) => {
+      const saved = savedLoops.get(loop.id);
+      return {
+        ...loop,
+        communication: String(saved?.communication ?? saved?.channels ?? loop.communication ?? ""),
+        artifact: String(saved?.artifact ?? loop.artifact ?? ""),
+        role: String(saved?.role ?? loop.role ?? ""),
+        ratings: normalizeChannelRatings(saved?.ratings ?? loop.ratings),
+        note: String(saved?.note ?? loop.note ?? "")
+      };
+    })
+  };
+}
+
+function getCanonicalChannelVarietyLoops(workspace) {
+  const labels = {
+    algedonic: "S5-S1 algedonic signal",
+    command: "S3-S1 command and intervention",
+    "resource-bargain": "S3-S1 resource bargain and accountability",
+    audit: "S3*-S1 independent real-life information",
+    coordination: "S2-S1 coordination",
+    "environment-sensing": "S4-environment sensing",
+    homeostat: "S4-S3 strategy and planning homeostat",
+    normative: "S5-S4/S3 normative alignment"
+  };
+
+  return canonicalChannelVarietyLoops.map((definition) => ({
+    ...definition,
+    label: labels[definition.kind]
+  }));
+}
+
+function getChannelVarietySifName(workspace) {
+  return String(workspace?.sif?.name || "").trim()
+    || getRecursionOrganizations(workspace).find((organization) => organization.level === "R0")?.name
+    || "System-in-Focus";
+}
+
+function normalizeChannelRatings(ratings) {
+  return [0, 1, 2, 3].map((index) => {
+    const rating = Number(Array.isArray(ratings) ? ratings[index] : 0);
+    return Number.isInteger(rating) && rating >= 0 && rating <= 3 ? rating : 0;
+  });
+}
+
+function legacyChannelRating(value) {
+  return ({ Weak: 1, Adequate: 2, Strong: 3 })[String(value || "")] || 0;
+}
+
+export function getStep6RouteContext(workspace, taskId) {
+  const tasks = Array.isArray(workspace?.step3?.successCriticalTasks)
+    ? workspace.step3.successCriticalTasks
+    : [];
+  const task = tasks.find((candidate) => candidate.id === taskId);
+  if (!task) {
+    return null;
+  }
+
+  const lanes = getRecursionOrganizations(workspace)
+    .sort((left, right) => recursionLevelValue(right.level) - recursionLevelValue(left.level))
+    .map((organization) => ({
+      id: organization.id,
+      name: organization.name,
+      sub: organization.level
+    }));
+  const relatedSctIds = getStep6RelatedSctIds(workspace, taskId);
+  const tasksById = new Map(tasks.map((candidate) => [candidate.id, candidate]));
+  const relatedTasks = relatedSctIds.map((id) => tasksById.get(id)).filter(Boolean);
+  const toContextSct = (candidate) => ({
+    id: candidate.id,
+    displayId: formatSctNumber(candidate.number),
+    name: candidate.title || "Untitled SCT"
+  });
+  const primarySct = toContextSct(task);
+  const relatedScts = relatedTasks.map(toContextSct);
+  const contributions = [task, ...relatedTasks].flatMap((candidate) => {
+    const allocation = workspace?.step4?.allocations?.[candidate.id] || createAllocation(candidate.id);
+    const sct = toContextSct(candidate);
+    return lanes
+      .map((lane) => {
+        const label = String(allocation?.contributions?.[lane.id] || "").trim();
+        return label
+          ? {
+              id: getStep5ContributionKey(candidate.id, lane.id),
+              laneId: lane.id,
+              label,
+              sctId: candidate.id,
+              sctName: sct.name
+            }
+          : null;
+      })
+      .filter(Boolean);
+  });
+
+  return {
+    lanes,
+    sct: primarySct,
+    primarySct,
+    relatedScts,
+    relatedSctIds,
+    unavailableRelatedSctIds: relatedSctIds.filter((id) => !tasksById.has(id)),
+    contributions
+  };
+}
+
+export function getStep6RelatedSctIds(workspace, taskId) {
+  const saved = workspace?.step6?.e2eRoutes?.[taskId];
+  return normalizeStep6RelatedSctIds(saved?.meta?.relatedSctIds, taskId);
+}
+
+export function setStep6RelatedSctIds(workspace, taskId, relatedSctIds) {
+  const tasks = Array.isArray(workspace?.step3?.successCriticalTasks)
+    ? workspace.step3.successCriticalTasks
+    : [];
+  const validTaskIds = new Set(tasks.map((task) => task.id));
+  if (!validTaskIds.has(taskId)) {
+    return false;
+  }
+
+  const model = getStep6RouteModel(workspace, taskId);
+  if (!model) {
+    return false;
+  }
+
+  model.meta = {
+    ...(isPlainObject(model.meta) ? model.meta : {}),
+    primarySctId: taskId,
+    relatedSctIds: normalizeStep6RelatedSctIds(relatedSctIds, taskId)
+      .filter((id) => validTaskIds.has(id))
+  };
+  return setStep6RouteModel(workspace, taskId, model);
+}
+
+export function createStep6RouteModel(workspace, taskId) {
+  const context = getStep6RouteContext(workspace, taskId);
+  if (!context) {
+    return null;
+  }
+
+  return {
+    meta: {
+      name: `${context.sct.displayId} · ${context.sct.name} E2E route`,
+      sct: `${context.sct.displayId} · ${context.sct.name}`,
+      sctId: context.sct.id,
+      primarySctId: context.sct.id,
+      relatedSctIds: []
+    },
+    lanes: cloneJson(context.lanes),
+    nodes: [],
+    links: [],
+    callouts: [],
+    findings: []
+  };
+}
+
+export function reconcileStep6RouteModel(workspace, taskId, model) {
+  const context = getStep6RouteContext(workspace, taskId);
+  if (!context) {
+    return null;
+  }
+
+  const fallback = createStep6RouteModel(workspace, taskId);
+  const reconciled = isPlainObject(model) ? cloneJson(model) : fallback;
+  const laneIds = new Set(context.lanes.map((lane) => lane.id));
+  const fallbackLaneId = context.lanes[0]?.id || "";
+
+  reconciled.meta = {
+    ...(isPlainObject(reconciled.meta) ? reconciled.meta : {}),
+    name: String(reconciled.meta?.name || fallback.meta.name),
+    sct: `${context.sct.displayId} · ${context.sct.name}`,
+    sctId: context.sct.id,
+    primarySctId: context.sct.id,
+    relatedSctIds: normalizeStep6RelatedSctIds(reconciled.meta?.relatedSctIds, context.sct.id)
+  };
+  reconciled.lanes = cloneJson(context.lanes);
+  reconciled.nodes = Array.isArray(reconciled.nodes) ? reconciled.nodes : [];
+  reconciled.links = Array.isArray(reconciled.links) ? reconciled.links : [];
+  reconciled.callouts = Array.isArray(reconciled.callouts) ? reconciled.callouts : [];
+  reconciled.findings = Array.isArray(reconciled.findings)
+    ? reconciled.findings.filter(isValidStep6Finding).map(cloneJson)
+    : [];
+
+  if (fallbackLaneId) {
+    reconciled.nodes = reconciled.nodes.map((node) => (
+      isPlainObject(node) && !laneIds.has(node.laneId)
+        ? { ...node, laneId: fallbackLaneId }
+        : node
+    ));
+  }
+
+  return reconciled;
+}
+
+export function getStep6RouteModel(workspace, taskId) {
+  const saved = workspace?.step6?.e2eRoutes?.[taskId];
+  return reconcileStep6RouteModel(workspace, taskId, saved);
+}
+
+export function getStep6RouteId(workspace, taskId) {
+  if (!getStep6RouteContext(workspace, taskId)) {
+    return "";
+  }
+
+  workspace.step6 ||= {};
+  workspace.step6.e2eRouteIds = isPlainObject(workspace.step6.e2eRouteIds)
+    ? workspace.step6.e2eRouteIds
+    : {};
+  const existing = String(workspace.step6.e2eRouteIds[taskId] || "").trim();
+  if (existing) {
+    return existing;
+  }
+
+  const routeId = createId("e2e-route");
+  workspace.step6.e2eRouteIds[taskId] = routeId;
+  return routeId;
+}
+
+export function setStep6RouteModel(workspace, taskId, model) {
+  if (!getStep6RouteContext(workspace, taskId) || !isPlainObject(model)) {
+    return false;
+  }
+
+  workspace.step6 ||= {};
+  workspace.step6.e2eRoutes = isPlainObject(workspace.step6.e2eRoutes) ? workspace.step6.e2eRoutes : {};
+  const routeId = getStep6RouteId(workspace, taskId);
+  const reconciled = reconcileStep6RouteModel(workspace, taskId, model);
+  workspace.step6.e2eRoutes[taskId] = cloneJson(reconciled);
+  reconcileFindingSourceStatus(workspace, routeId, reconciled.findings);
+  return true;
+}
+
+export function getStep6FindingCandidates(workspace) {
+  const candidates = [];
+  const items = Array.isArray(workspace?.implementation?.items) ? workspace.implementation.items : [];
+  const convertedSources = new Set(items
+    .filter((item) => item?.source?.kind === "e2e-finding")
+    .map((item) => `${item.source.routeId}|${item.source.findingId}`));
+
+  for (const task of workspace?.step3?.successCriticalTasks || []) {
+    const model = getStep6RouteModel(workspace, task.id);
+    if (!model) {
+      continue;
+    }
+    const routeId = getStep6RouteId(workspace, task.id);
+    for (const finding of model.findings) {
+      candidates.push({
+        routeId,
+        taskId: task.id,
+        sctNumber: formatSctNumber(task.number),
+        sctTitle: task.title || "Untitled SCT",
+        routeName: model.meta?.name || "E2E route",
+        finding: cloneJson(finding),
+        affectedElement: describeStep6FindingTarget(model, finding.target),
+        converted: convertedSources.has(`${routeId}|${finding.id}`)
+      });
+    }
+  }
+
+  return candidates;
+}
+
+export function createImplementationItemFromFinding(workspace, routeId, findingId) {
+  const candidate = getStep6FindingCandidates(workspace)
+    .find((item) => item.routeId === routeId && item.finding.id === findingId);
+  if (!candidate || candidate.converted) {
+    return null;
+  }
+
+  const item = createImplementationItem();
+  item.challenge = candidate.finding.note || `${formatFindingCategory(candidate.finding.category)} at ${candidate.affectedElement}`;
+  item.requirement = `${candidate.sctNumber} · ${candidate.sctTitle} · ${candidate.affectedElement}`;
+  item.source = {
+    kind: "e2e-finding",
+    routeId: candidate.routeId,
+    findingId: candidate.finding.id
+  };
+  item.sourceStatus = "active";
+  workspace.implementation.items.push(item);
+  return item;
+}
+
 export function createRole() {
   return {
     id: createId("role"),
@@ -676,7 +1130,9 @@ export function createImplementationItem() {
     requirement: "",
     responsible: "",
     dueDate: "",
-    status: "Open"
+    status: "Open",
+    source: null,
+    sourceStatus: ""
   };
 }
 
@@ -715,8 +1171,261 @@ export function ensureWorkspaceShape(candidate) {
   if (!Array.isArray(merged.step6.communicationChannels) || merged.step6.communicationChannels.length === 0) {
     merged.step6.communicationChannels = communicationLoops.map((loop) => createCommunicationChannel(loop));
   }
+  merged.step6.channelVarietyModel = reconcileChannelVarietyModel(
+    merged,
+    candidate?.step6?.channelVarietyModel,
+    candidate?.step6?.communicationChannels || merged.step6.communicationChannels
+  );
+  if (!isPlainObject(merged.step6.e2eRoutes)) {
+    merged.step6.e2eRoutes = {};
+  }
+  if (!isPlainObject(merged.step6.e2eRouteIds)) {
+    merged.step6.e2eRouteIds = {};
+  }
+  if (!isPlainObject(merged.step6.detachedRoutes)) {
+    merged.step6.detachedRoutes = {};
+  }
+  normalizeStep6Routes(merged);
+  normalizeImplementationItems(merged);
 
   return merged;
+}
+
+function normalizeStep6Routes(workspace) {
+  const taskIds = new Set(workspace.step3.successCriticalTasks.map((task) => task.id));
+  for (const taskId of Object.keys(workspace.step6.e2eRoutes)) {
+    const model = workspace.step6.e2eRoutes[taskId];
+    if (!isPlainObject(model)) {
+      delete workspace.step6.e2eRoutes[taskId];
+      delete workspace.step6.e2eRouteIds[taskId];
+      continue;
+    }
+    if (!taskIds.has(taskId)) {
+      const routeId = String(workspace.step6.e2eRouteIds[taskId] || "").trim() || createId("e2e-route");
+      workspace.step6.detachedRoutes[routeId] = {
+        routeId,
+        formerTaskId: taskId,
+        formerTaskNumber: "",
+        formerTaskTitle: String(model.meta?.sct || "Removed SCT"),
+        reason: "missing-sct",
+        model: cloneJson({
+          ...model,
+          findings: Array.isArray(model.findings) ? model.findings : []
+        })
+      };
+      markRouteSources(workspace, routeId, "source-detached");
+      delete workspace.step6.e2eRoutes[taskId];
+      delete workspace.step6.e2eRouteIds[taskId];
+      continue;
+    }
+    getStep6RouteId(workspace, taskId);
+    workspace.step6.e2eRoutes[taskId] = reconcileStep6RouteModel(
+      workspace,
+      taskId,
+      workspace.step6.e2eRoutes[taskId]
+    );
+  }
+}
+
+function normalizeImplementationItems(workspace) {
+  workspace.implementation.items = workspace.implementation.items.map((item) => ({
+    ...createImplementationItem(),
+    ...(isPlainObject(item) ? item : {}),
+    source: isPlainObject(item?.source) ? cloneJson(item.source) : null,
+    sourceStatus: String(item?.sourceStatus || "")
+  }));
+
+  for (const task of workspace.step3.successCriticalTasks) {
+    const model = workspace.step6.e2eRoutes[task.id];
+    if (!isPlainObject(model)) {
+      continue;
+    }
+    reconcileFindingSourceStatus(
+      workspace,
+      getStep6RouteId(workspace, task.id),
+      Array.isArray(model.findings) ? model.findings : []
+    );
+  }
+  reconcileChannelVarietySourceStatus(workspace, workspace.step6.channelVarietyModel);
+}
+
+function preserveMergedStep6Routes(workspace, survivor, removedTasks) {
+  workspace.step6 ||= {};
+  workspace.step6.e2eRoutes = isPlainObject(workspace.step6.e2eRoutes) ? workspace.step6.e2eRoutes : {};
+  workspace.step6.e2eRouteIds = isPlainObject(workspace.step6.e2eRouteIds) ? workspace.step6.e2eRouteIds : {};
+  workspace.step6.detachedRoutes = isPlainObject(workspace.step6.detachedRoutes) ? workspace.step6.detachedRoutes : {};
+
+  let survivorModel = workspace.step6.e2eRoutes[survivor.id];
+  let survivorRouteId = survivorModel ? getStep6RouteId(workspace, survivor.id) : "";
+
+  for (const removedTask of removedTasks) {
+    const model = workspace.step6.e2eRoutes[removedTask.id];
+    if (!isPlainObject(model)) {
+      delete workspace.step6.e2eRouteIds[removedTask.id];
+      continue;
+    }
+    const routeId = getStep6RouteId(workspace, removedTask.id);
+    if (!survivorModel) {
+      survivorModel = cloneJson(model);
+      survivorRouteId = routeId;
+      workspace.step6.e2eRoutes[survivor.id] = survivorModel;
+      workspace.step6.e2eRouteIds[survivor.id] = routeId;
+    } else {
+      workspace.step6.detachedRoutes[routeId] = {
+        routeId,
+        formerTaskId: removedTask.id,
+        formerTaskNumber: formatSctNumber(removedTask.number),
+        formerTaskTitle: removedTask.title || "Untitled SCT",
+        reason: "sct-merge",
+        model: cloneJson(model)
+      };
+      markRouteSources(workspace, routeId, "source-detached");
+    }
+    delete workspace.step6.e2eRoutes[removedTask.id];
+    delete workspace.step6.e2eRouteIds[removedTask.id];
+  }
+
+  if (survivorModel) {
+    survivorModel.meta = {
+      ...(isPlainObject(survivorModel.meta) ? survivorModel.meta : {}),
+      sctId: survivor.id,
+      sct: survivor.title || "Untitled SCT"
+    };
+    workspace.step6.e2eRoutes[survivor.id] = survivorModel;
+    workspace.step6.e2eRouteIds[survivor.id] = survivorRouteId || createId("e2e-route");
+  }
+
+  for (const [routeTaskId, model] of Object.entries(workspace.step6.e2eRoutes)) {
+    if (!isPlainObject(model)) {
+      continue;
+    }
+    for (const removedTask of removedTasks) {
+      remapStep6RouteSctReferences(model, removedTask.id, survivor.id);
+    }
+    model.meta = {
+      ...(isPlainObject(model.meta) ? model.meta : {}),
+      relatedSctIds: normalizeStep6RelatedSctIds(model.meta?.relatedSctIds, routeTaskId)
+    };
+  }
+}
+
+function normalizeStep6RelatedSctIds(value, primarySctId = "") {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return [...new Set(value
+    .map((id) => String(id || "").trim())
+    .filter((id) => id && id !== primarySctId))];
+}
+
+function remapStep6RouteSctReferences(model, fromSctId, toSctId) {
+  if (!isPlainObject(model) || !fromSctId || !toSctId || fromSctId === toSctId) {
+    return;
+  }
+
+  const contributionPrefix = `${fromSctId}|`;
+  model.nodes = Array.isArray(model.nodes)
+    ? model.nodes.map((node) => {
+        if (!isPlainObject(node)) {
+          return node;
+        }
+        const remapped = { ...node };
+        if (String(remapped.contribSctId || "") === fromSctId) {
+          remapped.contribSctId = toSctId;
+        }
+        if (String(remapped.contribId || "").startsWith(contributionPrefix)) {
+          remapped.contribId = `${toSctId}|${String(remapped.contribId).slice(contributionPrefix.length)}`;
+        }
+        return remapped;
+      })
+    : [];
+
+  if (isPlainObject(model.meta)) {
+    if (String(model.meta.primarySctId || "") === fromSctId) {
+      model.meta.primarySctId = toSctId;
+    }
+    if (String(model.meta.sctId || "") === fromSctId) {
+      model.meta.sctId = toSctId;
+    }
+    model.meta.relatedSctIds = normalizeStep6RelatedSctIds(
+      (model.meta.relatedSctIds || []).map((id) => id === fromSctId ? toSctId : id),
+      model.meta.primarySctId || model.meta.sctId || ""
+    );
+  }
+}
+
+function isValidStep6Finding(finding) {
+  return isPlainObject(finding)
+    && String(finding.id || "").trim() !== ""
+    && isPlainObject(finding.target)
+    && ["node", "link"].includes(finding.target.type)
+    && String(finding.target.id || "").trim() !== "";
+}
+
+function reconcileFindingSourceStatus(workspace, routeId, findings) {
+  if (!routeId) {
+    return;
+  }
+  const findingIds = new Set((Array.isArray(findings) ? findings : []).map((finding) => finding.id));
+  for (const item of workspace?.implementation?.items || []) {
+    if (item?.source?.kind !== "e2e-finding" || item.source.routeId !== routeId) {
+      continue;
+    }
+    item.sourceStatus = findingIds.has(item.source.findingId) ? "active" : "source-removed";
+  }
+}
+
+function reconcileChannelVarietySourceStatus(workspace, model) {
+  const weakSources = new Set();
+  for (const loop of Array.isArray(model?.loops) ? model.loops : []) {
+    (Array.isArray(loop.ratings) ? loop.ratings : []).forEach((rating, criterionIndex) => {
+      if (Number(rating) === 1) {
+        weakSources.add(`${loop.id}|${criterionIndex}`);
+      }
+    });
+  }
+
+  for (const item of workspace?.implementation?.items || []) {
+    if (item?.source?.kind !== "channel-variety-weakness") {
+      continue;
+    }
+    const sourceKey = `${item.source.loopId}|${Number(item.source.criterionIndex)}`;
+    item.sourceStatus = weakSources.has(sourceKey) ? "active" : "source-resolved";
+  }
+}
+
+function markRouteSources(workspace, routeId, status) {
+  for (const item of workspace?.implementation?.items || []) {
+    if (item?.source?.kind === "e2e-finding" && item.source.routeId === routeId) {
+      item.sourceStatus = status;
+    }
+  }
+}
+
+function describeStep6FindingTarget(model, target) {
+  if (target?.type === "node") {
+    const node = model.nodes.find((item) => item.id === target.id);
+    return node?.label || `Step ${target.id}`;
+  }
+  const link = model.links.find((item) => item.id === target?.id);
+  if (!link) {
+    return `Connection ${target?.id || ""}`.trim();
+  }
+  const from = model.nodes.find((item) => item.id === link.from)?.label || link.from;
+  const to = model.nodes.find((item) => item.id === link.to)?.label || link.to;
+  return `${from} -> ${to}`;
+}
+
+function formatFindingCategory(category) {
+  return String(category || "finding")
+    .split("-")
+    .map((part) => part ? `${part[0].toUpperCase()}${part.slice(1)}` : "")
+    .join(" ");
+}
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
 function normalizeSuccessCriticalTasks(workspace) {

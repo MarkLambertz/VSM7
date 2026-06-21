@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 PORT=4173
 HOST="localhost"
 URL="http://${HOST}:${PORT}/"
-VERSION="20260618-step5-copy-remove"
+VERSION="20260621-channel-variety-eight"
 EXPECTED_TITLE="VSM7 Workshop Workspace"
 
 server_pids() {

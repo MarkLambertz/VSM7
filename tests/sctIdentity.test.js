@@ -9,6 +9,7 @@ import {
   formatSctNumber,
   mergeSuccessCriticalTasks,
   splitSuccessCriticalTask,
+  getStep6RouteId,
   syncAllocations
 } from "../src/domain/vsm.js";
 
@@ -66,6 +67,100 @@ test("splitting an SCT creates a separately numbered editable task", () => {
     getStep5ContributionKey(original.id, systemInFocus.id),
     getStep5ContributionKey(split.id, systemInFocus.id)
   ]);
+});
+
+test("splitting an SCT preserves findings under a new route identity", () => {
+  const workspace = createWorkspace();
+  const original = createNumberedSuccessCriticalTask(workspace);
+  original.title = "Release product";
+  workspace.step3.successCriticalTasks.push(original);
+  workspace.step6.e2eRoutes[original.id] = {
+    meta: { name: "Release route", sctId: original.id, primarySctId: original.id, relatedSctIds: [] },
+    lanes: [],
+    nodes: [{
+      id: "n1",
+      kind: "step",
+      laneId: "lane",
+      col: 1,
+      label: "Approve",
+      contribId: `${original.id}|lane`,
+      contribSctId: original.id
+    }],
+    links: [],
+    callouts: [],
+    findings: [{ id: "fd1", target: { type: "node", id: "n1" }, category: "delay", severity: "high", note: "Wait" }]
+  };
+  const originalRouteId = getStep6RouteId(workspace, original.id);
+
+  const split = splitSuccessCriticalTask(workspace, original.id);
+
+  assert.notEqual(getStep6RouteId(workspace, split.id), originalRouteId);
+  assert.equal(workspace.step6.e2eRoutes[split.id].findings[0].id, "fd1");
+  assert.equal(workspace.step6.e2eRoutes[split.id].nodes[0].id, "n1");
+  assert.equal(workspace.step6.e2eRoutes[split.id].nodes[0].contribSctId, split.id);
+  assert.equal(workspace.step6.e2eRoutes[split.id].nodes[0].contribId, `${split.id}|lane`);
+  assert.equal(workspace.step6.e2eRoutes[split.id].meta.primarySctId, split.id);
+});
+
+test("merging SCTs rewires related route provenance to the surviving SCT", () => {
+  const workspace = createWorkspace();
+  const survivor = createNumberedSuccessCriticalTask(workspace);
+  const removed = createNumberedSuccessCriticalTask(workspace);
+  const routeOwner = createNumberedSuccessCriticalTask(workspace);
+  workspace.step3.successCriticalTasks.push(survivor, removed, routeOwner);
+  workspace.step6.e2eRoutes[routeOwner.id] = {
+    meta: {
+      name: "Cross-SCT route",
+      sctId: routeOwner.id,
+      primarySctId: routeOwner.id,
+      relatedSctIds: [removed.id]
+    },
+    lanes: [],
+    nodes: [{
+      id: "n-related",
+      kind: "step",
+      laneId: "lane",
+      col: 1,
+      label: "Related work",
+      contribId: `${removed.id}|lane`,
+      contribSctId: removed.id
+    }],
+    links: [],
+    callouts: [],
+    findings: []
+  };
+
+  mergeSuccessCriticalTasks(workspace, [survivor.id, removed.id]);
+
+  const route = workspace.step6.e2eRoutes[routeOwner.id];
+  assert.deepEqual(route.meta.relatedSctIds, [survivor.id]);
+  assert.equal(route.nodes[0].contribSctId, survivor.id);
+  assert.equal(route.nodes[0].contribId, `${survivor.id}|lane`);
+});
+
+test("merging SCTs detaches surplus routes instead of deleting their findings", () => {
+  const workspace = createWorkspace();
+  const first = createNumberedSuccessCriticalTask(workspace);
+  const second = createNumberedSuccessCriticalTask(workspace);
+  workspace.step3.successCriticalTasks.push(first, second);
+  const route = (task, suffix) => ({
+    meta: { name: `Route ${suffix}`, sctId: task.id },
+    lanes: [],
+    nodes: [{ id: `n${suffix}`, kind: "step", laneId: "lane", col: 1, label: `Step ${suffix}` }],
+    links: [],
+    callouts: [],
+    findings: [{ id: `fd${suffix}`, target: { type: "node", id: `n${suffix}` }, category: "other", severity: "low", note: suffix }]
+  });
+  workspace.step6.e2eRoutes[first.id] = route(first, "1");
+  workspace.step6.e2eRoutes[second.id] = route(second, "2");
+  const secondRouteId = getStep6RouteId(workspace, second.id);
+
+  mergeSuccessCriticalTasks(workspace, [first.id, second.id]);
+
+  assert.equal(workspace.step6.e2eRoutes[first.id].findings[0].id, "fd1");
+  assert.equal(workspace.step6.e2eRoutes[second.id], undefined);
+  assert.equal(workspace.step6.detachedRoutes[secondRouteId].model.findings[0].id, "fd2");
+  assert.equal(workspace.step6.detachedRoutes[secondRouteId].reason, "sct-merge");
 });
 
 test("merging SCTs preserves the earliest identity and rewires downstream references", () => {

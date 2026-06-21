@@ -34,6 +34,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-seri
 #paneToggle:hover{background:#eef4f9;border-color:#cfe0ee}
 #paneToggle svg{display:block}
 body.pane-hidden .sidebar{display:none}
+body.embed #bcbar,body.embed #zoomctl{display:none}
 
 .layout{flex:1;display:flex;min-height:0}
 .stage{flex:1;overflow:hidden;display:block;padding:10px;position:relative;cursor:grab}
@@ -50,6 +51,7 @@ body.panning *{cursor:grabbing !important}
 #zoomctl button:first-child{border-top:none}
 #zoomctl button:hover{background:#eef4f9}
 #zoomctl #zpct{font-size:7.5px;font-weight:700;color:var(--muted);letter-spacing:.1px}
+#zoomctl #btnFs.on{color:#2f6fed}
 
 /* sidebar */
 .sidebar{width:288px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto}
@@ -117,6 +119,7 @@ body.panning *{cursor:grabbing !important}
 <div class="layout">
   <div class="stage"><div class="stagewrap" id="stagewrap"></div>
     <div id="zoomctl">
+      <button id="btnFs" type="button" aria-label="Full screen (F)" title="Full screen (F)"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6 V2.5 H6 M10 2.5 H13.5 V6 M13.5 10 V13.5 H10 M6 13.5 H2.5 V10"/></svg></button>
       <button id="zin" type="button" aria-label="Zoom in" title="Zoom in">+</button>
       <button id="zpct" type="button" aria-label="Reset zoom to fit" title="Reset to fit (100%)">100%</button>
       <button id="zout" type="button" aria-label="Zoom out" title="Zoom out">−</button>
@@ -319,32 +322,32 @@ function render(){
   /* ===== METASYSTEM ===== */
   s+=`<g class="lyr ${shown.meta?'':'hidden'}" data-lyr="meta">`;
   // central spine connectors (left = command, right = resource bargain — both from 5·4·3)
-  s+=`<line x1="${L.cmdL}" y1="${L.s5.y+L.s5.h}" x2="${L.cmdL}" y2="${L.s4.y}" stroke="${C.s5}" stroke-width="3.4"/>`
-    +`<line x1="${L.cmdR}" y1="${L.s5.y+L.s5.h}" x2="${L.cmdR}" y2="${L.s4.y}" stroke="${C.s5}" stroke-width="3.4"/>`;
-  s+=`<line x1="${L.cmdL}" y1="${L.s4.y+L.s4.h}" x2="${L.cmdL}" y2="${L.s3.y}" stroke="${C.s4}" stroke-width="4.5"/>`
-    +`<line x1="${L.cmdR}" y1="${L.s4.y+L.s4.h}" x2="${L.cmdR}" y2="${L.s3.y}" stroke="${C.s4}" stroke-width="4.5"/>`;
+  s+=`<g data-hl="sp54"><line x1="${L.cmdL}" y1="${L.s5.y+L.s5.h}" x2="${L.cmdL}" y2="${L.s4.y}" stroke="${C.s5}" stroke-width="3.4"/>`   // blue S5↔S4 spine (both lines)
+    +`<line x1="${L.cmdR}" y1="${L.s5.y+L.s5.h}" x2="${L.cmdR}" y2="${L.s4.y}" stroke="${C.s5}" stroke-width="3.4"/></g>`;
+  s+=`<g data-hl="sp43"><line x1="${L.cmdL}" y1="${L.s4.y+L.s4.h}" x2="${L.cmdL}" y2="${L.s3.y}" stroke="${C.s4}" stroke-width="4.5"/>`   // green S4↔S3 spine (both lines)
+    +`<line x1="${L.cmdR}" y1="${L.s4.y+L.s4.h}" x2="${L.cmdR}" y2="${L.s3.y}" stroke="${C.s4}" stroke-width="4.5"/></g>`;
   // S3 -> S3* (LEFT) and S3 -> S2 (RIGHT) feeds — "shoulder" right-angle elbows whose horizontal runs INSIDE S3's height (hidden behind the bar), so they look like they plug INTO S3. No arrowheads.
-  s+=`<path d="M 520 216 L ${L.s3star.cx} 216 L ${L.s3star.cx} ${L.s3star.topY}" fill="none" stroke="${C.s3}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`;
-  s+=`<path d="M 616 216 L ${L.s2.cx} 216 L ${L.s2.cx} ${L.s2.topY}" fill="none" stroke="${C.s2}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  s+=`<g data-hl="feed3s"><path d="M 520 216 L ${L.s3star.cx} 216 L ${L.s3star.cx} ${L.s3star.topY}" fill="none" stroke="${C.s3}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></g>`;   // S3→S3* feed
+  s+=`<g data-hl="feed2"><path d="M 616 216 L ${L.s2.cx} 216 L ${L.s2.cx} ${L.s2.topY}" fill="none" stroke="${C.s2}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></g>`;   // S3→S2 feed
   // (homeostat + S4-future eye are drawn AFTER the bars, below — so their arrowheads stay visible on top)
   // bars
-  s+=bar('5',C.s5,L.s5);
-  s+=bar('4',C.s4,L.s4);
-  s+=bar('3',C.s3,L.s3);
+  s+=`<g data-hl="s5box">${bar('5',C.s5,L.s5)}</g>`;   // wrapped so a loop highlight can dim S5 when the loop doesn't involve it
+  s+=`<g data-hl="s4box">${bar('4',C.s4,L.s4)}</g>`;   // …same for S4
+  s+=`<g data-hl="s3">${bar('3',C.s3,L.s3)}</g>`;   // wrapped so a channel highlight can dim S3 (visible only in the default view)
   // 3<->4 HOMEOSTAT (editable shapes red / green) drawn ON TOP of the bars so arrowheads stay visible
   s+=`<path id="shp-red" d="${shapeD(shapes.red)}" fill="none" stroke="${C.s3}" stroke-width="7" marker-end="url(#aRh)" stroke-linecap="round"/>`;
   s+=`<path id="shp-green" d="${shapeD(shapes.green)}" fill="none" stroke="${C.s4}" stroke-width="7" marker-end="url(#aGh)" stroke-linecap="round"/>`;
   // S4 <-> future cloud eye (thin green, two-way). Top arrow (S4 -> environment) approaches the cloud's edge horizontally so its tip lands cleanly.
-  s+=`<path d="M 499 126 C 451 107 ${L.envX+96} 107 ${L.envX+48} 126" fill="none" stroke="${C.s4}" stroke-width="2.3" marker-end="url(#aG)"/>`
-    +`<path d="M ${L.envX+48} 136 C ${L.envX+96} 155 451 155 499 136" fill="none" stroke="${C.s4}" stroke-width="2.3" marker-end="url(#aGr)"/>`;
+  s+=`<g data-hl="s4env"><path d="M 499 126 C 451 107 ${L.envX+96} 107 ${L.envX+48} 126" fill="none" stroke="${C.s4}" stroke-width="2.3" marker-end="url(#aG)"/>`
+    +`<path d="M ${L.envX+48} 136 C ${L.envX+96} 155 451 155 499 136" fill="none" stroke="${C.s4}" stroke-width="2.3" marker-end="url(#aGr)"/></g>`;
   // S3* inverted triangle (LEFT) — never forget
   const t1=L.s3star;
-  s+=`<polygon class="clk" data-el="3*" points="${t1.cx-30},${t1.topY} ${t1.cx+30},${t1.topY} ${t1.cx},${t1.botY}" fill="${C.s3}" stroke="#c23a22" stroke-width="1"/>`
-    +`<text x="${t1.cx}" y="${t1.topY+19}" text-anchor="middle" font-size="14" font-weight="700" fill="#fff" pointer-events="none">3*</text>`;
+  s+=`<g data-hl="s3s"><polygon class="clk" data-el="3*" points="${t1.cx-30},${t1.topY} ${t1.cx+30},${t1.topY} ${t1.cx},${t1.botY}" fill="${C.s3}" stroke="#c23a22" stroke-width="1"/>`
+    +`<text x="${t1.cx}" y="${t1.topY+19}" text-anchor="middle" font-size="14" font-weight="700" fill="#fff" pointer-events="none">3*</text></g>`;
   // S2 upward triangle (RIGHT)
   const t2=L.s2;
-  s+=`<polygon class="clk" data-el="2" points="${t2.cx-30},${t2.botY} ${t2.cx+30},${t2.botY} ${t2.cx},${t2.topY}" fill="${C.s2}" stroke="#d9a52f" stroke-width="1"/>`
-    +`<text x="${t2.cx}" y="${t2.botY-9}" text-anchor="middle" font-size="14" font-weight="700" fill="#fff" pointer-events="none">2</text>`;
+  s+=`<g data-hl="s2"><polygon class="clk" data-el="2" points="${t2.cx-30},${t2.botY} ${t2.cx+30},${t2.botY} ${t2.cx},${t2.topY}" fill="${C.s2}" stroke="#d9a52f" stroke-width="1"/>`
+    +`<text x="${t2.cx}" y="${t2.botY-9}" text-anchor="middle" font-size="14" font-weight="700" fill="#fff" pointer-events="none">2</text></g>`;
   s+=`</g>`;
 
   /* ===== S5 dampening arms — ON TOP of the homeostat so their ends (A/B) stay visible ===== */
@@ -388,7 +391,7 @@ function render(){
   if(editMode) s+=`<g id="editlayer">${editHandles()}</g>`;
   s+=`</svg>`;
   document.getElementById('stagewrap').innerHTML=s;
-  drawBreadcrumb(); drawLayers(); drawUnits(); drawInfo(); drawShapeEditor();
+  drawBreadcrumb(); drawLayers(); drawUnits(); drawInfo(); drawShapeEditor(); applyHighlight();
   bindSvg(); updateZoomUI();
 }
 function drawShapeEditor(){
@@ -546,6 +549,16 @@ function setPane(visible){
 const MAXZOOM=6, CONTENT={x:130,y:34,w:652}; // content box (x,y,w fixed; height = baseViewH, set per render)
 let zoom=1, panX=0, panY=0;                  // zoom: 1 = fit; panX/panY: view-centre offset from content centre (content units)
 function curSvg(){return document.querySelector('#stagewrap svg');}
+/* ---- channel highlight (host drives via the bridge): emphasise one channel/link, dim the rest ---- */
+let HLON=null;   // Set of channel tokens to emphasise, or null = no highlight (full diagram)
+const HL_SEL={ a:'[data-lyr="a"]', c:'[data-lyr="c"]', b:'[data-lyr="b"]', d:'[data-lyr="d"]', e:'[data-lyr="e"]', f:'[data-lyr="f"]', g:'[data-lyr="g"]',
+  h34:'#shp-red,#shp-green', h5:'[data-lyr="meta-arms"]', s4env:'[data-hl="s4env"]', eyeloops:'[data-lyr="eyeloops"]',
+  s2:'[data-hl="s2"]', s3:'[data-hl="s3"]', s3s:'[data-hl="s3s"]', s4box:'[data-hl="s4box"]', s5box:'[data-hl="s5box"]',
+  sp54:'[data-hl="sp54"]', sp43:'[data-hl="sp43"]', feed3s:'[data-hl="feed3s"]', feed2:'[data-hl="feed2"]', units:'[data-lyr="units"]' };   // h34=3–4 homeostat · h5=S5 arms · s4env=S4↔future eye · sp54/sp43=blue/green metasystem spine · feed3s/feed2=S3→S3*/S3→S2 elbows · units=S1 operational units · all dim when the highlighted loop doesn't involve them (full in the default view)
+function applyHighlight(){ const svg=curSvg(); if(!svg) return;
+  Object.keys(HL_SEL).forEach(tok=>{ const op=(!HLON||HLON.has(tok))?'':'0.1';
+    svg.querySelectorAll(HL_SEL[tok]).forEach(el=>{ el.style.opacity=op; }); }); }
+function highlight(els){ HLON=(Array.isArray(els)&&els.length)?new Set(els.map(String)):null; applyHighlight(); }
 function stageWH(){const st=document.querySelector('.stage');const w=(st?st.clientWidth:innerWidth)-20,h=(st?st.clientHeight:innerHeight)-20;return[Math.max(1,w),Math.max(1,h)];}
 function fitVB(){                     // zoom=1 / pan=0 viewBox: the content box expanded to the stage aspect ratio
   const wh=stageWH(),A=wh[0]/wh[1],cw=CONTENT.w,ch=baseViewH,Ac=cw/ch; let w,h;
@@ -571,6 +584,17 @@ function zoomCentre(factor){const vb=curVB();zoomAround(factor, vb.x+vb.w/2, vb.
 function fitView(){zoom=1;panX=0;panY=0;applyVB();}
 function resetView(){zoom=1;panX=0;panY=0;}   // recursion navigation re-frames to fit (applied by the next render)
 function updateZoomUI(){const p=document.getElementById('zpct');if(p)p.textContent=Math.round(zoom*100)+'%';}
+/* ---- full-screen mode (works standalone; embedded needs the host iframe to carry allow="fullscreen") ---- */
+function fsEl(){ return document.fullscreenElement || document.webkitFullscreenElement || null; }
+function isFs(){ return !!fsEl(); }
+function enterFs(){ const el=document.documentElement, req=el.requestFullscreen||el.webkitRequestFullscreen; if(req){ try{ const p=req.call(el); if(p&&p.catch) p.catch(()=>{}); }catch(_){} } }
+function exitFs(){ const ex=document.exitFullscreen||document.webkitExitFullscreen; if(ex){ try{ const p=ex.call(document); if(p&&p.catch) p.catch(()=>{}); }catch(_){} } }
+function toggleFs(){ isFs()?exitFs():enterFs(); }
+function setFs(on){ on===false?exitFs():on===true?enterFs():toggleFs(); }   // host bridge: enter needs a user gesture, exit always works
+const FS_IN='<svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6 V2.5 H6 M10 2.5 H13.5 V6 M13.5 10 V13.5 H10 M6 13.5 H2.5 V10"/></svg>';
+const FS_OUT='<svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2.5 V6 H2.5 M13.5 6 H10 V2.5 M10 13.5 V10 H13.5 M2.5 10 H6 V13.5"/></svg>';
+function updateFsBtn(){ const b=document.getElementById('btnFs'); if(!b) return; const on=isFs(); b.classList.toggle('on',on); b.innerHTML=on?FS_OUT:FS_IN; b.title=on?'Exit full screen (F / Esc)':'Full screen (F)'; b.setAttribute('aria-label',b.title); }
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{ updateFsBtn(); requestAnimationFrame(fitView); try{ BRIDGE.fsChanged(isFs()); }catch(_){} }));
 
 /* sidebar events */
 document.getElementById('paneToggle').onclick=()=>setPane(!paneShown);
@@ -666,6 +690,7 @@ window.addEventListener('mouseup',()=>{if(drag){drag=null;try{localStorage.setIt
 document.getElementById('zin').onclick=()=>zoomCentre(1.4);
 document.getElementById('zout').onclick=()=>zoomCentre(1/1.4);
 document.getElementById('zpct').onclick=fitView;
+document.getElementById('btnFs').onclick=toggleFs; updateFsBtn();
 document.querySelector('.stage').addEventListener('wheel',e=>{
   const svg=curSvg();if(!svg||!svg.getScreenCTM())return;
   e.preventDefault();
@@ -692,6 +717,9 @@ window.addEventListener('mousemove',e=>{
 window.addEventListener('mouseup',()=>{ if(panState){ if(panState.moved) suppressClick=true; panState=null; document.body.classList.remove('panning'); } });
 // re-fit the canvas whenever the frame/iframe is resized, so the diagram always uses the available space (never stuck zoomed/clipped)
 let _fitT; window.addEventListener('resize',()=>{ clearTimeout(_fitT); _fitT=setTimeout(fitView,140); });
+// F toggles full screen (ignored while typing in a field; ⌘/Ctrl+F stays the browser's find)
+window.addEventListener('keydown',e=>{ const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+  if((e.key==='f'||e.key==='F')&&!e.metaKey&&!e.ctrlKey&&!e.altKey){ e.preventDefault(); toggleFs(); } });
 
 /* ======================================================================
    INTEGRATION BRIDGE — iframe + postMessage   (contract: VSM-VISUALIZATION-BRIEFING.md §12.9)
@@ -705,9 +733,13 @@ let _fitT; window.addEventListener('resize',()=>{ clearTimeout(_fitT); _fitT=set
      { cmd:'setPath',     ids }        ids  = [ rootHostId, … , sifHostId ]  (stable host ids)
      { cmd:'setChannels', shown }      shown= { a,b,c,d,e,f,g,env,meta : bool }  (only known keys are applied)
      { cmd:'select',      type, idx }  type = a data-el value; idx required when type === 'unit'
+     { cmd:'highlight',   els }        els = array of tokens to keep bright (everything else dims); null clears → default view. Tokens: a c b d e f g (channels), h34 (3–4 homeostat), h5 (S5 arms), s4env (S4↔future eye), sp54 and sp43 (blue/green metasystem spine), feed3s and feed2 (the S3→S3* and S3→S2 elbows), s2 s3 s3s s4box s5box (system shapes), units (S1 units). Show the channels first (setChannels) so they can be emphasised.
+     { cmd:'fullscreen',  on }         on=true enter / false exit / omit=toggle. Exit always works; entering needs a user gesture (a postMessage has none), so the reliable enter is the in-frame button / F key. NEEDS the host iframe to carry allow="fullscreen".
+   URL params: ?pane=hidden (collapse the detail pane) · ?chrome=min (diagram-only embed: no breadcrumb bar / zoom controls).
 
    vsm.html -> HOST   ( posted to window.parent with '*'; also delivered to window.VSM.onEmit when inlined )
      { evt:'ready', api:1 }
+     { evt:'fullscreenchange', fullscreen }
      { evt:'elementClick', type, idx, hostId, name, sifId }
      { evt:'mutate', op, parentId, path, hostId?, name?, tempId?, index?, order?, from?, to? }   op = add|remove|rename|reorder
      { evt:'drill', path, sifId }
@@ -782,6 +814,8 @@ const BRIDGE = (() => {
     else if (m.cmd === 'setChannels') setChannels(m.shown);
     else if (m.cmd === 'select')      select(m.type, m.idx);
     else if (m.cmd === 'setPaneVisibility') { if (m.pane == null || m.pane === 'details') setPane(!!m.visible); }
+    else if (m.cmd === 'fullscreen')  setFs(m.on);
+    else if (m.cmd === 'highlight')   highlight(m.els);
   });
 
   /* ---------- vsm.html -> HOST (called from the interaction handlers) ---------- */
@@ -802,19 +836,21 @@ const BRIDGE = (() => {
       if (d.to     != null) p.to     = d.to;
       postToHost(p);
     },
+    fsChanged: (on) => postToHost({ evt:'fullscreenchange', fullscreen: !!on }),
   };
 
   /* Optional programmatic API (inline embedding / tests) — mirrors the postMessage cmds.
      iframe hosts use postMessage; inline hosts may call these directly and read events via onEmit. */
-  window.VSM = { loadTree, setPath, setChannels, select, setPaneVisibility: v => setPane(!!v), onEmit: null,
+  window.VSM = { loadTree, setPath, setChannels, select, highlight, fullscreen: on => setFs(on), isFullscreen: () => isFs(), setPaneVisibility: v => setPane(!!v), onEmit: null,
                  getState: () => ({ path: pathIds(), sif: hostIdOf(sif()), shown: { ...shown }, selected, paneShown }) };
   return api;
 })();
 
 // initial detail-pane state from the URL — e.g. embed `vsm.html?pane=hidden` to open the
 // standalone view collapsed (gives the diagram the full width without any bridge wiring).
-{const _p=(new URLSearchParams(location.search).get('pane')||'').toLowerCase();
- if(_p==='hidden'||_p==='collapsed'||_p==='false'||_p==='0'){paneShown=false;document.body.classList.add('pane-hidden');}}
+{const _q=new URLSearchParams(location.search), _p=(_q.get('pane')||'').toLowerCase();
+ if(_p==='hidden'||_p==='collapsed'||_p==='false'||_p==='0'){paneShown=false;document.body.classList.add('pane-hidden');}
+ if(['min','none','hidden'].includes((_q.get('chrome')||'').toLowerCase())) document.body.classList.add('embed');}   // chrome=min → diagram-only embed (no breadcrumb bar / zoom controls)
 render();
 renderPaneToggle();
 BRIDGE.ready();
