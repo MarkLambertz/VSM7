@@ -22,7 +22,10 @@
       "Bash(curl -s \"http://localhost:7710/e2e-robustness-check.html\")",
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('scripts:',JSON.stringify\\(p.scripts||{},null,1\\)\\); console.log\\('devDeps:',Object.keys\\(p.devDependencies||{}\\).join\\(', '\\)||'\\(none\\)'\\); console.log\\('deps:',Object.keys\\(p.dependencies||{}\\).join\\(', '\\)||'\\(none\\)'\\);\")",
       "Bash(timeout 25 npm view @playwright/test version)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(cd /Users/mark/Documents/VSM7/asset-tests; echo \"=== playwright config ===\"; cat playwright.config.js 2>/dev/null | grep -i \"baseURL\\\\|testMatch\\\\|port\\\\|webServer\\\\|use:\" | head; echo \"=== serve.js root + design-previews reachable? ===\"; grep -n \"ROOT\\\\|extname\\\\|\\\\.html\" serve.js | head; ls ../design-previews/step7-ux.html)",
+      "Bash(python3 -c ' *)",
+      "Bash(grep -n \"thead th.g-role{\\\\|thead th.g-function{\\\\|thead th.g-meeting{\\\\|class=\\\\\"g-\\\\${gt}\\\\\" title=\\\\|v.name.split\\(' '\\).slice\" design-previews/step7-ux.html)"
     ]
   }
 }

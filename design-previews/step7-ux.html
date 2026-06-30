@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VSM7 · Step VII — Representation</title>
+<style>
+* { box-sizing: border-box; }
+:root{
+  --bg:#f3f6f5; --surface:#ffffff; --surface-soft:#f7fafb; --panel:#eef3f2;
+  --line:#cfdad5; --line-strong:#9dafaa; --ink:#1f2935; --muted:#667482;
+  --blue:#3386bf; --blue-soft:#e8f2f9; --teal:#178275; --teal-soft:#e5f3ef;
+  --green:#63b16c; --green-soft:#e8f5e9; --amber:#efbd45; --amber-soft:#fff5d8;
+  --red:#df6353; --red-soft:#fbe8e5; --violet:#8171b4; --violet-soft:#eeeaf8;
+  --s1:#34404c; --s2:#efbd45; --s3:#df6353; --s3star:#b85045; --s4:#63b16c; --s5:#9dbed2;
+  --radius:9px; --shadow:0 4px 16px rgba(20,40,40,.08);
+}
+/* ---- Command Deck skin (high-contrast, segmented) ---- */
+body[data-skin="deck"]{
+  --bg:#0f1822; --surface:#172430; --surface-soft:#1c2c3a; --panel:#13202b;
+  --line:#2c3f4f; --line-strong:#3d5568; --ink:#eaf1f6; --muted:#90a6b6;
+  --blue:#57aee6; --blue-soft:#16303f; --teal:#3fb9a6; --teal-soft:#123330;
+  --green:#6fd07c; --green-soft:#14331c; --amber:#f1c75c; --amber-soft:#33290c;
+  --red:#f0796a; --red-soft:#341615; --violet:#a596d8; --violet-soft:#241f37;
+  --s5:#7fa9c8; --shadow:0 6px 22px rgba(0,0,0,.45);
+}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+small{color:var(--muted)}
+.app{min-height:100vh;display:flex;flex-direction:column}
+
+/* ---- topbar ---- */
+.topbar{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px;height:64px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--surface)}
+.brand{display:flex;align-items:center;gap:11px}
+.brand-mark{display:grid;place-items:center;width:40px;height:40px;border:1px solid var(--line-strong);border-radius:8px;background:var(--blue-soft);color:var(--blue);font-weight:900;font-size:15px}
+.brand b{font-size:18px;letter-spacing:.2px}
+.ctx{display:flex;gap:22px;min-width:0;overflow:hidden}
+.ctx div{min-width:0}
+.ctx label{display:block;font-size:9px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.6px}
+.ctx strong{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:200px}
+.tools{display:flex;align-items:center;gap:8px}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:7px 11px;font-size:12px;font-weight:700;color:var(--muted)}
+.seg button.on{background:var(--blue);color:#fff}
+body[data-skin="deck"] .seg button.on{color:#04121c}
+.btn{border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);padding:7px 12px;font-weight:750;font-size:12.5px;min-height:34px}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+body[data-skin="deck"] .btn.primary{color:#04121c}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn:hover{border-color:var(--blue)}
+
+/* ---- shell ---- */
+.shell{flex:1;display:grid;grid-template-columns:212px 1fr;min-height:0}
+.side{border-right:1px solid var(--line);background:var(--surface);padding:12px 10px;display:flex;flex-direction:column;gap:3px}
+.side .grp{font-size:9.5px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.6px;padding:9px 8px 4px}
+.navb{display:flex;gap:9px;align-items:flex-start;text-align:left;border:1px solid transparent;border-radius:8px;background:transparent;padding:8px 9px;width:100%}
+.navb .n{flex:none;width:30px;height:22px;border-radius:5px;background:var(--panel);color:var(--muted);font-weight:800;font-size:11px;display:grid;place-items:center}
+.navb b{font-size:12.5px;display:block;line-height:1.25}
+.navb span{font-size:10.5px;color:var(--muted)}
+.navb.on{background:var(--blue-soft);border-color:var(--blue)}
+.navb.on .n{background:var(--blue);color:#fff}
+body[data-skin="deck"] .navb.on .n{color:#04121c}
+.navb:hover{background:var(--surface-soft)}
+.side-note{margin-top:auto;font-size:10.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:10px}
+
+.main{min-width:0;overflow:auto;padding:18px 22px 60px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+.head h1{margin:0;font-size:21px}
+.head p{margin:3px 0 0;color:var(--muted);font-size:12.5px;max-width:620px}
+
+/* ---- generic ---- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.pad{padding:14px 16px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700;border:1px solid var(--line)}
+.sys{display:inline-grid;place-items:center;min-width:30px;height:20px;border-radius:6px;font-size:10.5px;font-weight:800;color:#22303b;padding:0 6px}
+.sys.S1{background:#cdd5dd;color:#26313c}.sys.S2{background:var(--s2)}.sys.S3{background:var(--s3);color:#fff}
+.sys.S3\*{background:var(--s3star);color:#fff}.sys.S4{background:var(--s4);color:#13340f}.sys.S5{background:var(--s5);color:#1b3346}
+.muted{color:var(--muted)}
+.tag{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;border-radius:5px;padding:2px 6px}
+.tag.derived{background:var(--violet-soft);color:var(--violet)}
+.tag.human{background:var(--teal-soft);color:var(--teal)}
+.tag.cand{background:var(--amber-soft);color:#9a6a06}
+.tag.acc{background:var(--green-soft);color:#3c7a44}
+body[data-skin="deck"] .tag.cand{color:var(--amber)} body[data-skin="deck"] .tag.acc{color:var(--green)}
+.warn{display:flex;gap:7px;align-items:flex-start;font-size:11.5px;border-radius:7px;padding:6px 9px;background:var(--amber-soft);color:#8a5b04;border:1px solid #f0d896}
+.warn.red{background:var(--red-soft);color:#a8392b;border-color:#eebcb3}
+body[data-skin="deck"] .warn{color:var(--amber)} body[data-skin="deck"] .warn.red{color:var(--red)}
+.warn .ico{font-weight:900}
+.alg{color:var(--violet);font-weight:900}
+
+/* ---- 7.1 vessels ---- */
+.vgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
+.vcol h3{margin:0 0 8px;font-size:13px;display:flex;align-items:center;gap:8px}
+.vcol .count{font-size:10.5px;color:var(--muted);font-weight:700}
+.vcard{border:1px solid var(--line);border-radius:8px;padding:10px 11px;margin-bottom:9px;background:var(--surface)}
+.vcard.cand{border-style:dashed;background:var(--surface-soft)}
+.vcard b{font-size:13px}
+.vcard .pp{font-size:11.5px;color:var(--muted);margin:3px 0 7px}
+.vcard .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.vcard .acts{display:flex;gap:6px;flex-wrap:wrap}
+.mini{border:1px solid var(--line-strong);background:var(--surface);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:700}
+.mini.go{border-color:var(--green);color:var(--green)} .mini.no{border-color:var(--red);color:var(--red)}
+.prov{font-size:10px;color:var(--muted);font-style:italic}
+.dupe{font-size:10.5px;color:#9a6a06;background:var(--amber-soft);border-radius:5px;padding:3px 7px;margin-top:6px;display:inline-block}
+
+/* ---- 7.2 rasic ---- */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.filters select,.filters input{border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);padding:6px 9px;font-size:12px}
+.rasic-wrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+.rasic-wrap>div{min-width:0}
+.matrix-scroll{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);max-height:62vh}
+table.rasic{border-collapse:separate;border-spacing:0;font-size:12px;min-width:100%}
+table.rasic th,table.rasic td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0}
+table.rasic thead th{position:sticky;z-index:3;background:var(--panel);font-weight:800;font-size:10.5px;text-align:center;padding:7px 6px;vertical-align:bottom}
+table.rasic thead tr:first-child th{top:0;height:24px}
+table.rasic thead tr:nth-child(2) th{top:24px}
+table.rasic .grouphdr{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);cursor:pointer}
+table.rasic .idcol{position:sticky;left:0;z-index:2;background:var(--surface);text-align:left;padding:7px 9px;min-width:230px;max-width:230px}
+table.rasic thead .idcol{z-index:4}
+table.rasic tbody tr:hover .idcol{background:var(--surface-soft)}
+table.rasic tr.sel .idcol{background:var(--blue-soft)}
+.idcol .sname{font-weight:700;font-size:12px;display:block;line-height:1.2}
+.idcol .sscope{font-size:10.5px;color:var(--muted)}
+.cell{width:42px;height:38px;text-align:center;vertical-align:middle}
+.cell button{width:30px;height:26px;border-radius:6px;border:1px solid var(--line);background:var(--surface);font-weight:900;font-size:12px;color:var(--muted)}
+/* RASIC pastel spectrum: A=red · R=yellow · S=blue · I=light grey · C=dark grey */
+.cell button.A{background:#f4cfc8;border-color:#df6353;color:#a8392b}
+.cell button.R{background:#fbecbb;border-color:#e0b236;color:#856012}
+.cell button.S{background:#d2e6f5;border-color:#5a9bd0;color:#2b6492}
+.cell button.I{background:#edf0f2;border-color:#cfd7dd;color:#7b848c}
+.cell button.C{background:#aab6c0;border-color:#8a97a3;color:#2c353e}
+.cell button.attn{box-shadow:0 0 0 2px var(--amber)}
+/* LOUDER double-accountability: two A's on one SCT is an exception → bright red ring + pulse */
+.cell button.A.conflict{border-color:#cf2e1e;color:#9a2c1e;font-weight:900;box-shadow:0 0 0 2px var(--surface),0 0 0 4px #d83a29;animation:dblA 1.4s ease-in-out infinite}
+@keyframes dblA{0%,100%{box-shadow:0 0 0 2px var(--surface),0 0 0 4px #d83a29}50%{box-shadow:0 0 0 2px var(--surface),0 0 0 5px #f4796a}}
+/* subtle column-group banding so Roles / Functions / Meetings read apart */
+table.rasic td.cell.g-role{background:rgba(51,134,191,.055)}
+table.rasic td.cell.g-function{background:rgba(23,130,117,.06)}
+table.rasic td.cell.g-meeting{background:rgba(239,189,69,.10)}
+table.rasic thead th.g-role{background:#e4eff7}
+table.rasic thead th.g-function{background:#e1efec}
+table.rasic thead th.g-meeting{background:#fbf2da}
+body[data-skin="deck"] table.rasic thead th.g-role{background:#1a2e3c}
+body[data-skin="deck"] table.rasic thead th.g-function{background:#173138}
+body[data-skin="deck"] table.rasic thead th.g-meeting{background:#36321f}
+.vhname{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:9px;line-height:1.2;max-width:64px;margin:0 auto;overflow-wrap:break-word;hyphens:auto}
+.dblA-tag{display:inline-block;background:#d83a29;color:#fff;font-size:9px;font-weight:800;border-radius:4px;padding:1px 5px;letter-spacing:.3px}
+table.rasic tr.rowdbl .idcol{box-shadow:inset 3px 0 0 #d83a29}
+.lk{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;font-weight:900;font-size:11px;border:1px solid}
+.lk.A{background:#f4cfc8;border-color:#df6353;color:#a8392b}
+.lk.R{background:#fbecbb;border-color:#e0b236;color:#856012}
+.lk.S{background:#d2e6f5;border-color:#5a9bd0;color:#2b6492}
+.lk.I{background:#edf0f2;border-color:#cfd7dd;color:#7b848c}
+.lk.C{background:#aab6c0;border-color:#8a97a3;color:#2c353e}
+.warn.loud{font-size:12.5px;font-weight:700;padding:10px 12px;border-width:2px;box-shadow:0 0 0 3px rgba(216,58,41,.12)}
+.warn.loud .ico{font-size:15px}
+.colgroup-collapsed{color:var(--blue)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;margin-top:8px;color:var(--muted)}
+.legend b{font-weight:900}
+.insp{position:sticky;top:0}
+.insp h3{margin:0 0 4px;font-size:14px}
+.insp .kv{font-size:12px;margin:8px 0}
+.insp .kv label{display:block;font-size:9.5px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.4px;margin-bottom:2px}
+.assign-list{display:flex;flex-direction:column;gap:5px;margin-top:5px}
+.assign-list div{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+
+/* ---- 7.3 / 7.4 descriptions ---- */
+.split{display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:start}
+.list{display:flex;flex-direction:column;gap:5px}
+.lirow{text-align:left;border:1px solid var(--line);border-radius:7px;background:var(--surface);padding:8px 10px;width:100%}
+.lirow.on{border-color:var(--blue);background:var(--blue-soft)}
+.lirow b{font-size:12.5px;display:block}
+.lirow span{font-size:10.5px;color:var(--muted)}
+.desc-sec{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:var(--surface)}
+.desc-sec .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.desc-sec .sh b{font-size:12px}
+.desc-sec p,.desc-sec ul{margin:4px 0;font-size:12.5px;line-height:1.5}
+.desc-sec ul{padding-left:18px}
+.diff-add{background:var(--green-soft);text-decoration:none;border-radius:3px;padding:0 2px}
+.diff-rm{background:var(--red-soft);text-decoration:line-through;border-radius:3px;padding:0 2px}
+.preview-box{border:1px solid var(--blue);border-radius:8px;background:var(--blue-soft);padding:11px 13px;margin-bottom:12px}
+.guideq2{font-size:12px;color:#4a5560;margin:0 0 8px}
+.aspitems{display:flex;flex-direction:column;gap:6px;margin-bottom:9px}
+.asprow{display:flex;gap:6px;align-items:center}
+.asprow .fld-i{flex:1;padding:7px 10px;font-size:12.5px}
+.asprow .mini.no{flex:none;width:30px;padding:0}
+textarea.fld-i{width:100%;min-height:46px;resize:vertical;font-size:12.5px;padding:8px 10px}
+.rasic-links{display:flex;flex-direction:column;gap:9px}
+.rblock{display:flex;gap:9px;align-items:flex-start}
+.rblock .lk{flex:none;margin-top:1px}
+.rnames>b{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);display:block;margin-bottom:1px}
+.rnames>div:last-child{font-size:12.5px;line-height:1.55}
+.mchips{display:flex;flex-wrap:wrap;gap:6px}
+.mchip{display:inline-flex;align-items:center;gap:4px;background:var(--surface-soft);border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 10px;font-size:11.5px}
+.mchip button{border:0;background:none;color:var(--red);font-weight:800;cursor:pointer;padding:0 4px;line-height:1}
+.inh-note{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:4px}
+.inh-items{display:flex;flex-wrap:wrap;gap:5px}
+
+/* ---- 7.5 meetings ---- */
+.mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;align-items:start}
+.charter{border:1px solid var(--line);border-radius:9px;background:var(--surface);overflow:hidden}
+.charter .ch-top{padding:11px 13px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.charter .ch-top b{font-size:14px}
+.charter .ch-body{padding:11px 13px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.charter .io{font-size:11.5px}
+.charter .io label{font-size:9.5px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.4px;display:block;margin-bottom:3px}
+.charter ul{margin:0;padding-left:15px;font-size:11.5px;line-height:1.45}
+.flow{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--muted)}
+.flow .pill{background:var(--panel);border-radius:6px;padding:3px 8px}
+
+/* ---- 7.6 org rep ---- */
+.org-wrap{display:grid;grid-template-columns:1fr 290px;gap:14px;align-items:start}
+.org-canvas{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface-soft);padding:18px;overflow:auto;min-height:420px}
+.lvl{font-size:9.5px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.6px;margin:0 0 6px}
+.node{display:inline-flex;flex-direction:column;gap:2px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);padding:7px 11px;min-width:120px;text-align:left;position:relative}
+.node b{font-size:12px}
+.node small{font-size:9.5px}
+.node.on{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
+.node.role{border-style:dashed}
+.tier{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.subtier{display:flex;gap:24px;flex-wrap:wrap;margin-top:8px}
+.unitcol{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.connector{height:14px;border-left:2px solid var(--line-strong);margin-left:22px}
+body[data-overlay="vsm"] .node[data-sys]{border-left-width:6px}
+.node[data-sys="S2"]{border-left-color:var(--s2)} .node[data-sys="S3"]{border-left-color:var(--s3)}
+.node[data-sys="S3*"]{border-left-color:var(--s3star)} .node[data-sys="S4"]{border-left-color:var(--s4)}
+.node[data-sys="S5"]{border-left-color:var(--s5)} .node[data-sys="S1"]{border-left-color:var(--s1)}
+
+/* ---- focus mode ---- */
+.focus-layer{display:none}
+body.focus{overflow:hidden}
+body.focus .focus-layer{display:flex;flex-direction:column;position:fixed;inset:0;z-index:50;background:var(--bg);padding:0}
+.focus-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--surface)}
+.focus-bar .ft{display:flex;gap:10px;align-items:center}
+.focus-tiles{flex:1;overflow:auto;padding:26px 30px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-content:start}
+.ftile{border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow);padding:22px 24px}
+.ftile h2{margin:0 0 6px;font-size:24px}
+.ftile .lead{font-size:16px;line-height:1.5;margin:0 0 14px}
+.ftile .outcome{background:var(--teal-soft);border-radius:9px;padding:11px 13px;font-size:14px;margin-bottom:14px}
+.ftile .prompts{margin:0;padding-left:20px;font-size:14.5px;line-height:1.7}
+.ftile .coach{margin-top:13px;font-size:12.5px;color:var(--muted);font-style:italic}
+.focus-steps{display:flex;gap:6px;flex-wrap:wrap}
+.focus-steps button{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:6px 10px;font-size:12px;font-weight:700}
+.focus-steps button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+body[data-skin="deck"] .focus-steps button.on{color:#04121c}
+
+/* ---- add-vessel modal ---- */
+.modal-layer{display:none;position:fixed;inset:0;z-index:80;align-items:flex-start;justify-content:center;background:rgba(15,25,30,.42);padding:6vh 20px}
+.modal-layer.on{display:flex}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 56px rgba(10,20,25,.34);width:min(560px,96vw);max-height:88vh;overflow:auto}
+.m-head{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.m-head b{font-size:16px}
+.m-body{padding:16px 20px;display:flex;flex-direction:column;gap:13px}
+.m-foot{padding:13px 20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.fld-l{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px;display:block}
+.fld-i{width:100%;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);padding:9px 11px;font-size:13px;color:var(--ink)}
+textarea.fld-i{resize:vertical;min-height:60px}
+.seg2{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.seg2 button{border:0;background:var(--surface);padding:8px 14px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.seg2 button.on{background:var(--blue);color:#fff}
+body[data-skin="deck"] .seg2 button.on{color:#04121c}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.chkrow{display:flex;align-items:center;gap:8px;font-size:13px;min-height:36px}
+.dupewarn{font-size:11.5px;background:var(--amber-soft);color:#8a5b04;border:1px solid #f0d896;border-radius:7px;padding:8px 10px}
+body[data-skin="deck"] .dupewarn{color:var(--amber)}
+.dupewarn .mini{margin-left:6px;padding:2px 7px}
+
+.empty{border:1.5px dashed var(--line-strong);border-radius:var(--radius);padding:26px;text-align:center;color:var(--muted)}
+.empty b{color:var(--ink);font-size:15px;display:block;margin-bottom:4px}
+.hint{font-size:11px;color:var(--muted)}
+.sectitle{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:18px 0 8px}
+</style>
+</head>
+<body data-skin="workshop" data-overlay="none">
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark">V7</div><b>VSM7</b></div>
+    <div class="ctx">
+      <div><label>Organization</label><strong>EU AI Solutions SE</strong></div>
+      <div><label>Project</label><strong>Transformation 2026</strong></div>
+      <div><label>System-in-Focus</label><strong>EU AI Solutions SE · R0</strong></div>
+    </div>
+    <div class="tools">
+      <div class="seg" id="skinSeg" title="Interface skin (visual only)">
+        <button data-skin="workshop" class="on">Workshop</button>
+        <button data-skin="deck">Command Deck</button>
+      </div>
+      <button class="btn" id="fsBtn" title="Full screen — maximize this substep (F)">⛶ Full screen</button>
+      <button class="btn" id="focusBtn" title="Facilitation tiles">▦ Focus</button>
+    </div>
+  </header>
+
+  <div class="shell">
+    <nav class="side" id="side">
+      <div class="grp">VSM · Step VII — Representation</div>
+      <!-- nav injected -->
+    </nav>
+    <main class="main" id="view"></main>
+  </div>
+</div>
+
+<!-- focus overlay -->
+<div class="focus-layer">
+  <div class="focus-bar">
+    <div class="ft"><strong style="font-size:15px">Facilitation · Step VII</strong>
+      <div class="focus-steps" id="focusSteps"></div>
+    </div>
+    <button class="btn" id="focusExit">Esc · Exit focus</button>
+  </div>
+  <div class="focus-tiles" id="focusTiles"></div>
+</div>
+
+<!-- add-vessel modal -->
+<div class="modal-layer" id="modal"></div>
+
+<script>
+/* ============================ SAMPLE DATA (realistic, canonical-id based) ============================ */
+const UNITS=[
+  {id:'u-grp',name:'AI Solutions Group',level:'R+1'},
+  {id:'u-sif',name:'EU AI Solutions SE',level:'R0',sif:true},
+  {id:'u-mob',name:'Mobility',level:'R-1',parent:'u-sif'},
+  {id:'u-ind',name:'Industrial Technology',level:'R-1',parent:'u-sif'},
+  {id:'u-con',name:'Consumer Goods',level:'R-1',parent:'u-sif'},
+  {id:'u-ene',name:'Energy & Building',level:'R-1',parent:'u-sif'},
+];
+const SCTS=[
+  {id:'s1',did:'SCT-001',name:'Set group strategy & foresight',sys:'S4',prio:'high'},
+  {id:'s2',did:'SCT-002',name:'Allocate resources across units',sys:'S3',prio:'high'},
+  {id:'s3',did:'SCT-003',name:'Coordinate cross-unit delivery',sys:'S2',prio:'med'},
+  {id:'s4',did:'SCT-004',name:'Audit operational ground truth',sys:'S3*',prio:'high'},
+  {id:'s5',did:'SCT-005',name:'Maintain identity & norms',sys:'S5',prio:'high'},
+  {id:'s6',did:'SCT-006',name:'Run algedonic escalation',sys:'S5',prio:'high'},
+  {id:'s7',did:'SCT-007',name:'Negotiate resource bargain',sys:'S3',prio:'med'},
+  {id:'s8',did:'SCT-008',name:'Align S4–S3 strategy & planning',sys:'S4',prio:'med'},
+  {id:'s9',did:'SCT-009',name:'Sense market & technology environment',sys:'S4',prio:'med'},
+  {id:'s10',did:'SCT-010',name:'Deliver mobility solutions',sys:'S1',prio:'high'},
+  {id:'s11',did:'SCT-011',name:'Deliver industrial technology',sys:'S1',prio:'high'},
+  {id:'s12',did:'SCT-012',name:'Manage consumer goods line',sys:'S1',prio:'med'},
+  {id:'s13',did:'SCT-013',name:'Operate energy & building',sys:'S1',prio:'med'},
+  {id:'s14',did:'SCT-014',name:'Set normative parameters',sys:'S5',prio:'med'},
+];
+// SCT contributions = SCT × organizational unit (Step IV). accUnit = Step IV accountable unit anchor.
+const CONTRIBS=[
+  {id:'c1',sct:'s1',unit:'u-sif',sys:'S4',accUnit:'u-sif',text:'Own the group strategy cycle and foresight inputs for the SIF.'},
+  {id:'c2',sct:'s2',unit:'u-sif',sys:'S3',accUnit:'u-sif',text:'Allocate budget and capacity across the four operating units.'},
+  {id:'c3',sct:'s3',unit:'u-sif',sys:'S2',accUnit:'u-sif',text:'Dampen oscillation between units; run the coordination cadence.'},
+  {id:'c4',sct:'s4',unit:'u-sif',sys:'S3*',accUnit:'u-sif',text:'Independent probes into unit operations, bypassing the command line.'},
+  {id:'c5',sct:'s5',unit:'u-sif',sys:'S5',accUnit:'u-sif',text:'Steward purpose, identity and the rules of the game.'},
+  {id:'c6',sct:'s6',unit:'u-sif',sys:'S5',accUnit:'u-sif',text:'Operate the pain/alarm channel from any unit straight to S5.'},
+  {id:'c7',sct:'s7',unit:'u-sif',sys:'S3',accUnit:'u-sif',text:'Run the resource-for-accountability bargain with each unit.'},
+  {id:'c8',sct:'s8',unit:'u-sif',sys:'S4',accUnit:'u-sif',text:'Reconcile S4 ambition with S3 here-and-now capacity.'},
+  {id:'c9',sct:'s9',unit:'u-sif',sys:'S4',accUnit:'u-sif',text:'Scan environment & future for the SIF.'},
+  {id:'c10',sct:'s10',unit:'u-mob',sys:'S1',accUnit:'u-mob',text:'Run the Mobility value stream end-to-end.'},
+  {id:'c11',sct:'s11',unit:'u-ind',sys:'S1',accUnit:'u-ind',text:'Run the Industrial Technology value stream.'},
+  {id:'c12',sct:'s12',unit:'u-con',sys:'S1',accUnit:'u-con',text:'Run the Consumer Goods line.'},
+  {id:'c13',sct:'s13',unit:'u-ene',sys:'S1',accUnit:'u-ene',text:'Operate Energy & Building.'},
+  {id:'c14',sct:'s14',unit:'u-sif',sys:'S5',accUnit:'u-sif',text:'Translate identity into operating parameters for S4/S3.'},
+];
+// Vessels. prov = provenance; scope = unit id; state candidate|accepted; alg = algedonic right
+const VESSELS=[
+  // roles
+  {id:'r-pf',type:'role',name:'Portfolio Steering Lead',purpose:'Holds command & intervention across the unit portfolio.',scope:'u-sif',prov:'Step VI · loop.role (S3–S1 command)',state:'accepted',sys:'S3'},
+  {id:'r-co',type:'role',name:'Coordination Officer',purpose:'Runs anti-oscillation coordination between units.',scope:'u-sif',prov:'Step VI · loop.role (S2 coordination)',state:'accepted',sys:'S2'},
+  {id:'r-au',type:'role',name:'Audit Lead',purpose:'Independent ground-truth probes.',scope:'u-sif',prov:'Step VI · loop.role (S3* audit)',state:'accepted',sys:'S3*'},
+  {id:'r-st',type:'role',name:'Strategy & Foresight Lead',purpose:'Owns the S4 outside-and-then view.',scope:'u-sif',prov:'Step VI · loop.role (S4–S3 homeostat)',state:'accepted',sys:'S4'},
+  {id:'r-id',type:'role',name:'Identity & Norms Custodian',purpose:'Steward of purpose and normative parameters.',scope:'u-sif',prov:'Step VI · loop.role (S5 normative)',state:'candidate',sys:'S5',alg:true},
+  {id:'r-rc',type:'role',name:'Resource Controller',purpose:'Runs the resource bargain & accountability.',scope:'u-sif',prov:'Step VI · loop.role (S3–S1 resource bargain)',state:'accepted',sys:'S3'},
+  {id:'r-mob',type:'role',name:'MD Mobility',purpose:'Accountable for the Mobility unit.',scope:'u-mob',prov:'Step I organizational unit',state:'accepted',sys:'S1',alg:true},
+  {id:'r-ind',type:'role',name:'MD Industrial Technology',purpose:'Accountable for the Industrial Tech unit.',scope:'u-ind',prov:'Step I organizational unit',state:'accepted',sys:'S1',alg:true},
+  {id:'r-con',type:'role',name:'MD Consumer Goods',purpose:'Accountable for the Consumer Goods line.',scope:'u-con',prov:'Step I organizational unit',state:'candidate',sys:'S1'},
+  {id:'r-ene',type:'role',name:'MD Energy & Building',purpose:'Accountable for Energy & Building.',scope:'u-ene',prov:'Step I organizational unit',state:'accepted',sys:'S1',alg:true},
+  // functions
+  {id:'f-strat',type:'function',name:'Group Strategy & Foresight',purpose:'Capability container for S4 work.',scope:'u-sif',prov:'Step I unit + S4 cluster',state:'accepted',sys:'S4'},
+  {id:'f-coord',type:'function',name:'Shared Coordination Office',purpose:'Hosts S2 coordination services.',scope:'u-sif',prov:'Step VI · loop.communication',state:'accepted',sys:'S2'},
+  {id:'f-audit',type:'function',name:'Internal Audit',purpose:'S3* audit capability.',scope:'u-sif',prov:'S3* cluster',state:'accepted',sys:'S3*'},
+  {id:'f-res',type:'function',name:'Resource Allocation Board',purpose:'S3 resource governance.',scope:'u-sif',prov:'S3 cluster',state:'candidate',sys:'S3'},
+  {id:'f-mob',type:'function',name:'Mobility Unit',purpose:'Operative S1 container.',scope:'u-mob',prov:'Step I unit',state:'accepted',sys:'S1'},
+  {id:'f-ind',type:'function',name:'Industrial Technology Unit',purpose:'Operative S1 container.',scope:'u-ind',prov:'Step I unit',state:'accepted',sys:'S1'},
+  // meetings
+  {id:'m-strat',type:'meeting',name:'Quarterly Strategy Review',purpose:'S4↔S3 homeostat steering organ.',scope:'u-sif',prov:'Step VI · loop.communication (S4–S3)',state:'accepted',sys:'S4'},
+  {id:'m-coord',type:'meeting',name:'Weekly Coordination Sync',purpose:'S2 anti-oscillation.',scope:'u-sif',prov:'Step VI · loop.communication (S2)',state:'accepted',sys:'S2'},
+  {id:'m-res',type:'meeting',name:'Resource Bargain Council',purpose:'S3↔S1 resource & accountability.',scope:'u-sif',prov:'Step VI · loop.communication (S3 resource)',state:'accepted',sys:'S3'},
+  {id:'m-alg',type:'meeting',name:'Algedonic Escalation Line',purpose:'Pain signal straight to S5.',scope:'u-sif',prov:'Step VI · loop.communication (S5–S1 algedonic)',state:'candidate',sys:'S5',alg:true},
+  {id:'m-audit',type:'meeting',name:'Audit Walk',purpose:'S3* ground-truth review.',scope:'u-sif',prov:'Step VI · loop.communication (S3*)',state:'candidate',sys:'S3*'},
+  {id:'m-norm',type:'meeting',name:'Normative Alignment Forum',purpose:'S5→S4/S3 normative.',scope:'u-sif',prov:'Step VI · loop.communication (S5 normative)',state:'candidate',sys:'S5'},
+];
+// RASIC assignments keyed contrib|vessel -> letter. Crafted to produce realistic warning states.
+const RASIC={
+  // c1 strategy: clean (A strat lead, S strat fn, C portfolio, I coord)
+  'c1|r-st':'A','c1|f-strat':'R','c1|r-pf':'C','c1|m-strat':'I','c1|r-co':'I',
+  // c2 resource allocation: clean
+  'c2|r-rc':'A','c2|f-res':'R','c2|m-res':'S','c2|r-pf':'C',
+  // c3 coordination: clean
+  'c3|r-co':'A','c3|f-coord':'R','c3|m-coord':'S',
+  // c4 audit: ACCOUNTABILITY WITHOUT SUPPORT (A only, no R/S)
+  'c4|r-au':'A','c4|m-audit':'I',
+  // c5 identity: clean
+  'c5|r-id':'A','c5|m-norm':'S','c5|r-pf':'I',
+  // c6 algedonic: clean, algedonic flagged
+  'c6|r-id':'A','c6|m-alg':'R','c6|r-co':'I',
+  // c7 resource bargain: MULTIPLE ACCOUNTABLE (r-rc and r-pf both A)
+  'c7|r-rc':'A','c7|r-pf':'A','c7|m-res':'R',
+  // c8 S4-S3 homeostat: clean
+  'c8|r-st':'A','c8|r-pf':'S','c8|m-strat':'R',
+  // c9 environment sensing: RESPONSIBLE WITHOUT ACCOUNTABLE (R but no A)
+  'c9|f-strat':'R','c9|r-st':'S',
+  // c10 mobility: clean (MD accountable)
+  'c10|r-mob':'A','c10|f-mob':'R','c10|m-coord':'I','c10|r-co':'C',
+  // c11 industrial: clean
+  'c11|r-ind':'A','c11|f-ind':'R','c11|m-coord':'I',
+  // c12 consumer: NO ACCOUNTABLE VESSEL (empty A) — MD is still a candidate
+  'c12|m-coord':'I','c12|r-rc':'C',
+  // c13 energy: ACCOUNTABLE OUTSIDE STEP IV SCOPE (portfolio lead @ R0 accountable for a unit contrib)
+  'c13|r-pf':'A','c13|m-coord':'I',
+  // c14 normative params: clean
+  'c14|r-id':'A','c14|m-norm':'R',
+};
+
+/* ============================ STATE ============================ */
+const STEPS=[
+  {id:'7.1',n:'7.1',t:'Organizational Vessels',s:'Roles · functions · meetings'},
+  {id:'7.2',n:'7.2',t:'RASIC Accountability',s:'The steering-allocation core'},
+  {id:'7.3',n:'7.3',t:'Metrics, Artifacts & Tools',s:'Optional · per SCT'},
+  {id:'7.4',n:'7.4',t:'Role Descriptions',s:'Derived + human-authored'},
+  {id:'7.5',n:'7.5',t:'Function Descriptions',s:'Capability containers'},
+  {id:'7.6',n:'7.6',t:'Meetings & Agendas',s:'Steering organs, not calendar'},
+  {id:'7.7',n:'7.7',t:'Organizational Representation',s:'Code-native hierarchy'},
+];
+const state={step:'7.2',selContrib:'c4',selVessel:null,selRole:'r-au',selFn:'f-strat',selNode:null,selAspect:'s1',
+  collapsed:{}, filter:{sys:'',prio:'',unit:'',vtype:'',attn:false,q:''}, rolePreview:false, focusStep:'7.2'};
+
+/* ============================ HELPERS ============================ */
+const $=s=>document.querySelector(s), ce=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
+const unit=id=>UNITS.find(u=>u.id===id)||{}, sct=id=>SCTS.find(s=>s.id===id)||{};
+const contrib=id=>CONTRIBS.find(c=>c.id===id)||{}, vessel=id=>VESSELS.find(v=>v.id===id)||{};
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const rg=(c,v)=>RASIC[c+'|'+v]||'';
+const sysChip=s=>`<span class="sys ${s}">${esc(s)}</span>`;
+function assignmentsFor(cid){const out=[];VESSELS.forEach(v=>{const l=rg(cid,v.id);if(l)out.push({v,l});});return out;}
+function warnings(cid){
+  const c=contrib(cid),a=assignmentsFor(cid);const W=[];
+  const acc=a.filter(x=>x.l==='A'),resp=a.filter(x=>x.l==='R'),sup=a.filter(x=>x.l==='S');
+  if(acc.length===0) W.push({red:1,t:'No accountable vessel for this contribution.'});
+  if(acc.length>1) W.push({red:1,loud:1,t:'Double accountability — '+acc.length+' vessels are marked Accountable ('+acc.map(x=>x.v.name).join(', ')+'). One accountable per contribution is the rule; keep two only as a deliberate, recorded exception.'});
+  if(resp.length>0 && acc.length===0) W.push({red:0,t:'Responsible assignment without an accountable.'});
+  // accountable outside Step IV accountable scope
+  acc.forEach(x=>{ if(x.v.scope!==c.accUnit) W.push({red:0,t:`Accountable vessel “${x.v.name}” (${unit(x.v.scope).name}) sits outside the Step IV accountable scope (${unit(c.accUnit).name}).`}); });
+  // accountability without sufficient support/authority
+  acc.forEach(x=>{ if(resp.length===0 && sup.length===0) W.push({red:0,t:`“${x.v.name}” is accountable but has no responsible or supporting vessel — thin authority.`}); });
+  // candidate accountable
+  acc.forEach(x=>{ if(x.v.state==='candidate') W.push({red:0,t:`Accountable vessel “${x.v.name}” is still only a candidate.`}); });
+  return W;
+}
+function needsAttention(cid){return warnings(cid).length>0;}
+
+/* ============================ NAV + SHELL ============================ */
+function renderNav(){
+  const s=$('#side'); [...s.querySelectorAll('.navb')].forEach(n=>n.remove());
+  const note=s.querySelector('.side-note');
+  STEPS.forEach(st=>{
+    const b=ce('button','navb'+(st.id===state.step?' on':''));
+    b.dataset.step=st.id;
+    b.innerHTML=`<span class="n">${st.n}</span><span><b>${esc(st.t)}</b><span>${esc(st.s)}</span></span>`;
+    s.insertBefore(b,note);
+  });
+}
+function render(){
+  renderNav();
+  const v=$('#view');const st=STEPS.find(s=>s.id===state.step);
+  let body='';
+  if(state.step==='7.1')body=viewVessels();
+  else if(state.step==='7.2')body=viewRasic();
+  else if(state.step==='7.3')body=viewAspects();
+  else if(state.step==='7.4')body=viewRoles();
+  else if(state.step==='7.5')body=viewFunctions();
+  else if(state.step==='7.6')body=viewMeetings();
+  else if(state.step==='7.7')body=viewOrg();
+  v.innerHTML=`<div class="head"><div><h1>${st.n} · ${esc(st.t)}</h1><p>${headBlurb(st.id)}</p></div></div>${body}`;
+}
+function headBlurb(id){return {
+  '7.1':'Build an exploratory register of roles, functions and meetings. Suggestions are seeded from Step VI evidence — the facilitator accepts, edits, merges, or rejects each one. Nothing is forced.',
+  '7.2':'Allocate RASIC accountability per SCT contribution × vessel. Soft warnings invite a human decision but never block the workshop — and a second Accountable on one SCT is flagged loudly, since double accountability should be a deliberate exception.',
+  '7.3':'Optionally enrich each SCT with the operating detail that makes it real — KPIs &amp; metrics, artifacts &amp; result types, and the tools &amp; methods used. Everything here is optional: add only what helps, an empty SCT is perfectly valid.',
+  '7.4':'For each role: read its linked SCTs grouped by RASIC (accountable → responsible → support → consulted → informed), write the purpose &amp; interfaces, optionally add it to meetings, and carry KPIs / artifacts / tools — inherited from its SCTs plus any role-specific ones. Everything below is optional.',
+  '7.5':'Functions are capability containers — same as roles: linked SCTs by RASIC, editable purpose &amp; interfaces, optional meeting membership, and inherited + function-specific KPIs / artifacts / tools.',
+  '7.6':'Meetings are steering organs derived from assigned SCTs and Step VI channel evidence — purpose, participants, cadence, inputs/outputs, and decision types.',
+  '7.7':'A code-native representation of the Step I recursion structure, units, functions and roles. The chart is a view, not canonical truth — click any node to reveal its SCTs and RASIC.'
+}[id];}
+
+/* ============================ 7.1 VESSELS ============================ */
+function vcard(v){
+  const acc=v.state==='accepted';
+  return `<div class="vcard ${acc?'':'cand'}" data-vid="${v.id}">
+    <div class="meta"><span class="tag ${acc?'acc':'cand'}">${acc?'accepted':'candidate'}</span>${v.alg?'<span class="alg" title="Algedonic / escalation right">▲ algedonic</span>':''}</div>
+    <b>${esc(v.name)}</b>
+    <div class="pp">${esc(v.purpose)}</div>
+    ${v.id==='r-rc'?'<div class="dupe">⚠ Possible duplicate of “Resource Allocation Board” (function) — review / merge.</div>':''}
+    <div class="acts" style="margin-top:8px">
+      ${acc?`<button class="mini" data-act="vstate" data-vid="${v.id}">↩ Back to candidate</button>`
+            :`<button class="mini go" data-act="vstate" data-vid="${v.id}">✓ Accept</button>`}
+      <button class="mini" data-act="noop">✎ Edit</button>
+      <button class="mini" data-act="noop">⇄ Merge</button>
+      <button class="mini no" data-act="vreject" data-vid="${v.id}">✕ Reject</button>
+    </div>
+  </div>`;
+}
+function viewVessels(){
+  const cols=[['role','Roles','From Step VI loop.role + Step I units'],['function','Functions / departments','From Step I units + SCT clusters'],['meeting','Meetings / committees','From Step VI loop.communication']];
+  const colHtml=cols.map(([t,label,sub])=>{
+    const items=VESSELS.filter(v=>v.type===t);
+    const cands=items.filter(v=>v.state==='candidate').length;
+    return `<div class="vcol"><h3>${esc(label)} <span class="count">${items.length} · ${cands} candidate</span></h3>
+      <div class="hint" style="margin-bottom:8px">${esc(sub)}</div>
+      ${items.map(vcard).join('')}
+      <button class="mini" data-act="newvessel" data-t="${t}" style="width:100%;border-style:dashed">+ New ${t}</button></div>`;
+  }).join('');
+  return `<div class="card pad" style="margin-bottom:14px"><div class="row" style="justify-content:space-between">
+      <div><b>Vessel register</b> <span class="hint">— candidates are dashed. loop.artifact feeds vessel outputs &amp; later agendas.</span></div>
+      <div class="row"><span class="tag cand">candidate</span><span class="tag acc">accepted</span></div>
+    </div></div>
+    <div class="vgrid">${colHtml}</div>`;
+}
+
+/* ============================ 7.2 RASIC ============================ */
+function viewRasic(){
+  const f=state.filter;
+  let rows=CONTRIBS.slice();
+  if(f.sys)rows=rows.filter(c=>c.sys===f.sys);
+  if(f.unit)rows=rows.filter(c=>c.accUnit===f.unit);
+  if(f.prio)rows=rows.filter(c=>sct(c.sct).prio===f.prio);
+  if(f.attn)rows=rows.filter(c=>needsAttention(c.id));
+  if(f.q){const q=f.q.toLowerCase();rows=rows.filter(c=>(sct(c.sct).name+sct(c.sct).did).toLowerCase().includes(q));}
+  const groups=[['role','Roles'],['function','Functions'],['meeting','Meetings']];
+  // header
+  let head1='<tr><th class="idcol" rowspan="2"><div class="hint">VSM · SCT · Contribution / Unit</div></th>';
+  let head2='<tr>';
+  groups.forEach(([gt,gl])=>{
+    if(f.vtype && f.vtype!==gt) return;
+    const vs=VESSELS.filter(v=>v.type===gt);
+    const col=state.collapsed[gt];
+    head1+=`<th colspan="${col?1:vs.length}" class="grouphdr g-${gt} ${col?'colgroup-collapsed':''}" data-act="togglegroup" data-grp="${gt}">${col?'▸':'▾'} ${gl} (${vs.length})</th>`;
+    if(col){head2+=`<th class="grouphdr g-${gt}">…</th>`;}
+    else vs.forEach(v=>{head2+=`<th class="g-${gt}" title="${esc(v.name)}"><div class="vhname">${esc(v.name)}</div>${v.state==='candidate'?'<div class="tag cand" style="margin-top:3px">cand</div>':''}</th>`;});
+  });
+  head1+='</tr>';head2+='</tr>';
+  // rows
+  const bodyRows=rows.map(c=>{
+    const attn=needsAttention(c.id);
+    const dblA=VESSELS.filter(v=>rg(c.id,v.id)==='A').length>1;   // double accountability = the loud exception
+    let tds='';
+    groups.forEach(([gt])=>{
+      if(f.vtype && f.vtype!==gt) return;
+      const vs=VESSELS.filter(v=>v.type===gt);
+      if(state.collapsed[gt]){const has=vs.some(v=>rg(c.id,v.id));tds+=`<td class="cell g-${gt}" style="color:var(--muted)">${has?'•':''}</td>`;return;}
+      vs.forEach(v=>{const l=rg(c.id,v.id);
+        const attnCell=(l==='A'&&v.scope!==c.accUnit)||(l==='A'&&v.state==='candidate');
+        const conflict=(l==='A'&&dblA);
+        tds+=`<td class="cell g-${gt}"><button class="${l} ${conflict?'conflict':(attnCell?'attn':'')}" data-act="cycle" data-c="${c.id}" data-v="${v.id}" title="${esc(v.name)}">${l||'·'}</button></td>`;});
+    });
+    return `<tr class="${state.selContrib===c.id?'sel':''}${dblA?' rowdbl':''}" data-act="selcontrib" data-c="${c.id}">
+      <td class="idcol">${sysChip(c.sys)} <span class="sname">${esc(sct(c.sct).name)}</span>
+        <span class="sscope">${esc(sct(c.sct).did)} · ${esc(unit(c.unit).name)}${dblA?' <span class="dblA-tag" title="Two vessels marked Accountable — exception">⚠ 2× A</span>':(attn?' <span class="alg" style="color:var(--amber)">⚠</span>':'')}</span></td>
+      ${tds}</tr>`;
+  }).join('');
+  const matrix=`<div class="matrix-scroll"><table class="rasic"><thead>${head1}${head2}</thead><tbody>${bodyRows||'<tr><td class="idcol">No contributions match the filter.</td></tr>'}</tbody></table></div>
+    <div class="legend"><span class="lk A">A</span> accountable <span class="lk R">R</span> responsible <span class="lk S">S</span> support <span class="lk I">I</span> informed <span class="lk C">C</span> consulted · click a cell to cycle · empty is valid · <span style="color:#cf2e1e;font-weight:800">⚠ 2× A = double accountability (exception)</span></div>`;
+  return `<div class="filters">
+      ${selF('sys','VSM system',['S1','S2','S3','S3*','S4','S5'])}
+      ${selF('prio','Priority',['high','med','low'])}
+      ${selF('unit','Accountable unit',UNITS.map(u=>[u.id,u.name]))}
+      ${selF('vtype','Vessel type',[['role','Roles'],['function','Functions'],['meeting','Meetings']])}
+      <label class="chip" style="cursor:pointer"><input type="checkbox" data-act="attn" ${f.attn?'checked':''} style="margin-right:5px">Needs attention</label>
+      <input placeholder="Search SCT…" data-act="search" value="${esc(f.q)}" style="min-width:150px">
+      ${f.sys||f.prio||f.unit||f.vtype||f.attn||f.q?'<button class="btn ghost" data-act="clearf">Clear</button>':''}
+    </div>
+    <div class="rasic-wrap"><div>${matrix}</div><div>${rasicInspector()}</div></div>`;
+}
+function selF(key,label,opts){
+  const cur=state.filter[key];
+  const o=opts.map(o=>{const[val,txt]=Array.isArray(o)?o:[o,o];return `<option value="${esc(val)}" ${cur===val?'selected':''}>${esc(txt)}</option>`;}).join('');
+  return `<select data-act="filter" data-key="${key}"><option value="">${esc(label)}: all</option>${o}</select>`;
+}
+function rasicInspector(){
+  const c=contrib(state.selContrib);
+  if(!c.id)return `<div class="card pad insp"><div class="empty"><b>No contribution selected</b>Click a row to inspect its accountability.</div></div>`;
+  const s=sct(c.sct),W=warnings(c.id),A=assignmentsFor(c.id);
+  const order={A:0,R:1,S:2,C:3,I:4};
+  A.sort((a,b)=>order[a.l]-order[b.l]);
+  return `<div class="card pad insp">
+    <div class="row" style="justify-content:space-between"><h3>${esc(s.did)}</h3>${sysChip(c.sys)}</div>
+    <div style="font-weight:700;font-size:13px">${esc(s.name)}</div>
+    <div class="kv"><label>Contribution / Unit</label>${esc(unit(c.unit).name)} — ${esc(c.text)}</div>
+    <div class="kv"><label>RASIC assignments</label>
+      <div class="assign-list">${A.length?A.map(x=>`<div><span>${x.v.name} <small>${x.v.type}</small></span><b class="cell"><button class="${x.l}" data-act="cycle" data-c="${c.id}" data-v="${x.v.id}">${x.l}</button></b></div>`).join(''):'<div class="muted" style="border:0">No assignments yet — empty is valid.</div>'}</div></div>
+    <div class="kv"><label>Soft warnings (${W.length})</label>
+      ${W.length?W.map(w=>`<div class="warn ${w.red?'red':''} ${w.loud?'loud':''}" style="margin-bottom:5px"><span class="ico">⚠</span><span>${esc(w.t)}</span></div>`).join(''):'<div class="warn" style="background:var(--green-soft);color:#3c7a44;border-color:#bfe3c5"><span class="ico">✓</span>Clean — accountable, supported, in scope.</div>'}
+      <div class="hint" style="margin-top:6px">Warnings invite a decision — they never block the workshop.</div></div>
+  </div>`;
+}
+
+/* ============================ 7.3 METRICS, ARTIFACTS & TOOLS — optional per-SCT enrichment ============================ */
+const ASPECTS={
+  s1:{kpis:['Strategy adoption across units (%)','Time-to-decision on strategic bets'],artifacts:['Wardley Map','Strategy one-pager'],tools:['Wardley Mapping','Scenario planning']},
+  s2:{kpis:['Budget variance vs. plan (%)'],artifacts:['Finance planning Excel','Capital-allocation board'],tools:['Zero-based budgeting']},
+  s4:{kpis:['Audit findings closed (%)'],artifacts:['Audit-walk report'],tools:['Sampling protocol']},
+  s6:{kpis:['Time from signal to S5 response (h)'],artifacts:['Escalation log'],tools:[]}
+};
+function aspectsOf(id){ return ASPECTS[id]||{kpis:[],artifacts:[],tools:[]}; }
+function ensureAspects(id){ if(!ASPECTS[id])ASPECTS[id]={kpis:[],artifacts:[],tools:[]}; return ASPECTS[id]; }
+function aspectCount(id){ const a=ASPECTS[id]; return a?(a.kpis.length+a.artifacts.length+a.tools.length):0; }
+function viewAspects(){
+  const sel=state.selAspect, a=aspectsOf(sel), s=sct(sel);
+  const list=SCTS.map(x=>{const n=aspectCount(x.id);return `<button class="lirow ${x.id===sel?'on':''}" data-act="selaspect" data-id="${x.id}"><b>${esc(x.name)}</b><span>${sysChip(x.sys)} ${esc(x.did)} · ${n?n+' aspect'+(n>1?'s':''):'none yet'}</span></button>`;}).join('');
+  const sec=(kind,label,q,ph,items)=>`
+    <div class="desc-sec">
+      <div class="sh"><b>${label}</b><span class="tag" style="background:var(--surface-soft);color:var(--muted)">optional</span></div>
+      <div class="guideq2">${q}</div>
+      <div class="aspitems">${items.length?items.map((it,i)=>`<div class="asprow"><input class="fld-i" data-act="aspedit" data-kind="${kind}" data-i="${i}" value="${esc(it)}" placeholder="${esc(ph)}"><button class="mini no" data-act="asprm" data-kind="${kind}" data-i="${i}" title="Remove">✕</button></div>`).join(''):'<div class="hint" style="margin:1px 0 6px">none yet — optional</div>'}</div>
+      <button class="mini" data-act="aspadd" data-kind="${kind}" style="border-style:dashed">+ Add</button>
+    </div>`;
+  return `<div class="split">
+    <div><div class="sectitle">SCTs</div><div class="list">${list}</div>
+      <div class="hint" style="margin-top:8px">Per-SCT enrichment is <b>optional</b> — add only what helps; an empty SCT is fine.</div></div>
+    <div><div class="card pad">
+      <div class="row">${sysChip(s.sys)}<h3 style="margin:0">${esc(s.name)}</h3></div>
+      <div class="hint" style="margin-bottom:10px">${esc(s.did)} — optional operating detail. Leave any section empty if it doesn't apply.</div>
+      ${sec('kpis','KPIs & Metrics','How do we know this SCT is on course?','e.g. on-time delivery (%)',a.kpis)}
+      ${sec('artifacts','Artifacts & Result Types','Where is the work / object kept track of?','e.g. Finance planning Excel · Wardley Map',a.artifacts)}
+      ${sec('tools','Tools & Methods','How is the work done — which method or tool? (its output is usually an artifact)','e.g. Wardley Mapping → produces the Wardley Map',a.tools)}
+    </div></div></div>`;
+}
+
+/* ============================ 7.4 ROLES / 7.5 FUNCTIONS ============================ */
+const HUMAN={ // editable human-authored description text per vessel
+  'r-au':{purpose:'Give the board an honest, independent read of what is actually happening in the units — fast, sporadic, unfiltered by the command line.',interfaces:'Works with unit operations directly (bypassing management); reports to the board and the Audit Walk.'},
+  'r-pf':{purpose:'Holds command and intervention across the unit portfolio — sets targets, allocates, resolves cross-unit conflict.',interfaces:''},
+  'f-strat':{purpose:'A small, senior capability that keeps the SIF oriented to its environment and future, and turns that into options the board can decide on.',interfaces:'Feeds the Quarterly Strategy Review; consumes environment scans and unit performance.'}
+};
+const MEMBERSHIP={ 'r-au':['m-audit'], 'r-st':['m-strat','m-norm'], 'r-rc':['m-res'], 'f-strat':['m-strat'] };   // vessel id -> meeting ids it sits in
+const VASPECTS={ 'r-au':{kpis:[],artifacts:['Audit findings tracker'],tools:[]} };                              // vessel-specific OPTIONAL kpis/artifacts/tools
+function ensureDesc(id){ if(!HUMAN[id])HUMAN[id]={purpose:'',interfaces:''}; return HUMAN[id]; }
+function ensureMembership(id){ if(!MEMBERSHIP[id])MEMBERSHIP[id]=[]; return MEMBERSHIP[id]; }
+function ensureVAspects(id){ if(!VASPECTS[id])VASPECTS[id]={kpis:[],artifacts:[],tools:[]}; return VASPECTS[id]; }
+function linkedByRASIC(vid){ const g={A:[],R:[],S:[],C:[],I:[]}; CONTRIBS.forEach(c=>{const l=rg(c.id,vid); if(l&&g[l])g[l].push(c);}); return g; }
+function inheritedAspects(vid){ const seen=new Set(),out={kpis:[],artifacts:[],tools:[]}; CONTRIBS.forEach(c=>{ if(rg(c.id,vid)&&!seen.has(c.sct)){ seen.add(c.sct); const a=ASPECTS[c.sct]; if(a)['kpis','artifacts','tools'].forEach(k=>a[k].forEach(x=>out[k].push({sct:c.sct,v:x}))); } }); return out; }
+function curDescV(){ return state.step==='7.5'?state.selFn:state.selRole; }
+const RLABEL={A:'Accountable for',R:'Responsible for',S:'Support',C:'Consulted',I:'Informed'};
+function viewRoles(){return descView('role');}
+function viewFunctions(){return descView('function');}
+function descView(kind){
+  const sel=kind==='role'?state.selRole:state.selFn;
+  const items=VESSELS.filter(v=>v.type===kind);
+  const list=items.map(v=>`<button class="lirow ${v.id===sel?'on':''}" data-act="${kind==='role'?'selrole':'selfn'}" data-id="${v.id}"><b>${esc(v.name)}</b><span>${esc(unit(v.scope).name)} · ${v.state}</span></button>`).join('');
+  const v=vessel(sel), byR=linkedByRASIC(sel), desc=HUMAN[sel]||{}, inh=inheritedAspects(sel), own=VASPECTS[sel]||{kpis:[],artifacts:[],tools:[]}, mids=MEMBERSHIP[sel]||[];
+  // linked SCTs, hierarchical by RASIC: A → R → S → C → I, with the SCT names
+  const linkBlock=['A','R','S','C','I'].map(L=>{ const rows=byR[L]; if(!rows.length) return '';
+    return `<div class="rblock"><span class="lk ${L}">${L}</span><div class="rnames"><b>${RLABEL[L]}</b><div>${rows.map(c=>`${esc(sct(c.sct).name)} <small class="muted">${esc(sct(c.sct).did)} · ${esc(unit(c.unit).name)}</small>`).join('<br>')}</div></div></div>`;
+  }).join('') || `<div class="hint">No RASIC links yet — assign this ${kind} in 7.2.</div>`;
+  // meetings this vessel sits in (add to one or more)
+  const meetChips=mids.map(mid=>`<span class="mchip">${esc(vessel(mid).name)}<button data-act="rmmeeting" data-mid="${mid}" title="Remove">✕</button></span>`).join('') || '<span class="hint">not in any meeting yet</span>';
+  const addable=VESSELS.filter(x=>x.type==='meeting'&&!mids.includes(x.id));
+  const meetAdd=addable.length?`<select class="fld-i" data-act="addmeeting" style="max-width:240px;margin-top:7px"><option value="">+ Add to a meeting…</option>${addable.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>`:'';
+  // KPIs / Artifacts / Tools — inherited from linked SCTs (read-only) + optional vessel-specific
+  const aspSec=(kk,label,q,ph)=>{ const inhItems=inh[kk], ownItems=own[kk]||[];
+    return `<div class="desc-sec"><div class="sh"><b>${label}</b><span class="tag" style="background:var(--surface-soft);color:var(--muted)">optional</span></div>
+      <div class="guideq2">${q}</div>
+      ${inhItems.length?`<div class="inh-note">From linked SCTs</div><div class="inh-items">${inhItems.map(it=>`<span class="chip">${esc(it.v)} <small class="muted">${esc(sct(it.sct).did)}</small></span>`).join(' ')}</div>`:'<div class="hint">none inherited from linked SCTs</div>'}
+      <div class="aspitems" style="margin-top:8px">${ownItems.map((it,i)=>`<div class="asprow"><input class="fld-i" data-act="vaspedit" data-kind="${kk}" data-i="${i}" value="${esc(it)}" placeholder="${esc(ph)}"><button class="mini no" data-act="vasprm" data-kind="${kk}" data-i="${i}">✕</button></div>`).join('')}</div>
+      <button class="mini" data-act="vaspadd" data-kind="${kk}" style="border-style:dashed">+ Add ${kind}-specific</button>
+    </div>`;
+  };
+  return `<div class="split">
+    <div><div class="sectitle">${kind==='role'?'Roles':'Functions'}</div><div class="list">${list}</div></div>
+    <div><div class="card pad">
+      <div class="row"><h3 style="margin:0">${esc(v.name)}</h3>${v.alg?'<span class="alg">▲ algedonic</span>':''}</div>
+      <div class="hint" style="margin-bottom:10px">${esc(unit(v.scope).name)} · ${v.state} · everything below is optional</div>
+      <div class="desc-sec"><div class="sh"><b>Linked SCTs (by RASIC)</b><span class="tag derived">from 7.2</span></div>
+        <div class="rasic-links">${linkBlock}</div></div>
+      <div class="desc-sec"><div class="sh"><b>Purpose</b><span class="tag human">editable</span></div>
+        <textarea class="fld-i" data-act="descedit" data-f="purpose" placeholder="What is this ${kind} for?">${esc(desc.purpose||'')}</textarea></div>
+      <div class="desc-sec"><div class="sh"><b>Interfaces &amp; collaboration</b><span class="tag human">editable</span></div>
+        <textarea class="fld-i" data-act="descedit" data-f="interfaces" placeholder="Who does this ${kind} work with — internal &amp; external?">${esc(desc.interfaces||'')}</textarea></div>
+      <div class="desc-sec"><div class="sh"><b>Meetings</b><span class="tag" style="background:var(--surface-soft);color:var(--muted)">optional</span></div>
+        <div class="guideq2">Add this ${kind} to one or more meetings / committees.</div>
+        <div class="mchips">${meetChips}</div>${meetAdd}</div>
+      ${aspSec('kpis','KPIs & Metrics','How do we know this '+kind+' is on course?','e.g. response time (h)')}
+      ${aspSec('artifacts','Artifacts & Result Types','What does this '+kind+' keep or produce?','e.g. decision log')}
+      ${aspSec('tools','Tools & Methods','Which tools or methods does this '+kind+' use?','e.g. weekly retro')}
+    </div></div></div>`;
+}
+
+/* ============================ 7.5 MEETINGS ============================ */
+function viewMeetings(){
+  const meetings=VESSELS.filter(v=>v.type==='meeting');
+  const cards=meetings.map(m=>{
+    const links=CONTRIBS.filter(c=>rg(c.id,m.id));
+    const parts=VESSELS.filter(v=>v.type==='role'&&(links.some(c=>rg(c.id,v.id))||(MEMBERSHIP[v.id]||[]).includes(m.id)));
+    const cadence={'m-strat':'Quarterly','m-coord':'Weekly','m-res':'Monthly','m-alg':'On signal (always-on)','m-audit':'Sporadic','m-norm':'Twice a year'}[m.id]||'TBD';
+    return `<div class="charter">
+      <div class="ch-top"><div><div class="row"><b>${esc(m.name)}</b>${m.alg?'<span class="alg">▲ algedonic</span>':''}</div>
+        <div class="hint" style="margin-top:3px">${esc(m.purpose)} · ${m.state}</div></div><span class="chip">⟲ ${cadence}</span></div>
+      <div class="ch-body">
+        <div class="io"><label>Linked SCTs</label><ul>${links.map(c=>`<li>${esc(sct(c.sct).did)} ${esc(sct(c.sct).name)}</li>`).join('')||'<li class="muted">—</li>'}</ul></div>
+        <div class="io"><label>Participants / roles</label><ul>${parts.map(p=>`<li>${esc(p.name)}</li>`).join('')||'<li class="muted">assign in RASIC</li>'}</ul></div>
+        <div class="io"><label>Inputs</label><ul><li>${m.id==='m-strat'?'Environment scan, unit performance':'Channel evidence, prior decisions'}</li></ul></div>
+        <div class="io"><label>Outputs / decisions</label><ul><li>${m.id==='m-res'?'Resource grants ↔ accountability':'Steering decisions, escalations'}</li></ul></div>
+      </div>
+      <div class="ch-body" style="grid-template-columns:1fr;border-top:1px solid var(--line)">
+        <div class="flow"><span class="pill">inputs</span> → <span class="pill">decisions</span> → <span class="pill">outputs</span>
+        ${m.alg?'<span class="pill" style="color:var(--violet)">▲ algedonic trigger</span>':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="card pad" style="margin-bottom:14px"><b>Meeting charters</b> <span class="hint">— derived from assigned SCTs + Step VI channel evidence. Meetings are steering organs, not calendar entries.</span></div>
+    <div class="mgrid">${cards}</div>`;
+}
+
+/* ============================ 7.6 ORG REPRESENTATION ============================ */
+function viewOrg(){
+  const r0=unit('u-sif');const r1=UNITS.filter(u=>u.level==='R-1');
+  const rolesAt=uid=>VESSELS.filter(v=>v.type==='role'&&v.scope===uid);
+  const fnAt=uid=>VESSELS.filter(v=>v.type==='function'&&v.scope===uid);
+  const nodeHtml=(v)=>`<button class="node ${v.type==='role'?'role':''} ${state.selNode===v.id?'on':''}" data-act="selnode" data-id="${v.id}"><b>${esc(v.name)}</b><small>${v.type} · ${v.state}</small></button>`;
+  const r0roles=rolesAt('u-sif').map(nodeHtml).join('');
+  const r0fns=fnAt('u-sif').map(nodeHtml).join('');
+  const units=r1.map(u=>{
+    const roles=rolesAt(u.id).map(nodeHtml).join('');
+    return `<div class="unitcol"><button class="node ${state.selNode===u.id?'on':''}" data-sys="S1" data-act="selnode" data-id="${u.id}"><b>${esc(u.name)}</b><small>S1 unit · R-1</small></button><div class="connector"></div>${roles||'<span class="hint">no role yet</span>'}</div>`;
+  }).join('');
+  const canvas=`<div class="org-canvas">
+    <p class="lvl">R+1 · ${esc(unit('u-grp').name)}</p>
+    <div class="tier"><button class="node ${state.selNode==='u-grp'?'on':''}" data-act="selnode" data-id="u-grp"><b>${esc(unit('u-grp').name)}</b><small>holding · R+1</small></button></div>
+    <div class="connector"></div>
+    <p class="lvl">R0 · System-in-Focus — metasystem</p>
+    <div class="tier"><button class="node ${state.selNode==='u-sif'?'on':''}" data-sys="S5" data-act="selnode" data-id="u-sif"><b>${esc(r0.name)}</b><small>SIF · R0</small></button></div>
+    <div class="row" style="margin:6px 0 2px"><span class="hint">metasystem roles &amp; functions</span></div>
+    <div class="tier">${r0roles}${r0fns}</div>
+    <div class="connector"></div>
+    <p class="lvl">R-1 · operational units (S1)</p>
+    <div class="subtier">${units}</div>
+  </div>`;
+  let inspector;
+  const selV=vessel(state.selNode), selU=unit(state.selNode);
+  if(selV.id){
+    const links=CONTRIBS.filter(c=>rg(c.id,selV.id)).map(c=>`<div class="assign-list"><div><span>${esc(sct(c.sct).did)} ${esc(sct(c.sct).name)}</span><b>${rg(c.id,selV.id)}</b></div></div>`).join('');
+    inspector=`<div class="card pad"><div class="row"><h3 style="margin:0">${esc(selV.name)}</h3></div>
+      <div class="kv"><label>Type / scope</label>${selV.type} · ${esc(unit(selV.scope).name)}</div>
+      <div class="kv"><label>SCTs & RASIC</label>${links||'<span class="muted">no assignments</span>'}</div>
+      <div class="hint">The chart is a representation — accountability lives in the SCT/RASIC model, not the boxes.</div></div>`;
+  } else if(selU.id){
+    const cs=CONTRIBS.filter(c=>c.unit===selU.id);
+    inspector=`<div class="card pad"><h3>${esc(selU.name)}</h3><div class="kv"><label>Recursion level</label>${selU.level}${selU.sif?' · System-in-Focus':''}</div>
+      <div class="kv"><label>SCT contributions here</label><ul style="font-size:12px;padding-left:16px">${cs.map(c=>`<li>${esc(sct(c.sct).did)} ${esc(sct(c.sct).name)}</li>`).join('')||'<li class="muted">none</li>'}</ul></div></div>`;
+  } else {
+    inspector=`<div class="card pad"><div class="empty"><b>Click a node</b>Reveal the SCTs and RASIC relationships behind any unit, function, or role.</div></div>`;
+  }
+  return `<div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <div class="row"><span class="hint">Overlays:</span>
+        <div class="seg" id="ovSeg"><button data-ov="none" class="${document.body.dataset.overlay==='none'?'on':''}">Plain</button><button data-ov="vsm" class="${document.body.dataset.overlay==='vsm'?'on':''}">VSM colour</button></div>
+      </div>
+      <span class="hint">reporting/structural view · meetings available as an overlay (toggle in production)</span>
+    </div>
+    <div class="org-wrap">${canvas}<div>${inspector}</div></div>`;
+}
+
+/* ============================ FOCUS MODE ============================ */
+const FOCUS={
+  '7.1':{title:'Give the design a body',lead:'Translate Step VI evidence into the vessels that will carry the work: roles, functions, and meetings.',outcome:'A reviewed register where every vessel is explicitly accepted, edited, merged, or rejected by the group.',prompts:['Which loop.role suggestions are real roles vs. just hats people wear?','Which meetings already exist and which must be created?','Where are two suggested vessels actually one?']},
+  '7.2':{title:'Who is accountable, who is involved?',lead:'Allocate RASIC per SCT contribution. Keep the Step IV accountable unit as the anchor and let warnings prompt a human decision.',outcome:'Every critical contribution has clear, in-scope accountability — or a conscious, recorded gap.',prompts:['Where is accountability missing, doubled, or out of scope?','Who is responsible without anyone accountable?','Does the accountable vessel actually have the authority and support?']},
+  '7.3':{title:'Make each SCT operable',lead:'Per SCT, capture how you’ll know you’re on course (KPIs), what you produce and track (artifacts), and how the work is done (tools & methods). All optional.',outcome:'Each critical SCT carries just enough operating detail to act on — nothing forced.',prompts:['How will we know this SCT is on course?','What artifact holds the work — and who keeps it?','Which method or tool produces that artifact?']},
+  '7.4':{title:'Make roles legible',lead:'Draft each role from its RASIC links, then sharpen the language by hand.',outcome:'Role one-pagers that match the accountability model and read clearly out loud.',prompts:['Does the derived purpose survive a read-aloud test?','Are escalation and algedonic rights explicit?','What did we add by hand that derivation cannot know?']},
+  '7.5':{title:'Functions as capability containers',lead:'Describe what each function provides, to whom, and across which interfaces.',outcome:'Functions that hold real services and outputs.',prompts:['What is the service, and who consumes it?','Which interfaces are internal vs. external?','Does this function map cleanly to one contribution cluster?']},
+  '7.6':{title:'Meetings as steering organs',lead:'Charter each meeting from its SCTs and channel evidence — purpose, inputs, decisions, outputs.',outcome:'A meeting landscape that steers, with explicit decision and escalation rights.',prompts:['What decision does this organ actually own?','What are its inputs and outputs?','Where does an algedonic signal enter?']},
+  '7.7':{title:'Represent, don’t reinvent',lead:'Show the structure as a view over the canonical model — click through to the SCTs and RASIC behind it.',outcome:'A shared organizational picture the group trusts, anchored in accountability not boxes.',prompts:['Does the chart match where accountability really sits?','Which overlays help the conversation — VSM colour, meetings?','What does the structure hide that the RASIC core reveals?']}
+};
+function renderFocus(){
+  const steps=$('#focusSteps');steps.innerHTML=STEPS.map(s=>`<button data-fstep="${s.id}" class="${s.id===state.focusStep?'on':''}">${s.n}</button>`).join('');
+  const f=FOCUS[state.focusStep];const st=STEPS.find(s=>s.id===state.focusStep);
+  $('#focusTiles').innerHTML=`
+    <div class="ftile"><h2>${st.n} · ${esc(st.t)}</h2><p class="lead">${esc(f.lead)}</p>
+      <div class="outcome"><b>Outcome:</b> ${esc(f.outcome)}</div>
+      <ol class="prompts">${f.prompts.map(p=>`<li>${esc(p)}</li>`).join('')}</ol>
+      <div class="coach">Coach note: warnings invite a decision; the group decides when the step is done — VSM7 shows no completeness score.</div></div>
+    <div class="ftile"><h2>Live state</h2><p class="lead">A quick read of the current model behind ${st.n}.</p>
+      ${focusStats(state.focusStep)}</div>`;
+}
+function focusStats(id){
+  if(id==='7.2'){const attn=CONTRIBS.filter(c=>needsAttention(c.id)).length;
+    return `<div class="outcome" style="background:var(--amber-soft);color:#8a5b04"><b>${attn}</b> of ${CONTRIBS.length} contributions need a decision.</div>
+      <ul class="prompts">${CONTRIBS.filter(c=>needsAttention(c.id)).slice(0,5).map(c=>`<li>${esc(sct(c.sct).did)} — ${esc(warnings(c.id)[0].t)}</li>`).join('')}</ul>`;}
+  if(id==='7.1'){const cand=VESSELS.filter(v=>v.state==='candidate').length;return `<div class="outcome"><b>${cand}</b> candidate vessels awaiting a human decision · ${VESSELS.length-cand} accepted.</div>`;}
+  const c=VESSELS.filter(v=>v.alg).length;return `<div class="outcome"><b>${c}</b> vessels carry an algedonic / escalation right.</div>`;
+}
+
+/* ============================ ADD-VESSEL DIALOG ============================ */
+const TLABEL={role:'role',function:'function / department',meeting:'meeting / committee'};
+function vesselDupes(name){
+  const n=name.trim().toLowerCase(); if(n.length<3) return [];
+  const words=n.split(/\s+/).filter(w=>w.length>=4);
+  return VESSELS.filter(v=>{const vn=v.name.toLowerCase();
+    return vn===n || vn.includes(n) || n.includes(vn) || words.some(w=>vn.includes(w));});
+}
+function openVesselDialog(type){
+  const typeBtns=[['role','Role'],['function','Function'],['meeting','Meeting']].map(([t,l])=>`<button data-act="dtype" data-t="${t}" class="${t===type?'on':''}">${l}</button>`).join('');
+  const scopeOpts=UNITS.map(u=>`<option value="${u.id}" ${u.id==='u-sif'?'selected':''}>${esc(u.name)} · ${u.level}</option>`).join('');
+  const m=document.getElementById('modal');
+  m.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-label="Add organizational vessel">
+    <div class="m-head"><b>Add organizational vessel</b><button class="btn ghost" data-act="dclose" aria-label="Close">✕</button></div>
+    <div class="m-body">
+      <div><span class="fld-l">Vessel type</span><div class="seg2" id="dtype">${typeBtns}</div></div>
+      <div><span class="fld-l">Name</span><input class="fld-i" id="dname" placeholder="e.g. Resource Allocation Board" autocomplete="off">
+        <div id="dupeHint" style="margin-top:7px"></div></div>
+      <div><span class="fld-l">Purpose</span><textarea class="fld-i" id="dpurpose" placeholder="What does this vessel carry? One or two sentences."></textarea></div>
+      <div><span class="fld-l">Organizational / recursion scope</span><select class="fld-i" id="dscope">${scopeOpts}</select>
+        <div class="hint" style="margin-top:5px">A vessel carries no fixed VSM system — the system comes from the SCT it is mapped to (it may act across systems by context).</div></div>
+      <div class="grid2">
+        <div><span class="fld-l">Initial state</span><div class="seg2" id="dstate"><button data-act="dstate" data-s="candidate" class="on">Candidate</button><button data-act="dstate" data-s="accepted">Accepted</button></div></div>
+        <div><span class="fld-l">Escalation</span><label class="chkrow"><input type="checkbox" id="dalg"> Algedonic / escalation right</label></div>
+      </div>
+      <div class="hint">Provenance for a hand-created vessel is recorded as “added by hand”. Likely duplicates are flagged as you type — prefer editing/merging an existing vessel over creating a near-twin.</div>
+    </div>
+    <div class="m-foot"><span class="hint">Preview only — created vessels live until reload.</span>
+      <div class="row"><button class="btn" data-act="dclose">Cancel</button><button class="btn primary" data-act="dcreate">Create vessel</button></div></div>
+  </div>`;
+  m.classList.add('on');
+  const n=document.getElementById('dname'); if(n) n.focus();
+}
+function updateDupeHint(){
+  const i=document.getElementById('dname'); if(!i) return;
+  const d=vesselDupes(i.value), el=document.getElementById('dupeHint');
+  el.innerHTML=d.length?`<div class="dupewarn">⚠ Looks similar to ${d.map(v=>`<b>${esc(v.name)}</b> <small>(${v.type})</small>`).join(', ')} — consider editing or merging the existing vessel.<button class="mini" data-act="dclose">Open register</button></div>`:'';
+}
+function createVessel(){
+  const name=document.getElementById('dname').value.trim();
+  if(!name){const i=document.getElementById('dname'); i.style.borderColor='var(--red)'; i.focus(); return;}
+  const type=document.querySelector('#dtype button.on').dataset.t;
+  const v={ id:type[0]+'-new-'+(VESSELS.length+1), type, name,
+    purpose:document.getElementById('dpurpose').value.trim()||'(purpose to be written)',
+    scope:document.getElementById('dscope').value,
+    state:document.querySelector('#dstate button.on').dataset.s, prov:'Added by hand',
+    alg:document.getElementById('dalg').checked };
+  VESSELS.push(v);
+  emit('vessel',{op:'created',vessel:v,tempId:v.id}); emitChange();
+  closeModal();
+  state.step='7.1'; render();
+}
+function closeModal(){const m=document.getElementById('modal'); m.classList.remove('on'); m.innerHTML='';}
+
+/* ============================ EVENTS ============================ */
+document.addEventListener('click',e=>{
+  if(e.target.id==='modal'){closeModal();return;}   // click the dimmed backdrop to dismiss
+  const skinBtn=e.target.closest('#skinSeg button'); if(skinBtn){document.body.dataset.skin=skinBtn.dataset.skin;[...skinBtn.parentNode.children].forEach(b=>b.classList.toggle('on',b===skinBtn));return;}
+  const ov=e.target.closest('#ovSeg button'); if(ov){document.body.dataset.overlay=ov.dataset.ov;render();return;}
+  if(e.target.closest('#fsBtn')){toggleFs();return;}
+  if(e.target.closest('#focusBtn')){document.body.classList.add('focus');state.focusStep=state.step;renderFocus();return;}
+  if(e.target.closest('#focusExit')){document.body.classList.remove('focus');return;}
+  const fstep=e.target.closest('[data-fstep]'); if(fstep){state.focusStep=fstep.dataset.fstep;renderFocus();return;}
+  const nav=e.target.closest('.navb'); if(nav){state.step=nav.dataset.step;render();emit('goto',{substep:nav.dataset.step});return;}
+  const a=e.target.closest('[data-act]'); if(!a)return; const act=a.dataset.act;
+  if(act==='cycle'){const k=a.dataset.c+'|'+a.dataset.v;const cur=RASIC[k]||'';const seq=['','R','A','S','I','C'];RASIC[k]=seq[(seq.indexOf(cur)+1)%seq.length];if(!RASIC[k])delete RASIC[k];state.selContrib=a.dataset.c;render();emit('rasic',{contribId:a.dataset.c,vesselId:a.dataset.v,letter:RASIC[k]||null,prev:cur||null});emitChange();}
+  else if(act==='selcontrib'){state.selContrib=a.dataset.c;render();emit('select',{ref:{kind:'contrib',id:a.dataset.c}});}
+  else if(act==='togglegroup'){state.collapsed[a.dataset.grp]=!state.collapsed[a.dataset.grp];render();}
+  else if(act==='filter'){state.filter[a.dataset.key]=a.value;render();}
+  else if(act==='attn'){state.filter.attn=a.checked;render();}
+  else if(act==='search'){/* handled on input */}
+  else if(act==='clearf'){state.filter={sys:'',prio:'',unit:'',vtype:'',attn:false,q:''};render();}
+  else if(act==='vstate'){const v=vessel(a.dataset.vid);v.state=v.state==='accepted'?'candidate':'accepted';render();emit('vessel',{op:v.state==='accepted'?'accepted':'edited',vessel:v});emitChange();}
+  else if(act==='vreject'){const v=vessel(a.dataset.vid);if(confirm('Reject vessel “'+v.name+'”? It returns to the suggestion pool; this preview does not persist.')){emit('vessel',{op:'rejected',vessel:{id:a.dataset.vid}});}}
+  else if(act==='selrole'){state.selRole=a.dataset.id;state.rolePreview=false;render();}
+  else if(act==='selfn'){state.selFn=a.dataset.id;state.rolePreview=false;render();}
+  else if(act==='rmmeeting'){const M=ensureMembership(curDescV());const i=M.indexOf(a.dataset.mid);if(i>=0)M.splice(i,1);render();emit('membership',{vesselId:curDescV(),meetingId:a.dataset.mid,op:'remove'});emitChange();}
+  else if(act==='vaspadd'){const A=ensureVAspects(curDescV());A[a.dataset.kind].push('');render();const ins=[...document.querySelectorAll(`[data-act="vaspedit"][data-kind="${a.dataset.kind}"]`)];if(ins.length)ins[ins.length-1].focus();emitChange();}
+  else if(act==='vasprm'){const A=ensureVAspects(curDescV());A[a.dataset.kind].splice(+a.dataset.i,1);render();emitChange();}
+  else if(act==='selnode'){state.selNode=a.dataset.id;render();emit('select',{ref:{kind:'node',id:a.dataset.id}});}
+  else if(act==='selaspect'){state.selAspect=a.dataset.id;render();emit('select',{ref:{kind:'sct',id:a.dataset.id}});}
+  else if(act==='aspadd'){const A=ensureAspects(state.selAspect);A[a.dataset.kind].push('');render();const ins=[...document.querySelectorAll(`[data-act="aspedit"][data-kind="${a.dataset.kind}"]`)];if(ins.length)ins[ins.length-1].focus();emitChange();}
+  else if(act==='asprm'){const A=ensureAspects(state.selAspect);A[a.dataset.kind].splice(+a.dataset.i,1);render();emit('aspect',{sctId:state.selAspect,kind:a.dataset.kind,op:'remove'});emitChange();}
+  else if(act==='newvessel'){openVesselDialog(a.dataset.t);}
+  else if(act==='dtype'){[...a.parentNode.children].forEach(b=>b.classList.toggle('on',b===a));}
+  else if(act==='dstate'){[...a.parentNode.children].forEach(b=>b.classList.toggle('on',b===a));}
+  else if(act==='dclose'){closeModal();}
+  else if(act==='dcreate'){createVessel();}
+});
+document.addEventListener('input',e=>{
+  if(e.target.id==='dname'){updateDupeHint();return;}
+  if(e.target.dataset && e.target.dataset.act==='aspedit'){const A=ensureAspects(state.selAspect),k=e.target.dataset.kind,i=+e.target.dataset.i;if(A[k]&&i<A[k].length){A[k][i]=e.target.value;emitChange();}return;}
+  if(e.target.dataset && e.target.dataset.act==='descedit'){ensureDesc(curDescV())[e.target.dataset.f]=e.target.value;emitChange();return;}
+  if(e.target.dataset && e.target.dataset.act==='vaspedit'){const A=ensureVAspects(curDescV()),k=e.target.dataset.kind,i=+e.target.dataset.i;if(A[k]&&i<A[k].length){A[k][i]=e.target.value;emitChange();}return;}
+  const a=e.target.closest('[data-act="search"]');if(a){state.filter.q=a.value;const pos=a.selectionStart;render();const ni=$('[data-act="search"]');if(ni){ni.focus();ni.setSelectionRange(pos,pos);}}});
+document.addEventListener('change',e=>{ const a=e.target.closest('[data-act="addmeeting"]'); if(a&&a.value){ const M=ensureMembership(curDescV()); if(!M.includes(a.value))M.push(a.value); render(); emit('membership',{vesselId:curDescV(),meetingId:a.value,op:'add'}); emitChange(); } });
+document.addEventListener('keydown',e=>{
+  const modalOpen=document.getElementById('modal').classList.contains('on');
+  if(e.key==='Escape'&&modalOpen){closeModal();return;}
+  if(e.key==='Escape'&&document.body.classList.contains('focus')){document.body.classList.remove('focus');return;}
+  if((e.key==='f'||e.key==='F')&&!modalOpen&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!/^(input|textarea|select)$/i.test(e.target.tagName)){e.preventDefault();toggleFs();}
+});
+/* real browser full screen — works on every substep (maximizes the working surface) */
+function isFs(){return !!(document.fullscreenElement||document.webkitFullscreenElement);}
+function toggleFs(){ try{ let p; if(isFs()){const fn=document.exitFullscreen||document.webkitExitFullscreen; p=fn&&fn.call(document);} else {const el=document.documentElement, fn=el.requestFullscreen||el.webkitRequestFullscreen; p=fn&&fn.call(el);} if(p&&p.catch)p.catch(()=>{}); }catch(_){} }
+function updFsBtn(){const b=document.getElementById('fsBtn'); if(b)b.textContent=isFs()?'⛶ Exit full screen':'⛶ Full screen';}
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{updFsBtn();emit('fullscreenchange',{fullscreen:isFs()});}));
+
+/* ============================ BRIDGE · window.STEP7 (DRAFT — house pattern, see STEP7-REPRESENTATION-BRIEFING §bridge) ============================ */
+const inFrame=!!(window.parent&&window.parent!==window);
+let _rid=0, _emitT=null;
+function step7Ctx(){ return JSON.parse(JSON.stringify({ units:UNITS, scts:SCTS, contribs:CONTRIBS, meta:{ sif:'u-sif', sifName:'EU AI Solutions SE' } })); }
+function step7Model(){ return JSON.parse(JSON.stringify({ vessels:VESSELS, rasic:RASIC, aspects:ASPECTS, descriptions:HUMAN, membership:MEMBERSHIP, vesselAspects:VASPECTS, meetings:{} })); }
+function step7State(){ return { ctx:step7Ctx(), model:step7Model(), ui:{ step:state.step, selContrib:state.selContrib, selVessel:state.selVessel, selNode:state.selNode, filter:state.filter, skin:document.body.dataset.skin } }; }
+function postToHost(msg){ try{ if(inFrame) window.parent.postMessage(msg,'*'); }catch(_){ } try{ if(window.STEP7&&typeof window.STEP7.onEmit==='function') window.STEP7.onEmit(msg); }catch(_){ } }
+function emit(evt,extra){ postToHost(Object.assign({evt},extra||{})); }
+function emitChange(){ clearTimeout(_emitT); _emitT=setTimeout(()=>emit('change',{model:step7Model()}),120); }   // authoritative, debounced; fired only on genuine user edits
+const _replArr=(a,x)=>{ a.length=0; (Array.isArray(x)?x:[]).forEach(i=>a.push(i)); };
+const _replObj=(o,x)=>{ Object.keys(o).forEach(k=>delete o[k]); if(x&&typeof x==='object') Object.assign(o,x); };
+function step7Export(o){ emit('exportError',{requestId:(o&&o.requestId)||null,format:(o&&o.format)||'png',message:'Concept preview — export is host-orchestrated; PNG/SVG rendering lands with the production asset (Codex brief: no real exports yet).'}); }
+window.STEP7={
+  setContext:c=>{ if(!c||typeof c!=='object')return; if(Array.isArray(c.units))_replArr(UNITS,c.units); if(Array.isArray(c.scts))_replArr(SCTS,c.scts); if(Array.isArray(c.contribs))_replArr(CONTRIBS,c.contribs); if(Array.isArray(c.vessels))_replArr(VESSELS,c.vessels); render(); },   // SILENT (host truth in)
+  loadModel:m=>{ if(!m||typeof m!=='object')return; if(Array.isArray(m.vessels))_replArr(VESSELS,m.vessels); if(m.rasic)_replObj(RASIC,m.rasic); if(m.aspects)_replObj(ASPECTS,m.aspects); if(m.descriptions)_replObj(HUMAN,m.descriptions); if(m.membership)_replObj(MEMBERSHIP,m.membership); if(m.vesselAspects)_replObj(VASPECTS,m.vesselAspects); state.selContrib=null; render(); },   // SILENT
+  setVessels:v=>{ if(Array.isArray(v))_replArr(VESSELS,v); render(); },
+  setRasic:r=>{ if(r&&typeof r==='object')_replObj(RASIC,r); render(); },
+  goto:s=>{ const map={vessels:'7.1',rasic:'7.2',aspects:'7.3',roles:'7.4',functions:'7.5',meetings:'7.6',org:'7.7'}; const id=map[s]||s; if(STEPS.some(x=>x.id===id)){state.step=id;render();} },
+  select:ref=>{ if(ref&&ref.kind==='contrib')state.selContrib=ref.id||ref.contribId; else if(ref&&ref.kind==='node')state.selNode=ref.id; else if(ref==null){state.selContrib=null;state.selNode=null;} render(); },
+  filter:spec=>{ state.filter=Object.assign({sys:'',prio:'',unit:'',vtype:'',attn:false,q:''},spec||{}); render(); },
+  fullscreen:on=>{ if(on===false){const fn=document.exitFullscreen||document.webkitExitFullscreen;fn&&fn.call(document);} else if(on===true){const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;fn&&fn.call(el);} else toggleFs(); },
+  isFullscreen:()=>isFs(),
+  setSkin:s=>{ if(s==='workshop'||s==='deck'){document.body.dataset.skin=s; document.querySelectorAll('#skinSeg button').forEach(b=>b.classList.toggle('on',b.dataset.skin===s));} },
+  export:o=>step7Export(o||{}),
+  onEmit:null,
+  getState:()=>step7State()
+};
+window.addEventListener('message',e=>{ const m=e.data; if(!m||typeof m!=='object'||!m.cmd)return;   // HOST -> frame
+  const S=window.STEP7;
+  if(m.cmd==='setContext')S.setContext(m);
+  else if(m.cmd==='loadModel')S.loadModel(m.model);
+  else if(m.cmd==='setVessels')S.setVessels(m.vessels);
+  else if(m.cmd==='setRasic')S.setRasic(m.rasic);
+  else if(m.cmd==='goto')S.goto(m.substep);
+  else if(m.cmd==='select')S.select(m.ref);
+  else if(m.cmd==='filter')S.filter(m.spec);
+  else if(m.cmd==='setSkin')S.setSkin(m.skin);
+  else if(m.cmd==='fullscreen')S.fullscreen(m.on);
+  else if(m.cmd==='export')step7Export(m);
+});
+
+render();
+emit('ready',{api:1});   // fire-once handshake, after first render
+</script>
+</body>
+</html>
