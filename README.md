@@ -8,15 +8,40 @@ The app treats workshop files as generated outputs, while the canonical project 
 
 ## Run
 
-Open `index.html` in a browser, or on macOS double-click:
+### Development (with live reload)
+
+On macOS, double-click `start.command` or run it from the terminal:
 
 ```sh
 ./start.command
 ```
 
-For sharing with stakeholders, publish the folder to any static web host. No Node.js backend is required for app usage.
+This starts a local HTTP server at `http://localhost:4174` and opens the app in your browser. The server uses Python's built-in HTTP server (included with macOS) or falls back to Node.js if available.
 
-Node.js is only needed for developer activities such as running unit tests.
+### For Stakeholders (no server needed)
+
+**Why this is needed:** Modern browsers block ES Modules (files using `import`/`export`) when loaded directly from the file system (`file://` protocol) due to CORS security policies. The build process bundles all code into regular JavaScript that works without a server.
+
+**How to build and share:**
+
+```sh
+npm install      # Install Vite bundler (one time setup)
+npm run build    # Creates production-ready dist/ folder
+```
+
+This creates a `dist/` folder containing:
+- `index.html` — entry point with regular script tags (no `type="module"`)
+- `assets/bundle.js` — all JavaScript bundled as IIFE (Immediately Invoked Function Expression)
+- `assets/styles.css` — all styles
+
+**Sharing options:**
+1. **Direct file sharing**: Zip the `dist/` folder and send it. Stakeholders open `index.html` directly — works in Chrome, Firefox, Safari, Edge without any server.
+2. **Static hosting**: Upload `dist/` to any static web host (GitHub Pages, Netlify, S3, etc.)
+3. **Local network**: Place `dist/` on a network share and open via `file://`
+
+> **Note:** `dist/` is excluded from version control (in `.gitignore`) since it contains generated files.
+
+Node.js is only needed for development and building. The built `dist/` folder requires nothing.
 
 ## Scope
 
