@@ -1,7 +1,7 @@
-import { renderMethodVisual } from "./methodVisuals.js";
-import { formatSctNumber } from "../../domain/vsm.js";
+import { renderMethodVisual } from "./methodVisuals.js?v=20260724-pptxgenjs";
+import { formatSctNumber } from "../../domain/vsm.js?v=20260724-pptxgenjs";
 
-export function stepHeader(token, title, description, guidance = "") {
+export function stepHeader(token, title, description, guidance = "", actions = "") {
   const visual = getStepVisual(token, title);
 
   return `
@@ -11,6 +11,7 @@ export function stepHeader(token, title, description, guidance = "") {
         <h1>${escapeHtml(title)}</h1>
         <p>${escapeHtml(description)}</p>
         ${guidance}
+        ${actions ? `<div class="step-header-actions">${actions}</div>` : ""}
       </div>
       ${renderMethodVisual(visual)}
     </section>
@@ -76,6 +77,84 @@ export function tableHeader(title, action, actionLabel = "Add Row") {
     <div class="section-heading">
       <h2>${escapeHtml(title)}</h2>
       <button class="ghost-button" data-action="${escapeAttr(action)}">${escapeHtml(actionLabel)}</button>
+    </div>
+  `;
+}
+
+export function tileFullscreenButton(tileId, label = "Open tile fullscreen") {
+  return `
+    <button
+      class="tile-fullscreen-button"
+      data-action="host-tile-fullscreen-open"
+      data-tile="${escapeAttr(tileId)}"
+      title="${escapeAttr(label)}"
+      aria-label="${escapeAttr(label)}"
+    >
+      <span class="fullscreen-corners" aria-hidden="true"><span></span></span>
+    </button>
+  `;
+}
+
+export function tileExportButton(stepId, tileId, label = "Export tile") {
+  return `
+    <button
+      class="tile-export-button"
+      data-action="open-export-panel"
+      data-export-step="${escapeAttr(stepId)}"
+      data-export-tile="${escapeAttr(tileId)}"
+      title="${escapeAttr(label)}"
+      aria-label="${escapeAttr(label)}"
+    >
+      <span aria-hidden="true">⬇</span>
+    </button>
+  `;
+}
+
+export function stepExportButton(stepId, label = "Export step") {
+  return `
+    <button
+      class="tile-export-button step-export-button"
+      data-action="open-export-panel"
+      data-export-step="${escapeAttr(stepId)}"
+      data-export-scope="step"
+      data-export-origin="step"
+      title="${escapeAttr(label)}"
+      aria-label="${escapeAttr(label)}"
+    >
+      <span aria-hidden="true">⬇</span>
+    </button>
+  `;
+}
+
+export function fullscreenTile({
+  kicker,
+  title,
+  description,
+  content,
+  counter = "Tile",
+  variant = "",
+  shellClass = "",
+  tileClass = "",
+  actions = ""
+}) {
+  return `
+    <div class="step1-fullscreen-shell is-single-tile ${escapeAttr(shellClass)}" aria-label="${escapeAttr(title)} fullscreen tile view">
+      <article class="step1-fullscreen-tile ${escapeAttr(variant)} ${escapeAttr(tileClass)}">
+        <div class="fullscreen-tile-header">
+          <div>
+            <p class="eyebrow">${escapeHtml(kicker)}</p>
+            <h1>${escapeHtml(title)}</h1>
+            <p>${escapeHtml(description)}</p>
+          </div>
+          <div class="fullscreen-tile-header-side">
+            ${actions ? `<div class="fullscreen-tile-actions">${actions}</div>` : ""}
+            <span class="fullscreen-tile-counter">${escapeHtml(counter)}</span>
+          </div>
+        </div>
+        <div class="fullscreen-tile-body">
+          ${content}
+        </div>
+      </article>
     </div>
   `;
 }

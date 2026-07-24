@@ -3,12 +3,17 @@ import {
   getStep6ChannelVarietyContext,
   getStep6ChannelVarietyWeaknessCandidates,
   getStep6FindingCandidates
-} from "../../domain/vsm.js";
-import { cellInput, cellSelect, escapeAttr, escapeHtml, removeButton, stepHeader, tableHeader } from "../shared/renderHelpers.js";
+} from "../../domain/vsm.js?v=20260724-pptxgenjs";
+import { cellInput, cellSelect, escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260724-pptxgenjs";
 
 export function renderImplementation(workspace) {
   return `
-    ${stepHeader("Implementation", "Target Organization Roadmap", "Turn the target picture into implementation items, owners, and timing.")}
+    ${stepHeader(
+      "Implementation",
+      "Target Organization Roadmap",
+      "Turn the target picture into implementation items, owners, and timing.",
+      ""
+    )}
     ${renderImplementationWorkspace(workspace)}
   `;
 }
@@ -22,12 +27,21 @@ export function renderImplementationWorkspace(workspace, options = {}) {
   const channelWeaknesses = getStep6ChannelVarietyWeaknessCandidates(workspace);
   const channelSources = buildChannelSourceMap(workspace);
   return `
+    ${renderImplementationFindingSection(findings, options)}
+    ${renderImplementationChannelWeaknessSection(channelWeaknesses, options)}
+    ${renderImplementationBacklogSection(workspace, findingsBySource, channelSources, options)}
+  `;
+}
+
+function renderImplementationFindingSection(findings, options = {}) {
+  return `
     <section class="work-section e2e-finding-candidates ${options.fullscreen ? "fullscreen-matrix-section" : ""}">
       <div class="section-heading">
         <div>
           <h2>E2E Finding Candidates</h2>
           <p class="section-note">Workshop observations from Step VI. A human decides which findings become transformation work.</p>
         </div>
+        ${options.fullscreen ? "" : `<div class="section-actions">${tileFullscreenButton("implementation-findings", "Open E2E finding candidates fullscreen")}</div>`}
       </div>
       ${findings.length ? `
         <div class="finding-candidate-list">
@@ -35,12 +49,18 @@ export function renderImplementationWorkspace(workspace, options = {}) {
         </div>
       ` : `<p class="empty-state">No structured E2E findings have been captured yet.</p>`}
     </section>
+  `;
+}
+
+function renderImplementationChannelWeaknessSection(channelWeaknesses, options = {}) {
+  return `
     <section class="work-section channel-weakness-candidates ${options.fullscreen ? "fullscreen-matrix-section" : ""}">
       <div class="section-heading">
         <div>
           <h2>Communication Weakness Candidates</h2>
           <p class="section-note">Red criteria from Step VI. A human decides which weaknesses become transformation work.</p>
         </div>
+        ${options.fullscreen ? "" : `<div class="section-actions">${tileFullscreenButton("implementation-channel-weaknesses", "Open communication weakness candidates fullscreen")}</div>`}
       </div>
       ${channelWeaknesses.length ? `
         <div class="finding-candidate-list">
@@ -48,8 +68,20 @@ export function renderImplementationWorkspace(workspace, options = {}) {
         </div>
       ` : `<p class="empty-state">No communication criterion is currently assessed as weak.</p>`}
     </section>
+  `;
+}
+
+function renderImplementationBacklogSection(workspace, findingsBySource, channelSources, options = {}) {
+  return `
     <section class="work-section ${options.fullscreen ? "fullscreen-matrix-section" : ""}">
-      ${tableHeader("Transformation Backlog", "add-implementation")}
+      <div class="section-heading">
+        <h2>Transformation Backlog</h2>
+        <div class="section-actions">
+          ${tileExportButton("implementation", "implementation-backlog", "Export transformation backlog")}
+          ${options.fullscreen ? "" : tileFullscreenButton("implementation-backlog", "Open transformation backlog fullscreen")}
+          <button class="ghost-button" data-action="add-implementation">Add Row</button>
+        </div>
+      </div>
       <div class="table-wrap wide">
         <table>
           <thead><tr><th>Steering challenge / action</th><th>Dependency / requirement</th><th>Source</th><th>Responsible</th><th>Due date</th><th>Status</th><th></th></tr></thead>
@@ -68,6 +100,51 @@ export function renderImplementationWorkspace(workspace, options = {}) {
       </div>
     </section>
   `;
+}
+
+export function renderImplementationFullscreenTile(workspace, tileId = "implementation-backlog") {
+  const findings = getStep6FindingCandidates(workspace);
+  const findingsBySource = new Map(findings.map((candidate) => [
+    `${candidate.routeId}|${candidate.finding.id}`,
+    candidate
+  ]));
+  const channelWeaknesses = getStep6ChannelVarietyWeaknessCandidates(workspace);
+  const channelSources = buildChannelSourceMap(workspace);
+
+  if (tileId === "implementation-findings") {
+    return fullscreenTile({
+      kicker: "Implementation · Candidates",
+      title: "E2E Finding Candidates",
+      description: "Review route observations before deciding which findings become transformation work.",
+      counter: "Findings",
+      variant: "is-table",
+      tileClass: "implementation-fullscreen-tile",
+      content: renderImplementationFindingSection(findings, { fullscreen: true })
+    });
+  }
+
+  if (tileId === "implementation-channel-weaknesses") {
+    return fullscreenTile({
+      kicker: "Implementation · Candidates",
+      title: "Communication Weakness Candidates",
+      description: "Review weak communication criteria before promoting them into implementation work.",
+      counter: "Channels",
+      variant: "is-table",
+      tileClass: "implementation-fullscreen-tile",
+      content: renderImplementationChannelWeaknessSection(channelWeaknesses, { fullscreen: true })
+    });
+  }
+
+  return fullscreenTile({
+    kicker: "Implementation · Roadmap",
+    title: "Transformation Backlog",
+    description: "Use the larger table to shape implementation work, owners, dependencies, due dates, and status.",
+    counter: "Backlog",
+    variant: "is-matrix",
+    tileClass: "implementation-fullscreen-tile",
+    actions: tileExportButton("implementation", "implementation-backlog", "Export transformation backlog"),
+    content: renderImplementationBacklogSection(workspace, findingsBySource, channelSources, { fullscreen: true })
+  });
 }
 
 function renderChannelWeaknessCandidate(candidate) {

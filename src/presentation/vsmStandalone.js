@@ -1,5 +1,5 @@
-import { renderVsmHostFrame } from "./shared/vsmHostBridge.js";
-import { escapeHtml } from "./shared/renderHelpers.js";
+import { renderVsmHostFrame } from "./shared/vsmHostBridge.js?v=20260724-pptxgenjs";
+import { escapeHtml } from "./shared/renderHelpers.js?v=20260724-pptxgenjs";
 
 export function renderVsmStandalone(workspace) {
   const sifName = workspace.sif?.name || workspace.project?.name || "System-in-Focus";

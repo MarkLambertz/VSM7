@@ -366,7 +366,7 @@ window.addEventListener('keydown',e=>{ const t=e.target; if(t&&(t.tagName==='INP
 /* ---------- integration bridge ---------- */
 const BRIDGE=(()=>{
   const inFrame=!!(window.parent && window.parent!==window), TARGET='*';
-  if(inFrame){ const w=document.getElementById('dlwrap'); if(w) w.style.display='none'; }   // embedded → the host orchestrates downloads via the export command
+  if(inFrame){ const w=document.getElementById('dlwrap'); if(w) w.style.display='none'; const f=document.getElementById('btnFs'); if(f) f.style.display='none'; }   // embedded → the host orchestrates downloads via the export command, and the HOST tile carries the one ⛶ (UX streamline S2)
   function postToHost(msg){ try{ if(inFrame) window.parent.postMessage(msg,TARGET);}catch(_){}
     try{ if(window.CVC && typeof window.CVC.onEmit==='function') window.CVC.onEmit(msg);}catch(_){} }
   function loadModel(m){ if(!m||typeof m!=='object'||!Array.isArray(m.loops)) return; _silent=true; model=normalize(m); selectedId=null; save(); renderAll(); _silent=false; }

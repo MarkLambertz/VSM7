@@ -1,5 +1,5 @@
-import { cellInput, cellSelect, escapeAttr, escapeHtml, removeButton, stepHeader, tableHeader } from "../shared/renderHelpers.js";
-import { formatSctNumber, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js";
+import { cellInput, cellSelect, escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260724-pptxgenjs";
+import { formatSctNumber, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js?v=20260724-pptxgenjs";
 
 const complexityDriverExamples = {
   environmentOperation: {
@@ -20,19 +20,91 @@ const complexityDriverExamples = {
   }
 };
 
+export const step3Subpages = [
+  {
+    id: "signals",
+    label: "SCT Input Signals"
+  },
+  {
+    id: "drivers",
+    label: "Complexity Drivers"
+  },
+  {
+    id: "register",
+    label: "Success-Critical Task Register"
+  }
+];
+
 export function renderStep3(workspace, taskSources, vsmSystems, {
+  activeSubpage = "signals",
   selectedSctId = "",
   selectedSctMergeIds = [],
   sctPriorityFilter = "",
   sctSourceFilter = ""
 } = {}) {
+  const activeStep3Subpage = normalizeStep3Subpage(activeSubpage);
+
   return `
-    ${stepHeader("Step III", "Success-Critical Tasks", "Derive permanent organizational tasks from complexity drivers, overlaps, and dependencies.")}
-    ${renderManagementAttentionHints(workspace)}
-    <section class="work-section">
+    ${stepHeader(
+      "Step III",
+      "Success-Critical Tasks",
+      "Derive permanent organizational tasks from complexity drivers, overlaps, and dependencies.",
+      ""
+    )}
+    ${renderStep3Subnav(activeStep3Subpage)}
+    ${renderStep3Subpage(workspace, taskSources, activeStep3Subpage, {
+      selectedSctId,
+      selectedSctMergeIds,
+      sctPriorityFilter,
+      sctSourceFilter
+    })}
+  `;
+}
+
+export function normalizeStep3Subpage(subpage) {
+  return step3Subpages.some((item) => item.id === subpage) ? subpage : "signals";
+}
+
+export function renderStep3Subnav(activeSubpage = "signals") {
+  const normalizedSubpage = normalizeStep3Subpage(activeSubpage);
+
+  return `
+    <section class="substep-bar step3-substep-bar" aria-label="Step III substeps">
+      ${step3Subpages.map((subpage, index) => `
+        <button
+          class="substep-button ${normalizedSubpage === subpage.id ? "is-active" : ""}"
+          data-action="step3-subpage"
+          data-subpage="${escapeAttr(subpage.id)}"
+        >
+          <span>${String(index + 1).padStart(2, "0")}</span>
+          ${escapeHtml(subpage.label)}
+        </button>
+      `).join("")}
+    </section>
+  `;
+}
+
+function renderStep3Subpage(workspace, taskSources, activeSubpage, options) {
+  if (activeSubpage === "drivers") {
+    return renderStep3ComplexityDrivers(workspace);
+  }
+
+  if (activeSubpage === "register") {
+    return renderStep3Register(workspace, taskSources, options);
+  }
+
+  return renderManagementAttentionHints(workspace);
+}
+
+export function renderStep3ComplexityDrivers(workspace, { fullscreen = false } = {}) {
+  return `
+    <section class="work-section ${fullscreen ? "fullscreen-matrix-section" : ""}">
       <div class="section-heading">
         <h2>Complexity Drivers</h2>
-        <button class="ghost-button" data-action="export-step" data-step="step3">Download Outcome</button>
+        <div class="section-actions">
+          ${tileExportButton("step3", "step3-drivers", "Export complexity drivers")}
+          ${fullscreen ? "" : tileFullscreenButton("step3-drivers", "Open complexity drivers fullscreen")}
+        </div>
       </div>
       <div class="field-grid two">
         ${driverTextarea("environmentOperation", workspace.step3.complexityDrivers.environmentOperation)}
@@ -41,7 +113,6 @@ export function renderStep3(workspace, taskSources, vsmSystems, {
         ${driverTextarea("operationalDependencies", workspace.step3.complexityDrivers.operationalDependencies)}
       </div>
     </section>
-    ${renderStep3Register(workspace, taskSources, { selectedSctId, selectedSctMergeIds, sctPriorityFilter, sctSourceFilter })}
   `;
 }
 
@@ -58,7 +129,14 @@ export function renderStep3Register(workspace, taskSources, {
 
   return `
     <section class="work-section sct-register-section ${fullscreen ? "fullscreen-matrix-section" : ""}">
-      ${tableHeader("Success-Critical Task Register", "add-sct", "Add SCT")}
+      <div class="section-heading">
+        <h2>Success-Critical Task Register</h2>
+        <div class="section-actions">
+          ${tileExportButton("step3", "scts", "Export SCT register")}
+          ${fullscreen ? "" : tileFullscreenButton("step3-register", "Open SCT register fullscreen")}
+          <button class="ghost-button" data-action="add-sct">Add SCT</button>
+        </div>
+      </div>
       <p class="section-note">Scan the register, then select an SCT to edit its full description and optional details.</p>
       ${tasks.length ? `
         ${renderSctFilters(tasks, sctPriorityFilter, sctSourceFilter)}
@@ -84,6 +162,48 @@ export function renderStep3Register(workspace, taskSources, {
       </div>
     </section>
   `;
+}
+
+export function renderStep3FullscreenTile(workspace, taskSources, context = {}, tileId = "step3-register") {
+  if (tileId === "step3-hints") {
+    return fullscreenTile({
+      kicker: "Step III · SCTs",
+      title: "SCT Input Signals",
+      description: "Use weak scores and selected manageability levers as source material for permanent tasks.",
+      counter: "Signals",
+      variant: "is-table",
+      tileClass: "step3-fullscreen-tile",
+      content: renderManagementAttentionHints(workspace, { fullscreen: true })
+    });
+  }
+
+  if (tileId === "step3-drivers") {
+    return fullscreenTile({
+      kicker: "Step III · SCTs",
+      title: "Complexity Drivers",
+      description: "Capture the complexity patterns that justify success-critical tasks.",
+      counter: "Drivers",
+      variant: "is-form",
+      tileClass: "step3-fullscreen-tile",
+      content: renderStep3ComplexityDrivers(workspace, { fullscreen: true })
+    });
+  }
+
+  return fullscreenTile({
+    kicker: "Step III · SCTs",
+    title: "Success-Critical Task Register",
+    description: "Scan, edit, split, and merge SCTs on a larger capture surface.",
+    counter: "Register",
+    variant: "is-matrix",
+    tileClass: "step3-fullscreen-tile",
+    content: renderStep3Register(workspace, taskSources, {
+      fullscreen: true,
+      selectedSctId: context.selectedSctId || "",
+      selectedSctMergeIds: context.selectedSctMergeIds || [],
+      sctPriorityFilter: context.sctPriorityFilter || "",
+      sctSourceFilter: context.sctSourceFilter || ""
+    })
+  });
 }
 
 export function filterScts(tasks, priorityFilter = "", sourceFilter = "") {
@@ -143,24 +263,22 @@ function renderSctTable(tasks, selectedSctId, selectedSctMergeIds, totalTaskCoun
   }
 
   return `
-    <div class="table-wrap sct-table-wrap" data-preserve-scroll="sct-register">
-      <table class="sct-compact-table" aria-label="Showing ${tasks.length} of ${totalTaskCount} Success-Critical Tasks">
-        <thead>
-          <tr>
-            <th><span class="visually-hidden">Select for SCT actions</span></th>
-            <th>SCT ID</th>
-            <th>Priority</th>
-            <th>Task</th>
-            <th>Description preview</th>
-            <th>Source</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tasks.map((task) => renderSctTableRow(task, task.id === selectedSctId, selectedSctMergeIds.includes(task.id))).join("")}
-        </tbody>
-      </table>
-    </div>
+    <table class="sct-compact-table" aria-label="Showing ${tasks.length} of ${totalTaskCount} Success-Critical Tasks">
+      <thead>
+        <tr>
+          <th><span class="visually-hidden">Select for SCT actions</span></th>
+          <th>SCT ID</th>
+          <th>Priority</th>
+          <th>Task</th>
+          <th>Description preview</th>
+          <th>Source</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tasks.map((task) => renderSctTableRow(task, task.id === selectedSctId, selectedSctMergeIds.includes(task.id))).join("")}
+      </tbody>
+    </table>
   `;
 }
 
@@ -288,19 +406,23 @@ function driverTextarea(key, value) {
   `;
 }
 
-function renderManagementAttentionHints(workspace) {
+function renderManagementAttentionHints(workspace, { fullscreen = false } = {}) {
   const selectedOption = workspace.step1.segmentationOptions.find((option) => option.id === workspace.step1.selectedSegmentationOptionId);
   const hints = selectedOption ? getWeakSegmentationSignals(workspace, selectedOption.id) : [];
   const leverSignals = getManageabilityLeverSignals(workspace);
 
   return `
-    <section class="work-section attention-hints">
+    <section class="work-section attention-hints ${fullscreen ? "fullscreen-matrix-section" : ""}">
       <div class="section-heading">
         <h2>SCT Input Signals</h2>
+        <div class="section-actions">
+          ${tileExportButton("step3", "step3-hints", "Export SCT input signals")}
+          ${fullscreen ? "" : tileFullscreenButton("step3-hints", "Open SCT input signals fullscreen")}
+        </div>
       </div>
       <p class="section-note">Use weak segmentation scores and selected Step II manageability levers as source material for success-critical tasks.</p>
       <div class="nested-work-section">
-        <h3>From selected segmentation</h3>
+        <h3>From selected segmentation of Operative Units</h3>
         ${selectedOption
           ? `<p class="section-note">Weak scores for ${escapeHtml(selectedOption.name || "the selected segmentation")} indicate fields that may need top-level management attention.</p>`
           : ""}

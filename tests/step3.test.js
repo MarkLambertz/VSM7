@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   createKeyBuyingCriterion,
   createSegmentationOption,
@@ -46,7 +47,7 @@ test("Step III input signals include all non-green Step I ratings under n+1 scor
   assert.equal(signals[0].score, 3);
 });
 
-test("Step III renders example complexity drivers and simplified SCT register columns", () => {
+test("Step III renders subnavigation and SCT input signals by default", () => {
   const workspace = workspaceWithFourSegmentationOptions();
   const task = createSuccessCriticalTask(1);
   task.title = "Manage variant complexity";
@@ -54,11 +55,47 @@ test("Step III renders example complexity drivers and simplified SCT register co
   workspace.step3.successCriticalTasks = [task];
   const html = renderStep3(workspace, taskSources, vsmSystems);
 
+  assert.match(html, /Step III substeps/);
+  assert.match(html, /data-action="step3-subpage"/);
+  assert.match(html, /data-subpage="signals"/);
+  assert.match(html, /data-subpage="drivers"/);
+  assert.match(html, /data-subpage="register"/);
+  assert.match(html, /SCT Input Signals/);
+  assert.match(html, /data-export-tile="step3-hints"/);
+  assert.match(html, /From selected segmentation of Operative Units/);
+  assert.doesNotMatch(html, /Complexity Drivers<\/h2>/);
+  assert.doesNotMatch(html, /Success-Critical Task Register<\/h2>/);
+});
+
+test("Step III renders complexity drivers as a separate substep", () => {
+  const workspace = workspaceWithFourSegmentationOptions();
+  const html = renderStep3(workspace, taskSources, vsmSystems, { activeSubpage: "drivers" });
+
+  assert.match(html, /Complexity Drivers/);
   assert.match(html, /variant management/);
   assert.match(html, /resource bargain/);
+  assert.match(html, /data-tile="step3-drivers"/);
+  assert.match(html, /data-export-tile="step3-drivers"/);
+  assert.doesNotMatch(html, /From selected segmentation of Operative Units/);
+  assert.doesNotMatch(html, /Success-Critical Task Register<\/h2>/);
+});
+
+test("Step III renders the SCT register as a separate substep", () => {
+  const workspace = workspaceWithFourSegmentationOptions();
+  const task = createSuccessCriticalTask(1);
+  task.title = "Manage variant complexity";
+  task.explanation = "Define permanent steering for product and customer variants.";
+  workspace.step3.successCriticalTasks = [task];
+  const html = renderStep3(workspace, taskSources, vsmSystems, { activeSubpage: "register" });
+
+  assert.match(html, /Success-Critical Task Register/);
+  assert.match(html, /data-action="open-export-panel"/);
+  assert.match(html, /data-export-step="step3"/);
+  assert.match(html, /data-export-tile="scts"/);
   assert.match(html, /Add SCT/);
   assert.match(html, /sct-compact-table/);
-  assert.match(html, /data-preserve-scroll="sct-register"/);
+  assert.doesNotMatch(html, /data-preserve-scroll="sct-register"/);
+  assert.doesNotMatch(html, /sct-table-wrap/);
   assert.match(html, /Description preview/);
   assert.match(html, /SCT-001/);
   assert.match(html, /Split selected/);
@@ -74,7 +111,10 @@ test("Step III renders example complexity drivers and simplified SCT register co
   assert.doesNotMatch(html, /Core only/);
   assert.doesNotMatch(html, /maxlength="1000"/);
 
-  const detailHtml = renderStep3(workspace, taskSources, vsmSystems, { selectedSctId: task.id });
+  const detailHtml = renderStep3(workspace, taskSources, vsmSystems, {
+    activeSubpage: "register",
+    selectedSctId: task.id
+  });
 
   assert.match(detailHtml, /sct-inspector/);
   assert.match(detailHtml, /Task <em>Mandatory<\/em>/);
@@ -85,7 +125,10 @@ test("Step III renders example complexity drivers and simplified SCT register co
   assert.match(detailHtml, /Tool or Methodological Approach/);
   assert.match(detailHtml, /Split SCT/);
 
-  const selectedHtml = renderStep3(workspace, taskSources, vsmSystems, { selectedSctMergeIds: [task.id] });
+  const selectedHtml = renderStep3(workspace, taskSources, vsmSystems, {
+    activeSubpage: "register",
+    selectedSctMergeIds: [task.id]
+  });
 
   assert.match(selectedHtml, /data-action="split-selected-sct"/);
   assert.doesNotMatch(selectedHtml, /data-action="split-selected-sct" disabled/);
@@ -106,6 +149,7 @@ test("Step III filters the SCT register by priority and source without changing 
 
   const filtered = filterScts(workspace.step3.successCriticalTasks, "B", "Manageability Lever");
   const html = renderStep3(workspace, taskSources, vsmSystems, {
+    activeSubpage: "register",
     sctPriorityFilter: "B",
     sctSourceFilter: "Manageability Lever"
   });
@@ -118,10 +162,21 @@ test("Step III filters the SCT register by priority and source without changing 
   assert.match(html, /data-action="clear-sct-filters"/);
 
   const emptyHtml = renderStep3(workspace, taskSources, vsmSystems, {
+    activeSubpage: "register",
     sctPriorityFilter: "C",
     sctSourceFilter: "Manageability Lever"
   });
   assert.match(emptyHtml, /No SCTs match the selected filters/);
+});
+
+test("Step III SCT register renders in the page flow without an inner scroll frame", () => {
+  const styles = readFileSync(new URL("../src/presentation/styles.css", import.meta.url), "utf8");
+  const appSource = readFileSync(new URL("../src/presentation/app.js", import.meta.url), "utf8");
+
+  assert.doesNotMatch(styles, /\.sct-table-wrap/);
+  assert.doesNotMatch(appSource, /handleSctRegisterWheel/);
+  assert.doesNotMatch(appSource, /event\.target\.closest\("\.sct-table-wrap"\)/);
+  assert.doesNotMatch(appSource, /app\.addEventListener\("wheel"/);
 });
 
 test("Step III receives only selected Step II manageability options", () => {

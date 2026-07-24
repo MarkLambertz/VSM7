@@ -93,6 +93,37 @@ test("Step V focus mode renders the real code-native contribution mapping", () =
   assert.doesNotMatch(html, /Eligible SCTs|eligible SCTs/);
 });
 
+test("Step VII focus mode uses the current representation spine instead of the legacy role table", () => {
+  const workspace = createSampleWorkspace();
+  const html = renderGenericFocusFullscreen(workspace, "step7", 1, context);
+
+  assert.equal(getGenericFocusTileCount(workspace, "step7", context), 4);
+  assert.match(html, /Step VII Representation Spine/);
+  assert.match(html, /Organizational Vessels/);
+  assert.match(html, /RASIC assignments/);
+  assert.match(html, /Portfolio Manager/);
+  assert.doesNotMatch(html, /data-action="add-role"/);
+  assert.doesNotMatch(html, /Reports to/);
+});
+
+test("Step VII focus mode renders reusable KPI, artifact, and tool evidence", () => {
+  const workspace = createSampleWorkspace();
+  const taskId = workspace.step3.successCriticalTasks[0].id;
+  workspace.step7.aspects[taskId] = {
+    kpis: [{ id: "metric-1", text: "Portfolio fit" }],
+    artifacts: [{ id: "artifact-1", text: "Decision log" }],
+    tools: [{ id: "tool-1", text: "Scenario planning" }]
+  };
+
+  const html = renderGenericFocusFullscreen(workspace, "step7", 2, context);
+
+  assert.match(html, /Meetings, KPIs, Artifacts, and Tools/);
+  assert.match(html, /KPI \/ metric reuse/);
+  assert.match(html, /Portfolio fit/);
+  assert.match(html, /Decision log/);
+  assert.match(html, /Scenario planning/);
+});
+
 test("Step III focus mode exposes manageability levers as SCT input signals", () => {
   const workspace = createSampleWorkspace();
   const html = renderGenericFocusFullscreen(workspace, "step3", 1, context);

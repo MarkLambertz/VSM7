@@ -1,6 +1,6 @@
-import { createAllocation, formatSctNumber, getRecursionOrganizations } from "../../domain/vsm.js";
-import { emptyState, escapeAttr, escapeHtml, stepHeader } from "../shared/renderHelpers.js";
-import { filterScts, renderSctFilters } from "./step3.js";
+import { createAllocation, formatSctNumber, getRecursionOrganizations } from "../../domain/vsm.js?v=20260724-pptxgenjs";
+import { emptyState, escapeAttr, escapeHtml, fullscreenTile, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260724-pptxgenjs";
+import { filterScts, renderSctFilters } from "./step3.js?v=20260724-pptxgenjs";
 
 export const step4DecisionGuide = [
   {
@@ -69,7 +69,7 @@ export function renderStep4ContributionMatrix(workspace, {
       ${fullscreen ? `
         <div class="step4-matrix-toolbar">
           <p>Describe what each organizational unit must contribute so the SCT works across the recursion structure.</p>
-          <button class="ghost-button" data-action="export-step" data-step="step4">Download Outcome</button>
+          ${tileExportButton("step4", "contribution-matrix", "Export contribution matrix")}
         </div>
       ` : `
         <div class="section-heading">
@@ -77,7 +77,10 @@ export function renderStep4ContributionMatrix(workspace, {
             <h2>SCT Contribution Matrix</h2>
             <p>Describe what each organizational unit must contribute. Apply subsidiarity: move work upward only when it cannot be done better at the next lower recursion level.</p>
           </div>
-          <button class="ghost-button" data-action="export-step" data-step="step4">Download Outcome</button>
+          <div class="section-actions">
+            ${tileExportButton("step4", "contribution-matrix", "Export contribution matrix")}
+            ${tileFullscreenButton("contribution-matrix", "Open contribution matrix fullscreen")}
+          </div>
         </div>
       `}
       ${tasks.length > 0 ? renderSctFilters(
@@ -114,6 +117,26 @@ export function renderStep4ContributionMatrix(workspace, {
       ${tasks.length > 0 && organizations.length === 0 ? emptyState("Define the recursion structure and organizational units in Step I first.") : ""}
     </section>
   `;
+}
+
+export function renderStep4FullscreenTile(workspace, {
+  sctPriorityFilter = "",
+  sctSourceFilter = ""
+} = {}) {
+  return fullscreenTile({
+    kicker: "Step IV · Central/Decentral",
+    title: "SCT Contribution Matrix",
+    description: "Work through accountability and contribution logic across the actual recursion structure.",
+    counter: "Matrix",
+    variant: "is-matrix",
+    shellClass: "step4-fullscreen-shell",
+    tileClass: "step4-fullscreen-tile",
+    content: renderStep4ContributionMatrix(workspace, {
+      fullscreen: true,
+      sctPriorityFilter,
+      sctSourceFilter
+    })
+  });
 }
 
 function renderOrganizationHeader(organization) {

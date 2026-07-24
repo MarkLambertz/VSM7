@@ -1,4 +1,4 @@
-import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js";
+import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260724-pptxgenjs";
 
 export function renderRenameDialog(target) {
   if (!target) {

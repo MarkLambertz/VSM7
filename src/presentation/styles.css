@@ -641,6 +641,13 @@ select:focus {
   align-content: start;
 }
 
+.step-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .step-decision-guide {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2020,8 +2027,8 @@ select:focus {
   color: #fff;
 }
 
-.topbar-focus-button {
-  display: grid;
+.tile-fullscreen-button {
+  display: inline-grid;
   place-items: center;
   width: 34px;
   height: 34px;
@@ -2033,12 +2040,43 @@ select:focus {
   box-shadow: 0 8px 18px rgba(31, 41, 51, 0.05);
 }
 
-.topbar-focus-button:hover {
+.tile-fullscreen-button:hover,
+.tile-fullscreen-button:focus-visible {
   border-color: var(--blue);
   background: #fff;
+  outline: none;
 }
 
-.topbar-focus-button .fullscreen-corners {
+.tile-export-button {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(20, 129, 113, 0.32);
+  border-radius: 6px;
+  background: var(--green-soft);
+  color: var(--teal);
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(31, 41, 51, 0.05);
+}
+
+.tile-export-button:hover,
+.tile-export-button:focus-visible {
+  border-color: var(--teal);
+  background: #fff;
+  outline: none;
+}
+
+.step-export-button {
+  border-color: rgba(0, 123, 192, 0.28);
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.tile-fullscreen-button .fullscreen-corners {
   width: 20px;
   height: 20px;
 }
@@ -2107,6 +2145,32 @@ select:focus {
   background:
     linear-gradient(135deg, rgba(244, 246, 245, 0.98), rgba(234, 244, 247, 0.98)),
     linear-gradient(90deg, rgba(180, 35, 24, 0.06), rgba(248, 199, 67, 0.08) 38%, rgba(0, 123, 192, 0.08) 68%, rgba(76, 175, 92, 0.07));
+}
+
+.export-panel-host-frame {
+  position: fixed;
+  inset: 0;
+  width: 100%;    /* percentages, NOT vw/vh: an iframe is a replaced element (inset alone would leave it at
+  height: 100%;      its intrinsic 300×150), and %-of-viewport tracks window resizes with no unit for Safari
+                     to resolve stale. On open, JS additionally pins live px (see syncExportPanelFrameSize). */
+  z-index: 220;
+  border: 0;
+  background: transparent;
+  /* Safari-proof hiding — NEVER display:none: a display:none iframe's internal FrameView goes stale in
+     release Safari and, when re-shown, its fixed children (scrim/drawer) lay out against the old viewport
+     while the un-laid-out remainder composites as dead white over the app (the Safari export "flip").
+     visibility:hidden keeps the frame laid out and tracking window resizes but removes it from hit-testing;
+     the off-screen transform is belt-and-braces against Safari's non-spec wheel routing into hidden iframes
+     (the earlier scroll-swallow bug). transform does not affect layout, so the FrameView stays full-size. */
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(-200%);
+}
+
+.export-panel-host-frame.is-active {
+  visibility: visible;
+  pointer-events: auto;
+  transform: none;
 }
 
 .fullscreen-exit-button {
@@ -2181,6 +2245,19 @@ select:focus {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 18px;
   align-items: start;
+}
+
+.fullscreen-tile-header-side {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.fullscreen-tile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .fullscreen-tile-header h1 {
@@ -2339,6 +2416,10 @@ select:focus {
   border-bottom: 0;
 }
 
+.fullscreen-single-field .strategic-field-heading {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .fullscreen-single-field .strategic-direction-field textarea {
   min-height: 300px;
 }
@@ -2365,7 +2446,6 @@ select:focus {
 .fullscreen-matrix-section.sct-register-section {
   grid-template-rows: auto auto auto auto minmax(0, 1fr);
   align-content: start;
-  overflow: hidden;
 }
 
 .fullscreen-matrix-section.sct-register-section .sct-register-workspace {
@@ -2375,16 +2455,6 @@ select:focus {
 
 .fullscreen-matrix-section.sct-register-section .sct-register-actions {
   margin: 0;
-}
-
-.fullscreen-matrix-section.sct-register-section .sct-table-panel,
-.fullscreen-matrix-section.sct-register-section .sct-table-wrap {
-  height: 100%;
-  min-height: 0;
-}
-
-.fullscreen-matrix-section.sct-register-section .sct-table-wrap {
-  max-height: none;
 }
 
 .fullscreen-matrix-section .evaluation-wrap {
@@ -2434,6 +2504,209 @@ select:focus {
 .fullscreen-matrix-section .evaluation-table .section-column,
 .fullscreen-matrix-section .evaluation-table thead .criterion-column {
   background: #eaf2f8;
+}
+
+.fullscreen-matrix-section.step7-focus-section {
+  align-content: start;
+  overflow: auto;
+}
+
+.step7-focus-dashboard {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.step7-focus-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.step7-focus-stat {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--blue);
+  border-radius: 12px;
+  background: var(--surface-strong);
+}
+
+.step7-focus-stat.is-teal {
+  border-left-color: var(--teal);
+}
+
+.step7-focus-stat.is-amber {
+  border-left-color: var(--amber);
+}
+
+.step7-focus-stat.is-red {
+  border-left-color: var(--red);
+}
+
+.step7-focus-stat span,
+.step7-focus-stat small,
+.step7-focus-muted {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.step7-focus-stat span {
+  text-transform: uppercase;
+}
+
+.step7-focus-stat strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 34px;
+  line-height: 1;
+  text-overflow: ellipsis;
+}
+
+.step7-focus-columns {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+.step7-focus-panel {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.step7-focus-panel h2,
+.step7-focus-type-group h3,
+.step7-focus-subpanel h3,
+.step7-focus-reuse-block h3 {
+  margin: 0;
+}
+
+.step7-focus-panel h2 {
+  font-size: 24px;
+}
+
+.step7-focus-type-group,
+.step7-focus-subpanel,
+.step7-focus-reuse-block {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.step7-focus-type-group h3,
+.step7-focus-subpanel h3,
+.step7-focus-reuse-block h3 {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.step7-focus-type-group h3 span {
+  color: var(--blue);
+}
+
+.step7-focus-list,
+.step7-focus-risk-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step7-focus-list li,
+.step7-focus-risk-list li,
+.step7-focus-good {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-strong);
+}
+
+.step7-focus-list.compact li {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.step7-focus-list strong,
+.step7-focus-risk-list strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step7-focus-list span,
+.step7-focus-risk-list small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step7-focus-risk-list li {
+  border-color: #f2c1b9;
+  background: #fff7f4;
+}
+
+.step7-focus-risk-list span {
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.step7-focus-good {
+  border-color: #b7d7cb;
+  background: #f0faf5;
+  color: var(--teal);
+  font-size: 17px;
+  font-weight: 850;
+}
+
+.step7-focus-coverage {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.step7-focus-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.step7-focus-chip {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 7px 10px;
+  border: 1px solid #b9cfdc;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 780;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fullscreen-nav-controls {
@@ -3320,49 +3593,6 @@ select:focus {
   line-height: 1.25;
 }
 
-.slider-reset-button {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 74%, white);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
-  color: #6f7b86;
-  cursor: pointer;
-}
-
-.slider-reset-button:hover,
-.slider-reset-button:focus-visible {
-  border-color: color-mix(in srgb, var(--blue) 42%, white);
-  color: var(--blue);
-  outline: none;
-}
-
-.slider-reset-button span {
-  position: relative;
-  display: block;
-  width: 13px;
-  height: 13px;
-  border: 2px solid currentColor;
-  border-left-color: transparent;
-  border-radius: 999px;
-}
-
-.slider-reset-button span::after {
-  content: "";
-  position: absolute;
-  top: -3px;
-  left: -3px;
-  width: 0;
-  height: 0;
-  border-top: 4px solid transparent;
-  border-right: 5px solid currentColor;
-  border-bottom: 4px solid transparent;
-  transform: rotate(-32deg);
-}
-
 .variety-slider-control {
   display: grid;
   grid-template-columns: auto minmax(120px, 1fr) auto;
@@ -3634,7 +3864,6 @@ select:focus {
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
-  -webkit-overflow-scrolling: touch;
 }
 
 .table-wrap table {
@@ -3835,6 +4064,18 @@ select:focus {
 .fullscreen-matrix-section.step4-contribution-section {
   grid-template-rows: auto auto minmax(0, 1fr);
   overflow: hidden;
+}
+
+.step4-fullscreen-tile .fullscreen-tile-body {
+  overflow: hidden;
+}
+
+.step4-fullscreen-tile .fullscreen-matrix-section.step4-contribution-section {
+  padding-bottom: 0;
+}
+
+.step4-fullscreen-tile .step4-matrix-toolbar {
+  align-items: center;
 }
 
 .fullscreen-matrix-section.step4-contribution-section .step4-contribution-wrap {
@@ -4076,11 +4317,6 @@ select:focus {
 .sct-register-actions button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
-}
-
-.sct-table-wrap {
-  max-height: min(66vh, 680px);
-  overflow: auto;
 }
 
 .sct-compact-table {
@@ -4599,7 +4835,14 @@ td input[type="radio"] {
 
 .strategic-field-heading {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px;
+  align-items: start;
+}
+
+.strategic-field-heading > p,
+.strategic-field-heading > small {
+  grid-column: 1 / -1;
 }
 
 .strategic-field-heading span {
@@ -5278,12 +5521,16 @@ td input[type="radio"] {
 }
 
 /* Step VI: E2E process robustness */
+.step2-substep-bar,
+.step3-substep-bar,
 .step6-substep-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
+.step2-substep-bar .substep-button,
+.step3-substep-bar .substep-button,
 .step6-substep-bar .substep-button {
   display: inline-flex;
   width: auto;
@@ -5292,6 +5539,8 @@ td input[type="radio"] {
   gap: 8px;
 }
 
+.step2-substep-bar .substep-button > span,
+.step3-substep-bar .substep-button > span,
 .step6-substep-bar .substep-button > span {
   display: inline-grid;
   width: 28px;
@@ -5305,6 +5554,8 @@ td input[type="radio"] {
   font-weight: 800;
 }
 
+.step2-substep-bar .substep-button.is-active > span,
+.step3-substep-bar .substep-button.is-active > span,
 .step6-substep-bar .substep-button.is-active > span {
   background: rgba(255, 255, 255, 0.22);
   color: inherit;
@@ -5417,7 +5668,7 @@ html[data-skin="command-deck"] .finding-candidate {
 
 .e2e-route-controls {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) auto auto;
+  grid-template-columns: auto minmax(280px, 1fr) auto auto;
   align-items: end;
   gap: 8px;
   width: min(920px, 100%);
@@ -5507,68 +5758,6 @@ html[data-skin="command-deck"] .finding-candidate {
   font-size: 12px;
 }
 
-.e2e-export-menu {
-  position: relative;
-}
-
-.e2e-export-menu > summary {
-  display: inline-flex;
-  min-height: 42px;
-  align-items: center;
-  cursor: pointer;
-  list-style: none;
-}
-
-.e2e-export-menu > summary::-webkit-details-marker {
-  display: none;
-}
-
-.e2e-export-options {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 6px);
-  right: 0;
-  display: grid;
-  min-width: 132px;
-  padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface-strong);
-  box-shadow: var(--shadow);
-}
-
-.e2e-export-options button {
-  min-height: 36px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--ink);
-  text-align: left;
-  cursor: pointer;
-}
-
-.e2e-export-options button:hover,
-.e2e-export-options button:focus-visible {
-  background: var(--soft-blue);
-}
-
-.e2e-export-status {
-  grid-column: 1 / -1;
-  min-height: 18px;
-  color: var(--teal);
-  font-size: 13px;
-  font-weight: 700;
-  text-align: right;
-}
-
-.e2e-export-status:empty {
-  display: none;
-}
-
-.e2e-export-status.is-error {
-  color: var(--red);
-}
-
 .e2e-route-context {
   display: flex;
   flex-wrap: wrap;
@@ -5607,13 +5796,18 @@ html[data-skin="command-deck"] .finding-candidate {
 
 .step1-fullscreen-tile .e2e-robustness-frame {
   height: clamp(620px, calc(100vh - 280px), 900px);
+  height: clamp(620px, calc(100svh - 280px), 900px);
 }
 
+html[data-skin="command-deck"] .step2-substep-bar .substep-button > span,
+html[data-skin="command-deck"] .step3-substep-bar .substep-button > span,
 html[data-skin="command-deck"] .step6-substep-bar .substep-button > span {
   background: #202733;
   color: var(--command-cyan);
 }
 
+html[data-skin="command-deck"] .step2-substep-bar .substep-button.is-active > span,
+html[data-skin="command-deck"] .step3-substep-bar .substep-button.is-active > span,
 html[data-skin="command-deck"] .step6-substep-bar .substep-button.is-active > span {
   background: #0c1118;
   color: var(--command-peach);
@@ -5628,11 +5822,6 @@ html[data-skin="command-deck"] .e2e-robustness-frame {
   border-color: #3f4653;
 }
 
-html[data-skin="command-deck"] .e2e-export-options {
-  border-color: #3f4653;
-  background: #11161f;
-}
-
 html[data-skin="command-deck"] .e2e-related-sct-options {
   border-color: #3f4653;
   background: #11161f;
@@ -5640,15 +5829,6 @@ html[data-skin="command-deck"] .e2e-related-sct-options {
 
 html[data-skin="command-deck"] .e2e-related-sct-option:hover,
 html[data-skin="command-deck"] .e2e-related-sct-option:focus-within {
-  background: #202733;
-}
-
-html[data-skin="command-deck"] .e2e-export-options button {
-  color: var(--ink);
-}
-
-html[data-skin="command-deck"] .e2e-export-options button:hover,
-html[data-skin="command-deck"] .e2e-export-options button:focus-visible {
   background: #202733;
 }
 
@@ -5671,11 +5851,6 @@ html[data-skin="command-deck"] .e2e-robustness-frame {
     width: 100%;
   }
 
-  .e2e-export-menu > summary {
-    width: 100%;
-    justify-content: center;
-  }
-
   .e2e-related-sct-picker > summary {
     width: 100%;
     justify-content: center;
@@ -5685,16 +5860,6 @@ html[data-skin="command-deck"] .e2e-robustness-frame {
     right: auto;
     left: 0;
     width: 100%;
-  }
-
-  .e2e-export-options {
-    right: auto;
-    left: 0;
-    width: 100%;
-  }
-
-  .e2e-export-status {
-    text-align: left;
   }
 
   .e2e-route-context {
@@ -5781,6 +5946,7 @@ html[data-skin="command-deck"] .e2e-robustness-frame {
 
 .step1-fullscreen-tile .channel-variety-frame-shell {
   height: clamp(780px, calc(100vh - 150px), 1100px);
+  height: clamp(780px, calc(100svh - 150px), 1100px);
 }
 
 html[data-skin="command-deck"] .channel-variety-context {
@@ -5855,6 +6021,7 @@ html[data-skin="command-deck"] .channel-variety-frame-shell {
 .vsm-standalone-frame-shell {
   display: grid;
   min-height: min(780px, calc(100vh - 250px));
+  min-height: min(780px, calc(100svh - 250px));
   overflow: hidden;
 }
 
@@ -6737,6 +6904,7 @@ html[data-skin="command-deck"] .vsm-s1-label {
   gap: 16px;
   width: min(520px, calc(100vw - 36px));
   max-height: calc(100vh - 96px);
+  max-height: calc(100svh - 96px);
   overflow: auto;
   padding: 18px;
   border: 1px solid var(--line);
@@ -7088,7 +7256,8 @@ html[data-skin="command-deck"] select:focus {
 
 html[data-skin="command-deck"] .primary-button,
 html[data-skin="command-deck"] .ghost-button,
-html[data-skin="command-deck"] .topbar-focus-button,
+html[data-skin="command-deck"] .tile-export-button,
+html[data-skin="command-deck"] .tile-fullscreen-button,
 html[data-skin="command-deck"] .topbar-settings-button {
   border-color: transparent;
   border-radius: 14px 3px 3px 14px;
@@ -7101,6 +7270,8 @@ html[data-skin="command-deck"] .primary-button {
 }
 
 html[data-skin="command-deck"] .ghost-button,
+html[data-skin="command-deck"] .tile-export-button,
+html[data-skin="command-deck"] .tile-fullscreen-button,
 html[data-skin="command-deck"] .topbar-settings-button {
   border-color: #4b5260;
   background: #171b24;
@@ -7109,16 +7280,15 @@ html[data-skin="command-deck"] .topbar-settings-button {
 
 html[data-skin="command-deck"] .ghost-button:hover,
 html[data-skin="command-deck"] .ghost-button:focus-visible,
+html[data-skin="command-deck"] .tile-export-button:hover,
+html[data-skin="command-deck"] .tile-export-button:focus-visible,
+html[data-skin="command-deck"] .tile-fullscreen-button:hover,
+html[data-skin="command-deck"] .tile-fullscreen-button:focus-visible,
 html[data-skin="command-deck"] .topbar-settings-button:hover,
 html[data-skin="command-deck"] .topbar-settings-button:focus-visible,
 html[data-skin="command-deck"] .topbar-settings-button.is-active {
   border-color: var(--command-lavender);
   color: var(--command-lavender);
-}
-
-html[data-skin="command-deck"] .topbar-focus-button {
-  background: var(--command-lavender);
-  color: #17121f;
 }
 
 html[data-skin="command-deck"] .save-indicator.is-saved {
@@ -7670,6 +7840,85 @@ html[data-skin="command-deck"] .fullscreen-matrix-section .evaluation-table thea
   background: #242a35;
 }
 
+html[data-skin="command-deck"] .fullscreen-matrix-section.step7-focus-section {
+  border-left-color: var(--command-cyan);
+  background:
+    linear-gradient(135deg, rgba(131, 182, 219, 0.055), transparent 46%),
+    #10141b;
+}
+
+html[data-skin="command-deck"] .step7-focus-stat,
+html[data-skin="command-deck"] .step7-focus-panel,
+html[data-skin="command-deck"] .step7-focus-list li,
+html[data-skin="command-deck"] .step7-focus-good {
+  border-color: #46505e;
+  background: #151a22;
+  box-shadow: none;
+}
+
+html[data-skin="command-deck"] .step7-focus-stat {
+  border-left-color: var(--command-cyan);
+  border-radius: 16px 4px 4px 16px;
+}
+
+html[data-skin="command-deck"] .step7-focus-stat.is-teal {
+  border-left-color: var(--teal);
+}
+
+html[data-skin="command-deck"] .step7-focus-stat.is-amber {
+  border-left-color: var(--command-gold);
+}
+
+html[data-skin="command-deck"] .step7-focus-stat.is-red {
+  border-left-color: var(--red);
+}
+
+html[data-skin="command-deck"] .step7-focus-stat strong,
+html[data-skin="command-deck"] .step7-focus-panel h2,
+html[data-skin="command-deck"] .step7-focus-list strong,
+html[data-skin="command-deck"] .step7-focus-risk-list strong {
+  color: var(--ink);
+}
+
+html[data-skin="command-deck"] .step7-focus-stat span,
+html[data-skin="command-deck"] .step7-focus-type-group h3,
+html[data-skin="command-deck"] .step7-focus-subpanel h3,
+html[data-skin="command-deck"] .step7-focus-reuse-block h3 {
+  color: var(--command-cyan);
+}
+
+html[data-skin="command-deck"] .step7-focus-type-group h3 span {
+  color: var(--command-gold);
+}
+
+html[data-skin="command-deck"] .step7-focus-list span,
+html[data-skin="command-deck"] .step7-focus-risk-list small,
+html[data-skin="command-deck"] .step7-focus-muted,
+html[data-skin="command-deck"] .step7-focus-stat small {
+  color: #c5c3cf;
+}
+
+html[data-skin="command-deck"] .step7-focus-risk-list li {
+  border-color: #75433f;
+  background: #251817;
+}
+
+html[data-skin="command-deck"] .step7-focus-risk-list span {
+  color: #ff8a7f;
+}
+
+html[data-skin="command-deck"] .step7-focus-good {
+  border-color: #3f7565;
+  background: #13241f;
+  color: #aee7d0;
+}
+
+html[data-skin="command-deck"] .step7-focus-chip {
+  border-color: #4d6178;
+  background: #1a2231;
+  color: var(--ink);
+}
+
 html[data-skin="command-deck"] .selected-segmentation-panel,
 html[data-skin="command-deck"] .selected-segmentation-card,
 html[data-skin="command-deck"] .s1-unit-cluster,
@@ -7705,8 +7954,7 @@ html[data-skin="command-deck"] .variety-fit-gauge,
 html[data-skin="command-deck"] .variety-interpretation-card,
 html[data-skin="command-deck"] .sct-signal-list li,
 html[data-skin="command-deck"] .variety-pressure-note,
-html[data-skin="command-deck"] .variety-slider-row,
-html[data-skin="command-deck"] .slider-reset-button {
+html[data-skin="command-deck"] .variety-slider-row {
   border-color: #454c58;
   background: #0e1218;
   box-shadow: none;
@@ -7835,6 +8083,28 @@ html[data-skin="command-deck"] .visual-central-decentral-flow > p {
   color: #c6efdf;
 }
 
+.step7-claude-host {
+  min-height: calc(100vh - 180px);
+  min-height: calc(100svh - 180px);
+}
+
+.step7-host-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.step7-claude-frame {
+  display: block;
+  width: 100%;
+  height: max(720px, calc(100vh - 180px));
+  height: max(720px, calc(100svh - 180px));
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
 @media (max-width: 840px) {
   .skin-choice-grid {
     grid-template-columns: 1fr;
@@ -7846,6 +8116,7 @@ html[data-skin="command-deck"] .visual-central-decentral-flow > p {
     right: 12px;
     width: min(520px, calc(100vw - 24px));
     max-height: calc(100vh - 24px);
+    max-height: calc(100svh - 24px);
   }
 
   html[data-skin="command-deck"] .topbar {
@@ -7854,6 +8125,13 @@ html[data-skin="command-deck"] .visual-central-decentral-flow > p {
 
   html[data-skin="command-deck"] .step-button {
     grid-template-columns: 6px 30px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 960px) {
+  .step7-focus-stat-grid,
+  .step7-focus-columns {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -1,3 +1,5 @@
+import PptxGenJS from "../vendor/pptxgen.bundle.js?v=20260724-pptxgenjs";
+
 const pdfMimeType = "application/pdf";
 const pptxMimeType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 const encoder = new TextEncoder();
@@ -23,7 +25,7 @@ export async function buildE2ERouteDocument(format, imageBlob, context = {}, opt
   if (normalizedFormat === "pptx") {
     const pngBytes = new Uint8Array(await imageBlob.arrayBuffer());
     const { width, height } = readPngDimensions(pngBytes);
-    const bytes = buildE2ERoutePptxBytes(pngBytes, width, height, context);
+    const bytes = await buildE2ERoutePptxBytes(pngBytes, width, height, context);
     return {
       blob: new Blob([bytes], { type: pptxMimeType }),
       filename: buildFilename(context, "pptx"),
@@ -68,40 +70,100 @@ export function buildE2ERoutePdfBytes(jpegBytes, imageWidth, imageHeight, contex
   return buildPdf(objects);
 }
 
-export function buildE2ERoutePptxBytes(pngBytes, imageWidth, imageHeight, context = {}) {
+export async function buildE2ERoutePptxBytes(pngBytes, imageWidth, imageHeight, context = {}) {
   const image = toUint8Array(pngBytes);
   assertPositiveDimensions(imageWidth, imageHeight);
   const data = normalizeContext(context);
-  const includeFindingsSlide = data.findings.length > 0;
-  const slideCount = includeFindingsSlide ? 2 : 1;
-  const entries = [
-    ["[Content_Types].xml", contentTypesXml(slideCount)],
-    ["_rels/.rels", rootRelationshipsXml()],
-    ["docProps/app.xml", appPropertiesXml(slideCount)],
-    ["docProps/core.xml", corePropertiesXml(data)],
-    ["ppt/presentation.xml", presentationXml(slideCount)],
-    ["ppt/_rels/presentation.xml.rels", presentationRelationshipsXml(slideCount)],
-    ["ppt/presProps.xml", presentationPropertiesXml()],
-    ["ppt/viewProps.xml", viewPropertiesXml()],
-    ["ppt/tableStyles.xml", tableStylesXml()],
-    ["ppt/slideMasters/slideMaster1.xml", slideMasterXml()],
-    ["ppt/slideMasters/_rels/slideMaster1.xml.rels", slideMasterRelationshipsXml()],
-    ["ppt/slideLayouts/slideLayout1.xml", slideLayoutXml()],
-    ["ppt/slideLayouts/_rels/slideLayout1.xml.rels", slideLayoutRelationshipsXml()],
-    ["ppt/theme/theme1.xml", themeXml()],
-    ["ppt/slides/slide1.xml", routeSlideXml(data, imageWidth, imageHeight)],
-    ["ppt/slides/_rels/slide1.xml.rels", routeSlideRelationshipsXml()],
-    ["ppt/media/route.png", image]
-  ];
+  const presentation = new PptxGenJS();
+  presentation.layout = "LAYOUT_WIDE";
+  presentation.author = "VSM7";
+  presentation.company = String(context.organizationName || "VSM7").trim() || "VSM7";
+  presentation.subject = data.subtitle;
+  presentation.title = data.title;
+  presentation.lang = "en-US";
+  presentation.theme = {
+    headFontFace: "Aptos Display",
+    bodyFontFace: "Aptos",
+    lang: "en-US"
+  };
 
-  if (includeFindingsSlide) {
-    entries.push(
-      ["ppt/slides/slide2.xml", findingsSlideXml(data)],
-      ["ppt/slides/_rels/slide2.xml.rels", slideRelationshipsXml()]
-    );
+  addRouteImageSlide(presentation, image, imageWidth, imageHeight, data);
+  chunk(data.findings, 6).forEach((findings, index, pages) => {
+    addFindingsSlide(presentation, data, findings, index + 1, pages.length);
+  });
+
+  const output = await presentation.write({ outputType: "uint8array", compression: true });
+  return toUint8Array(output);
+}
+
+function addRouteImageSlide(presentation, image, imageWidth, imageHeight, data) {
+  const slide = presentation.addSlide();
+  slide.background = { color: "F4F7F8" };
+  slide.addText(data.title, {
+    x: 0.5, y: 0.28, w: 12.33, h: 0.44,
+    fontFace: "Aptos Display", fontSize: 26, bold: true, color: "17212B", margin: 0,
+    breakLine: false, fit: "shrink"
+  });
+  slide.addText(data.subtitle, {
+    x: 0.5, y: 0.78, w: 12.33, h: 0.28,
+    fontFace: "Aptos", fontSize: 11, color: "586777", margin: 0,
+    breakLine: false, fit: "shrink"
+  });
+
+  const frame = { x: 0.5, y: 1.2, w: 12.33, h: 5.72 };
+  const fitted = fitRect(imageWidth, imageHeight, frame.w, frame.h);
+  slide.addImage({
+    data: `data:image/png;base64,${bytesToBase64(image)}`,
+    x: frame.x + ((frame.w - fitted.width) / 2),
+    y: frame.y + ((frame.h - fitted.height) / 2),
+    w: fitted.width,
+    h: fitted.height
+  });
+  slide.addText(data.footer, {
+    x: 0.5, y: 7.12, w: 12.33, h: 0.18,
+    fontFace: "Aptos", fontSize: 8, color: "70808D", margin: 0,
+    align: "right", breakLine: false, fit: "shrink"
+  });
+}
+
+function addFindingsSlide(presentation, data, findings, page, pageCount) {
+  const slide = presentation.addSlide();
+  slide.background = { color: "FFFFFF" };
+  slide.addText("E2E Robustness Findings", {
+    x: 0.5, y: 0.3, w: 9.5, h: 0.42,
+    fontFace: "Aptos Display", fontSize: 25, bold: true, color: "17212B", margin: 0,
+    fit: "shrink"
+  });
+  slide.addText(`${data.subtitle} | ${page}/${pageCount}`, {
+    x: 0.5, y: 0.8, w: 12.33, h: 0.24,
+    fontFace: "Aptos", fontSize: 10, color: "586777", margin: 0,
+    fit: "shrink"
+  });
+
+  findings.forEach((item, index) => {
+    const y = 1.25 + (index * 0.92);
+    const heading = [item.category, item.severity].filter(Boolean).join(" / ");
+    slide.addText(`${heading} | ${item.affectedElement}`, {
+      x: 0.68, y, w: 11.95, h: 0.26,
+      fontFace: "Aptos", fontSize: 14, bold: true, color: "2E82B7", margin: 0,
+      fit: "shrink"
+    });
+    slide.addText(item.note || "No note recorded.", {
+      x: 0.92, y: y + 0.31, w: 11.7, h: 0.42,
+      fontFace: "Aptos", fontSize: 11, color: "33404D", margin: 0,
+      valign: "top", fit: "shrink"
+    });
+  });
+}
+
+function bytesToBase64(bytes) {
+  const source = toUint8Array(bytes);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < source.length; offset += chunkSize) {
+    binary += String.fromCharCode(...source.subarray(offset, offset + chunkSize));
   }
-
-  return createStoredZip(entries);
+  return btoa(binary);
 }
 
 export function readPngDimensions(bytes) {
@@ -258,197 +320,6 @@ function buildPdf(objects) {
   return joinBytes(...chunks);
 }
 
-function routeSlideXml(data, imageWidth, imageHeight) {
-  const slideWidth = 12192000;
-  const imageArea = { x: 457200, y: 1220000, width: 11277600, height: 5150000 };
-  const fit = fitRect(imageWidth, imageHeight, imageArea.width, imageArea.height);
-  const x = imageArea.x + ((imageArea.width - fit.width) / 2);
-  const y = imageArea.y + ((imageArea.height - fit.height) / 2);
-  return slideXml([
-    textShapeXml(2, "Route title", 457200, 254000, 11277600, 520000, data.title, 3000, true, "17212B"),
-    textShapeXml(3, "Route context", 457200, 780000, 11277600, 300000, data.subtitle, 1300, false, "586777"),
-    pictureXml(4, x, y, fit.width, fit.height)
-  ].join(""));
-}
-
-function findingsSlideXml(data) {
-  const items = data.findings.slice(0, 8).map((finding) => ({
-    title: `${finding.category} / ${finding.severity} - ${finding.affectedElement}`,
-    note: finding.note || "No observation captured."
-  }));
-  const shapes = [
-    textShapeXml(2, "Findings title", 457200, 254000, 11277600, 520000, "E2E Robustness Findings", 3000, true, "17212B"),
-    textShapeXml(3, "Findings context", 457200, 780000, 11277600, 300000, data.subtitle, 1300, false, "586777")
-  ];
-  let y = 1250000;
-  items.forEach((item, index) => {
-    shapes.push(textShapeXml(4 + (index * 2), `Finding ${index + 1}`, 600000, y, 10900000, 300000, item.title, 1600, true, "2E82B7"));
-    shapes.push(textShapeXml(5 + (index * 2), `Finding note ${index + 1}`, 850000, y + 300000, 10650000, 360000, item.note, 1250, false, "33404D"));
-    y += 650000;
-  });
-  return slideXml(shapes.join(""));
-}
-
-function slideXml(shapes) {
-  return `${xmlHeader()}<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree>${groupShapeXml()}${shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
-}
-
-function textShapeXml(id, name, x, y, cx, cy, text, size, bold, color) {
-  return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${xmlEscape(name)}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${Math.round(x)}" y="${Math.round(y)}"/><a:ext cx="${Math.round(cx)}" cy="${Math.round(cy)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0"/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US" sz="${size}" b="${bold ? 1 : 0}" dirty="0"><a:solidFill><a:srgbClr val="${color}"/></a:solidFill><a:latin typeface="Aptos"/></a:rPr><a:t>${xmlEscape(text)}</a:t></a:r><a:endParaRPr lang="en-US" sz="${size}"/></a:p></p:txBody></p:sp>`;
-}
-
-function pictureXml(id, x, y, cx, cy) {
-  return `<p:pic><p:nvPicPr><p:cNvPr id="${id}" name="E2E route illustration"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${Math.round(x)}" y="${Math.round(y)}"/><a:ext cx="${Math.round(cx)}" cy="${Math.round(cy)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
-}
-
-function groupShapeXml() {
-  return `<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>`;
-}
-
-function contentTypesXml(slideCount) {
-  const slides = Array.from({ length: slideCount }, (_, index) => `<Override PartName="/ppt/slides/slide${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join("");
-  return `${xmlHeader()}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"/><Override PartName="/ppt/viewProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"/><Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/><Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>${slides}<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`;
-}
-
-function rootRelationshipsXml() {
-  return `${xmlHeader()}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`;
-}
-
-function presentationXml(slideCount) {
-  const slides = Array.from({ length: slideCount }, (_, index) => `<p:sldId id="${256 + index}" r:id="rId${2 + index}"/>`).join("");
-  return `${xmlHeader()}<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>${slides}</p:sldIdLst><p:sldSz cx="12192000" cy="6858000" type="screen16x9"/><p:notesSz cx="6858000" cy="9144000"/><p:defaultTextStyle/></p:presentation>`;
-}
-
-function presentationRelationshipsXml(slideCount) {
-  const slides = Array.from({ length: slideCount }, (_, index) => `<Relationship Id="rId${2 + index}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${index + 1}.xml"/>`).join("");
-  return `${xmlHeader()}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>${slides}<Relationship Id="rId${2 + slideCount}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps" Target="presProps.xml"/><Relationship Id="rId${3 + slideCount}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps" Target="viewProps.xml"/><Relationship Id="rId${4 + slideCount}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles" Target="tableStyles.xml"/></Relationships>`;
-}
-
-function slideMasterXml() {
-  return `${xmlHeader()}<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree>${groupShapeXml()}</p:spTree></p:cSld><p:clrMap accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" bg1="lt1" bg2="lt2" folHlink="folHlink" hlink="hlink" tx1="dk1" tx2="dk2"/><p:sldLayoutIdLst><p:sldLayoutId id="1" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle/><p:bodyStyle/><p:otherStyle/></p:txStyles></p:sldMaster>`;
-}
-
-function slideMasterRelationshipsXml() {
-  return `${xmlHeader()}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/></Relationships>`;
-}
-
-function slideLayoutXml() {
-  return `${xmlHeader()}<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1"><p:cSld name="Blank"><p:spTree>${groupShapeXml()}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`;
-}
-
-function slideLayoutRelationshipsXml() {
-  return `${xmlHeader()}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>`;
-}
-
-function routeSlideRelationshipsXml() {
-  return `${xmlHeader()}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/route.png"/></Relationships>`;
-}
-
-function slideRelationshipsXml() {
-  return `${xmlHeader()}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`;
-}
-
-function themeXml() {
-  return `${xmlHeader()}<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="VSM7"><a:themeElements><a:clrScheme name="VSM7"><a:dk1><a:srgbClr val="17212B"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="33404D"/></a:dk2><a:lt2><a:srgbClr val="F4F7F8"/></a:lt2><a:accent1><a:srgbClr val="2E82B7"/></a:accent1><a:accent2><a:srgbClr val="238477"/></a:accent2><a:accent3><a:srgbClr val="F4BE3C"/></a:accent3><a:accent4><a:srgbClr val="E5614F"/></a:accent4><a:accent5><a:srgbClr val="73B66E"/></a:accent5><a:accent6><a:srgbClr val="9EC2D8"/></a:accent6><a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink></a:clrScheme><a:fontScheme name="VSM7"><a:majorFont><a:latin typeface="Aptos Display"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Aptos"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme><a:fmtScheme name="VSM7"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements><a:objectDefaults/><a:extraClrSchemeLst/></a:theme>`;
-}
-
-function appPropertiesXml(slideCount) {
-  return `${xmlHeader()}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>VSM7</Application><PresentationFormat>Widescreen</PresentationFormat><Slides>${slideCount}</Slides><Notes>0</Notes><HiddenSlides>0</HiddenSlides><ScaleCrop>false</ScaleCrop><AppVersion>1.0</AppVersion></Properties>`;
-}
-
-function corePropertiesXml(data) {
-  const now = new Date().toISOString();
-  return `${xmlHeader()}<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${xmlEscape(data.title)}</dc:title><dc:creator>VSM7</dc:creator><cp:lastModifiedBy>VSM7</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>`;
-}
-
-function presentationPropertiesXml() {
-  return `${xmlHeader()}<p:presentationPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"/>`;
-}
-
-function viewPropertiesXml() {
-  return `${xmlHeader()}<p:viewPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:normalViewPr/><p:slideViewPr/><p:notesTextViewPr/><p:gridSpacing cx="72008" cy="72008"/></p:viewPr>`;
-}
-
-function tableStylesXml() {
-  return `${xmlHeader()}<a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"/>`;
-}
-
-function createStoredZip(entries) {
-  const now = new Date();
-  const { date, time } = dosDateTime(now);
-  const localParts = [];
-  const centralParts = [];
-  let offset = 0;
-
-  for (const [name, value] of entries) {
-    const nameBytes = encoder.encode(name);
-    const data = typeof value === "string" ? encoder.encode(value) : toUint8Array(value);
-    const crc = crc32(data);
-    const localHeader = new Uint8Array(30 + nameBytes.length);
-    const localView = new DataView(localHeader.buffer);
-    localView.setUint32(0, 0x04034b50, true);
-    localView.setUint16(4, 20, true);
-    localView.setUint16(6, 0x0800, true);
-    localView.setUint16(8, 0, true);
-    localView.setUint16(10, time, true);
-    localView.setUint16(12, date, true);
-    localView.setUint32(14, crc, true);
-    localView.setUint32(18, data.length, true);
-    localView.setUint32(22, data.length, true);
-    localView.setUint16(26, nameBytes.length, true);
-    localHeader.set(nameBytes, 30);
-    localParts.push(localHeader, data);
-
-    const centralHeader = new Uint8Array(46 + nameBytes.length);
-    const centralView = new DataView(centralHeader.buffer);
-    centralView.setUint32(0, 0x02014b50, true);
-    centralView.setUint16(4, 20, true);
-    centralView.setUint16(6, 20, true);
-    centralView.setUint16(8, 0x0800, true);
-    centralView.setUint16(10, 0, true);
-    centralView.setUint16(12, time, true);
-    centralView.setUint16(14, date, true);
-    centralView.setUint32(16, crc, true);
-    centralView.setUint32(20, data.length, true);
-    centralView.setUint32(24, data.length, true);
-    centralView.setUint16(28, nameBytes.length, true);
-    centralView.setUint32(38, 0, true);
-    centralView.setUint32(42, offset, true);
-    centralHeader.set(nameBytes, 46);
-    centralParts.push(centralHeader);
-    offset += localHeader.length + data.length;
-  }
-
-  const centralDirectory = joinBytes(...centralParts);
-  const end = new Uint8Array(22);
-  const endView = new DataView(end.buffer);
-  endView.setUint32(0, 0x06054b50, true);
-  endView.setUint16(8, entries.length, true);
-  endView.setUint16(10, entries.length, true);
-  endView.setUint32(12, centralDirectory.length, true);
-  endView.setUint32(16, offset, true);
-  return joinBytes(...localParts, centralDirectory, end);
-}
-
-function crc32(bytes) {
-  let crc = 0xffffffff;
-  for (const byte of bytes) {
-    crc ^= byte;
-    for (let bit = 0; bit < 8; bit += 1) {
-      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
-    }
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
-function dosDateTime(date) {
-  const year = Math.max(1980, date.getFullYear());
-  return {
-    date: ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate(),
-    time: (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2)
-  };
-}
-
 function normalizeContext(context) {
   const findings = Array.isArray(context.findings) ? context.findings : [];
   const sctNumber = String(context.sctNumber || "SCT").trim();
@@ -516,20 +387,6 @@ function sanitizeLatinText(value) {
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201c\u201d]/g, '"')
     .replace(/[^\x20-\x7e\xa0-\xff]/g, "?");
-}
-
-function xmlEscape(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&apos;"
-  })[character]);
-}
-
-function xmlHeader() {
-  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 }
 
 function ascii(value) {

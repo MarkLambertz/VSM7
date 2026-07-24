@@ -6,10 +6,12 @@ import {
   escapeHtml,
   field,
   removeButton,
+  stepExportButton,
   tableHeader,
+  tileExportButton,
   textarea
-} from "../shared/renderHelpers.js";
-import { renderMethodVisual } from "../shared/methodVisuals.js";
+} from "../shared/renderHelpers.js?v=20260724-pptxgenjs";
+import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260724-pptxgenjs";
 
 export const step1Subpages = [
   {
@@ -141,6 +143,23 @@ export function renderStep1Fullscreen(workspace, activeStep1Subpage, activeTileI
   `;
 }
 
+export function renderStep1FullscreenTile(workspace, activeStep1Subpage, activeTileIndex) {
+  const tiles = getStep1FullscreenTiles(workspace, activeStep1Subpage);
+  const safeIndex = clampTileIndex(activeTileIndex, tiles.length);
+  const tile = tiles[safeIndex];
+
+  return `
+    <div class="step1-fullscreen-shell is-single-tile" aria-label="Step I fullscreen tile view">
+      <article class="step1-fullscreen-tile ${escapeAttr(tile.variant || "")}">
+        ${renderFullscreenTileHeader(tile, safeIndex, tiles.length)}
+        <div class="fullscreen-tile-body">
+          ${tile.content}
+        </div>
+      </article>
+    </div>
+  `;
+}
+
 function renderFullscreenTileHeader(tile, safeIndex, tileCount) {
   return `
     <div class="fullscreen-tile-header">
@@ -149,7 +168,10 @@ function renderFullscreenTileHeader(tile, safeIndex, tileCount) {
         <h1>${escapeHtml(tile.title)}</h1>
         <p>${escapeHtml(tile.description)}</p>
       </div>
-      <span class="fullscreen-tile-counter">${safeIndex + 1} / ${tileCount}</span>
+      <div class="fullscreen-tile-header-side">
+        <div class="fullscreen-tile-actions">${stepExportButton("step1", "Export Step I")}</div>
+        <span class="fullscreen-tile-counter">${safeIndex + 1} / ${tileCount}</span>
+      </div>
     </div>
   `;
 }
@@ -169,6 +191,7 @@ function renderStep1Stage(activeSubpage) {
         <p class="eyebrow">Step I · Operative Units</p>
         <h1>${escapeHtml(activeSubpage.title)}</h1>
         <p>${escapeHtml(activeSubpage.focus)}</p>
+        <div class="step-header-actions">${stepExportButton("step1", "Export Step I")}</div>
       </div>
       ${renderMethodVisual(activeSubpage)}
     </section>
@@ -233,12 +256,15 @@ function renderStep1Sif(workspace) {
   `);
 }
 
-function renderSifSection(workspace) {
+function renderSifSection(workspace, { fullscreen = false } = {}) {
   return `
     <section class="work-section sif-capture-section">
       <div class="section-heading">
         <h2>System-in-Focus</h2>
-        <button class="ghost-button" data-action="export-step" data-step="step1">Download Outcome</button>
+        <div class="section-actions">
+          ${tileExportButton("step1", "step1-sif", "Export System-in-Focus")}
+          ${fullscreen ? "" : renderStep1TileButton("sif", 1, "Open System-in-Focus fullscreen")}
+        </div>
       </div>
       <div class="field-grid one">
         ${field("Name", "sif.name", workspace.sif.name)}
@@ -251,7 +277,7 @@ function renderSifSection(workspace) {
   `;
 }
 
-function renderRecursionSection(workspace) {
+function renderRecursionSection(workspace, { fullscreen = false } = {}) {
   const sortedLevels = sortRecursionLevels(workspace.step1.recursionLevels);
 
   return `
@@ -260,6 +286,10 @@ function renderRecursionSection(workspace) {
         <div>
           <h2>Recursion Levels</h2>
           <p class="section-note inline">Levels are fixed. Add organizations on an existing level, or extend one level above or below.</p>
+        </div>
+        <div class="section-actions">
+          ${tileExportButton("step1", "step1-recursion", "Export recursion levels")}
+          ${fullscreen ? "" : renderStep1TileButton("sif", 2, "Open recursion levels fullscreen")}
         </div>
       </div>
       <div class="recursion-extension-actions">
@@ -279,6 +309,8 @@ function renderRecursionSection(workspace) {
                   class="ghost-button small"
                   data-action="add-recursion-same-level"
                   data-level="${escapeAttr(item.level)}"
+                  title="${escapeAttr(addOrganizationOnLevelLabel(item.level))}"
+                  aria-label="${escapeAttr(addOrganizationOnLevelLabel(item.level))}"
                 >Add org.</button>
                 ${isProtectedBaseRecursionRow(sortedLevels, item, index) ? "" : removeButton("step1.recursionLevels", item.id)}
               </td>
@@ -320,6 +352,10 @@ function isBaseRecursionLevel(level) {
   return ["R+1", "R0", "R-1"].includes(level);
 }
 
+function addOrganizationOnLevelLabel(level) {
+  return `Add organization on ${level || "this recursion level"}`;
+}
+
 function isProtectedBaseRecursionRow(sortedLevels, item, index) {
   if (!isBaseRecursionLevel(item.level)) {
     return false;
@@ -332,10 +368,17 @@ function renderStep1SegmentationOptions(workspace) {
   return renderWorkshopTaskFrame("segmentation", renderSegmentationOptionsSection(workspace));
 }
 
-function renderSegmentationOptionsSection(workspace) {
+function renderSegmentationOptionsSection(workspace, { fullscreen = false } = {}) {
   return `
     <section class="work-section">
-      ${tableHeader("Segmentation Options", "add-segmentation")}
+      <div class="section-heading">
+        <h2>Segmentation Options</h2>
+        <div class="section-actions">
+          ${tileExportButton("step1", "step1-segmentation", "Export segmentation options")}
+          ${fullscreen ? "" : renderStep1TileButton("segmentation", 1, "Open segmentation options fullscreen")}
+          <button class="ghost-button" data-action="add-segmentation">Add Row</button>
+        </div>
+      </div>
       <p class="section-note">Create the candidate business segmentations that will later become columns in the evaluation matrix.</p>
       <div class="table-wrap">
         <table>
@@ -359,10 +402,17 @@ function renderStep1KeyBuyingCriteria(workspace) {
   return renderWorkshopTaskFrame("criteria", renderKeyBuyingCriteriaSection(workspace));
 }
 
-function renderKeyBuyingCriteriaSection(workspace) {
+function renderKeyBuyingCriteriaSection(workspace, { fullscreen = false } = {}) {
   return `
     <section class="work-section">
-      ${tableHeader("Key Buying Criteria", "add-criterion")}
+      <div class="section-heading">
+        <h2>Key Buying Criteria</h2>
+        <div class="section-actions">
+          ${tileExportButton("step1", "step1-criteria", "Export key buying criteria")}
+          ${fullscreen ? "" : renderStep1TileButton("criteria", 1, "Open key buying criteria fullscreen")}
+          <button class="ghost-button" data-action="add-criterion">Add Row</button>
+        </div>
+      </div>
       <p class="section-note">Use customer-facing, purchase-deciding criteria. Keep the list sharp: usually five to seven, with weights summing to 100%.</p>
       <div class="table-wrap">
         <table>
@@ -391,16 +441,19 @@ function renderSixPackSection(workspace) {
     <section class="work-section strategic-fields-section">
       <div class="section-heading">
         <h2>Strategic Fields of Action</h2>
+        <div class="section-actions">
+          ${tileExportButton("step1", "step1-six-pack", "Export strategic fields of action")}
+        </div>
       </div>
       <p class="section-note">Capture directions and initiatives along the Six Pack of Control. These rows feed directly into the final segmentation evaluation.</p>
       <div class="strategic-field-list">
-        ${workspace.step1.strategicFields.map((item) => renderStrategicField(item)).join("")}
+        ${workspace.step1.strategicFields.map((item, index) => renderStrategicField(item, { tileIndex: index + 1 })).join("")}
       </div>
     </section>
   `;
 }
 
-function renderStrategicField(item) {
+function renderStrategicField(item, { fullscreen = false, tileIndex = 0 } = {}) {
   const links = item.links || [];
   const files = item.files || [];
   const guidance = sixPackGuidance[item.variable] || {
@@ -411,8 +464,11 @@ function renderStrategicField(item) {
   return `
     <article class="strategic-field-row">
       <div class="strategic-field-heading">
-        <span>Six Pack variable</span>
-        <h3>${escapeHtml(item.variable)}</h3>
+        <div>
+          <span>Six Pack variable</span>
+          <h3>${escapeHtml(item.variable)}</h3>
+        </div>
+        ${!fullscreen && tileIndex ? renderStep1TileButton("six-pack", tileIndex, `Open ${item.variable} fullscreen`) : ""}
         <p>${escapeHtml(guidance.meaning)}</p>
         <small>${escapeHtml(guidance.example)}</small>
       </div>
@@ -528,7 +584,19 @@ function renderEvaluationSection(workspace) {
     <section class="work-section">
       <div class="section-heading">
         <h2>Segmentation Evaluation</h2>
-        <button class="ghost-button" data-action="export-step" data-step="step1">Download Outcome</button>
+        <div class="section-actions">
+          ${tileExportButton("step1", "step1-evaluation", "Export segmentation evaluation")}
+          <button
+            class="tile-fullscreen-button"
+            data-action="step1-tile-fullscreen-open"
+            data-subpage="evaluation"
+            data-tile="1"
+            title="Open evaluation matrix fullscreen"
+            aria-label="Open evaluation matrix fullscreen"
+          >
+            <span class="fullscreen-corners" aria-hidden="true"><span></span></span>
+          </button>
+        </div>
       </div>
       <p class="section-note">Use forced prioritization per row. With ${options.length || "n"} segmentation option(s), each row uses a score scale of 1 to n+1; the same number can only appear once in that row.</p>
       ${options.length < 2
@@ -537,6 +605,21 @@ function renderEvaluationSection(workspace) {
       ${renderSegmentationDecisionFields(workspace, options)}
       ${renderOperativeUnitsSection(workspace)}
     </section>
+  `;
+}
+
+function renderStep1TileButton(subpage, tile, label) {
+  return `
+    <button
+      class="tile-fullscreen-button"
+      data-action="step1-tile-fullscreen-open"
+      data-subpage="${escapeAttr(subpage)}"
+      data-tile="${escapeAttr(String(tile))}"
+      title="${escapeAttr(label)}"
+      aria-label="${escapeAttr(label)}"
+    >
+      <span class="fullscreen-corners" aria-hidden="true"><span></span></span>
+    </button>
   `;
 }
 
@@ -598,22 +681,22 @@ function getStep1FullscreenTiles(workspace, activeStep1Subpage) {
   if (subpage.id === "sif") {
     return [
       briefTile,
-      createFullscreenTile("System-in-Focus", "System-in-Focus", "Name the system, its purpose, and its relevant customers or stakeholders.", renderSifSection(workspace), "is-form", "SIF"),
-      createFullscreenTile("Recursion Levels", "Recursion Levels", "Adjust the names and descriptions of the fixed recursion levels around the System-in-Focus.", renderRecursionSection(workspace), "is-table", "Rec")
+      createFullscreenTile("System-in-Focus", "System-in-Focus", "Name the system, its purpose, and its relevant customers or stakeholders.", renderSifSection(workspace, { fullscreen: true }), "is-form", "SIF"),
+      createFullscreenTile("Recursion Levels", "Recursion Levels", "Adjust the names and descriptions of the fixed recursion levels around the System-in-Focus.", renderRecursionSection(workspace, { fullscreen: true }), "is-table", "Rec")
     ];
   }
 
   if (subpage.id === "segmentation") {
     return [
       briefTile,
-      createFullscreenTile("Segmentation Options", "Segmentation Options", "Capture the candidate segmentation logics that later become columns in the evaluation matrix.", renderSegmentationOptionsSection(workspace), "is-table", "Options")
+      createFullscreenTile("Segmentation Options", "Segmentation Options", "Capture the candidate segmentation logics that later become columns in the evaluation matrix.", renderSegmentationOptionsSection(workspace, { fullscreen: true }), "is-table", "Options")
     ];
   }
 
   if (subpage.id === "criteria") {
     return [
       briefTile,
-      createFullscreenTile("Key Buying Criteria", "Key Buying Criteria", "Capture the customer-facing criteria and their relative weight.", renderKeyBuyingCriteriaSection(workspace), "is-table", "KBC")
+      createFullscreenTile("Key Buying Criteria", "Key Buying Criteria", "Capture the customer-facing criteria and their relative weight.", renderKeyBuyingCriteriaSection(workspace, { fullscreen: true }), "is-table", "KBC")
     ];
   }
 
@@ -622,7 +705,7 @@ function getStep1FullscreenTiles(workspace, activeStep1Subpage) {
       fieldItem.variable,
       fieldItem.variable,
       sixPackGuidance[fieldItem.variable]?.meaning || "Describe strategic priorities, targets, and ambitions for this field.",
-      `<section class="work-section strategic-fields-section fullscreen-single-field">${renderStrategicField(fieldItem)}</section>`,
+      `<section class="work-section strategic-fields-section fullscreen-single-field">${renderStrategicField(fieldItem, { fullscreen: true })}</section>`,
       "is-form",
       String(fieldIndex + 1).padStart(2, "0")
     ));

@@ -1,20 +1,70 @@
-import { evaluateStep2Variety } from "../../domain/vsm.js";
-import { escapeAttr, escapeHtml, removeButton, stepHeader, tableHeader, textarea } from "../shared/renderHelpers.js";
+import { evaluateStep2Variety } from "../../domain/vsm.js?v=20260724-pptxgenjs";
+import { escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, textarea, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260724-pptxgenjs";
 
-export function renderStep2(workspace) {
+export const step2Subpages = [
+  {
+    id: "assessment",
+    label: "Variety Assessment for Steerability"
+  },
+  {
+    id: "challenges",
+    label: "How to master steering challenges"
+  }
+];
+
+export function renderStep2(workspace, activeSubpage = "assessment") {
+  const activeStep2Subpage = normalizeStep2Subpage(activeSubpage);
+
   return `
-    ${stepHeader("Step II", "Manageability & Flattening", "Evaluate horizontal and vertical variety using common wisdom and capture manageability levers.")}
-    ${renderStep2Assessment(workspace)}
-    ${renderStep2Remedies(workspace)}
+    ${stepHeader(
+      "Step II",
+      "Manageability & Flattening",
+      "Evaluate horizontal and vertical variety using common wisdom and capture manageability levers.",
+      ""
+    )}
+    ${renderStep2Subnav(activeStep2Subpage)}
+    ${activeStep2Subpage === "challenges"
+      ? renderStep2Remedies(workspace)
+      : renderStep2Assessment(workspace)}
   `;
 }
 
-export function renderStep2Remedies(workspace) {
+export function normalizeStep2Subpage(subpage) {
+  return step2Subpages.some((item) => item.id === subpage) ? subpage : "assessment";
+}
+
+export function renderStep2Subnav(activeSubpage = "assessment") {
+  const normalizedSubpage = normalizeStep2Subpage(activeSubpage);
+
+  return `
+    <section class="substep-bar step2-substep-bar" aria-label="Step II substeps">
+      ${step2Subpages.map((subpage, index) => `
+        <button
+          class="substep-button ${normalizedSubpage === subpage.id ? "is-active" : ""}"
+          data-action="step2-subpage"
+          data-subpage="${escapeAttr(subpage.id)}"
+        >
+          <span>${String(index + 1).padStart(2, "0")}</span>
+          ${escapeHtml(subpage.label)}
+        </button>
+      `).join("")}
+    </section>
+  `;
+}
+
+export function renderStep2Remedies(workspace, { fullscreen = false } = {}) {
   const selectedOptionIds = new Set(workspace.step2.selectedOptionIds || []);
 
   return `
-    <section class="work-section manageability-options-section">
-      ${tableHeader("How to master steering challenges", "add-manageability-option", "Add Option")}
+    <section class="work-section manageability-options-section ${fullscreen ? "fullscreen-matrix-section" : ""}">
+      <div class="section-heading">
+        <h2>How to master steering challenges</h2>
+        <div class="section-actions">
+          ${tileExportButton("step2", "step2-remedies", "Export manageability levers")}
+          ${fullscreen ? "" : tileFullscreenButton("step2-remedies", "Open manageability levers fullscreen")}
+          <button class="ghost-button" data-action="add-manageability-option">Add Option</button>
+        </div>
+      </div>
       <p class="section-note">Select the remedies that should be carried forward as inspiration for Step III.</p>
       <div class="manageability-option-overview-header" aria-hidden="true">
         <span>Select</span>
@@ -99,18 +149,19 @@ function manageabilityTextarea(label, item, fieldName) {
   `;
 }
 
-export function renderStep2Assessment(workspace) {
+export function renderStep2Assessment(workspace, { fullscreen = false } = {}) {
   const selectedOption = workspace.step1.segmentationOptions.find((option) => option.id === workspace.step1.selectedSegmentationOptionId);
   const units = workspace.step1.operativeUnits || [];
   const varietyDiagnostics = evaluateStep2Variety(workspace);
 
   return `
-    <section class="work-section step2-variety-section">
+    <section class="work-section step2-variety-section ${fullscreen ? "fullscreen-matrix-section" : ""}">
       <div class="section-heading">
         <h2>Variety Assessment for Steerability</h2>
         <div class="section-actions">
+          ${tileExportButton("step2", "step2-assessment", "Export variety assessment")}
+          ${fullscreen ? "" : tileFullscreenButton("step2-assessment", "Open variety assessment fullscreen")}
           <button class="ghost-button" data-action="reset-step2-sliders">Reset sliders</button>
-          <button class="ghost-button" data-action="export-step" data-step="step2">Download Outcome</button>
         </div>
       </div>
       <div class="step2-context-panel">
@@ -170,6 +221,32 @@ export function renderStep2Assessment(workspace) {
       ${renderVarietyFitPanel(varietyDiagnostics)}
     </section>
   `;
+}
+
+export function renderStep2FullscreenTile(workspace, tileId = "step2-assessment") {
+  if (tileId === "step2-remedies") {
+    return fullscreenTile({
+      kicker: "Step II · Manageability",
+      title: "Manageability Levers",
+      description: "Select the remedies that should feed Step III as real SCT source material.",
+      counter: "Levers",
+      variant: "is-table",
+      tileClass: "step2-fullscreen-tile",
+      actions: tileExportButton("step2", "step2-remedies", "Export manageability levers"),
+      content: renderStep2Remedies(workspace, { fullscreen: true })
+    });
+  }
+
+  return fullscreenTile({
+    kicker: "Step II · Manageability",
+    title: "Variety Assessment",
+    description: "Use the larger surface to compare operative variety pressure with available steering variety.",
+    counter: "Assessment",
+    variant: "is-matrix",
+    tileClass: "step2-fullscreen-tile",
+    actions: tileExportButton("step2", "step2-assessment", "Export variety assessment"),
+    content: renderStep2Assessment(workspace, { fullscreen: true })
+  });
 }
 
 function renderS1Circle(unit, index) {
@@ -279,14 +356,6 @@ function sliderRow(label, path, value, driver = "") {
     <div class="variety-slider-row">
       <div class="variety-slider-row-header">
         <span>${escapeHtml(label)}</span>
-        <button
-          class="slider-reset-button"
-          type="button"
-          data-action="reset-variety-slider"
-          data-path="${escapeAttr(path)}"
-          title="Reset to neutral"
-          aria-label="Reset ${escapeAttr(label)} to neutral"
-        ><span aria-hidden="true"></span></button>
       </div>
       <div class="variety-slider-control">
         <small>Small</small>

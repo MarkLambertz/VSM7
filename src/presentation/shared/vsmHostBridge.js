@@ -1,7 +1,7 @@
-import { getRecursionOrganizations, vsmSystems } from "../../domain/vsm.js";
-import { escapeAttr } from "./renderHelpers.js";
+import { getRecursionOrganizations, vsmSystems } from "../../domain/vsm.js?v=20260724-pptxgenjs";
+import { escapeAttr } from "./renderHelpers.js?v=20260724-pptxgenjs";
 
-export const vsmFrameSource = "./vsm.html";
+export const vsmFrameSource = "./vsm.html?v=20260724-pptxgenjs";
 
 export function renderVsmHostFrame(context, title = "VSM7 system map") {
   return `

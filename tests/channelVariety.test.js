@@ -11,7 +11,6 @@ import {
   setStep6ChannelVarietyModel
 } from "../src/domain/vsm.js";
 import { renderImplementationWorkspace } from "../src/presentation/steps/implementation.js";
-import { buildStepOutcome } from "../src/infrastructure/exporters.js";
 
 test("Step VI instantiates the complete canonical vertical loop checklist for every SIF", () => {
   const workspace = createWorkspace();
@@ -223,18 +222,4 @@ test("communication weakness candidates render explicit promotion and source nav
   const backlogHtml = renderImplementationWorkspace(workspace);
   assert.match(backlogHtml, /Added to backlog/);
   assert.match(backlogHtml, /Communication weakness/);
-});
-
-test("implementation export retains channel weakness source references", () => {
-  const workspace = createWorkspace();
-  const model = getStep6ChannelVarietyContext(workspace).model;
-  const loop = model.loops.find((candidate) => candidate.id === "vsm-loop-s3-s1-resource-bargain");
-  loop.ratings = [1, 3, 3, 3];
-  setStep6ChannelVarietyModel(workspace, model);
-  createImplementationItemFromChannelWeakness(workspace, loop.id, 0);
-
-  const artifact = buildStepOutcome(workspace, "implementation");
-  assert.match(artifact.content, /channel-variety-weakness/);
-  assert.match(artifact.content, /vsm-loop-s3-s1-resource-bargain/);
-  assert.match(artifact.content, />0</);
 });

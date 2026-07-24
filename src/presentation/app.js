@@ -21,6 +21,8 @@ import {
   getStep6FindingCandidates,
   getStep6RouteContext,
   getStep6RouteModel,
+  getStep7EditorContext,
+  getStep7EditorModel,
   isStepComplete,
   markStep2SliderAssessed,
   mergeSuccessCriticalTasks,
@@ -30,6 +32,8 @@ import {
   setStep6ChannelVarietyModel,
   setStep6RelatedSctIds,
   setStep6RouteModel,
+  setStep7EditorModel,
+  setStep7RasicAssignment,
   splitSuccessCriticalTask,
   stepDefinitions,
   syncAllocations,
@@ -37,7 +41,7 @@ import {
   toggleStep5ContributionAssignment,
   vsmSystems,
   workflowStepOrder
-} from "../domain/vsm.js";
+} from "../domain/vsm.js?v=20260724-pptxgenjs";
 import {
   deleteOrganization,
   deleteWorkspace,
@@ -48,45 +52,40 @@ import {
   renameWorkspace,
   replaceWorkspace,
   saveWorkspace
-} from "../application/workspaceService.js";
-import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js";
-import { createLocalStorageRepository } from "../infrastructure/localStorageRepository.js";
-import { exportProjectJson, exportProjectReport, exportStepOutcome } from "../infrastructure/exporters.js";
-import { buildE2ERouteDocument } from "../infrastructure/e2eRouteDocuments.js?v=20260619-e2e-documents";
-import { renderRenameDialog } from "./renameDialog.js";
-import { destructiveActionMessage } from "./shared/destructiveActions.js";
-import { createE2ERouteExportCoordinator } from "./shared/e2eRouteExport.js?v=20260619-e2e-documents";
-import { createChannelVarietyExportCoordinator } from "./shared/channelVarietyExport.js?v=20260620-channel-loop-detail-fields";
-import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js";
-import { renderProjectManagement } from "./projectManagement.js";
-import { applySkinPreference, defaultSkin, readSkinPreference } from "./skinSettings.js";
-import { renderStartPage } from "./startPage.js";
-import { renderOverview } from "./steps/overview.js";
-import { renderImplementation } from "./steps/implementation.js";
-import {
-  focusStepOrder,
-  getGenericFocusStepTitle,
-  getGenericFocusTileCount,
-  hasGenericFocusMode,
-  renderGenericFocusFullscreen
-} from "./steps/focusMode.js?v=20260620-channel-loop-detail-fields";
-import { getStep1FullscreenTileCount, renderStep1, renderStep1Fullscreen, step1Subpages } from "./steps/step1.js";
-import { renderStep2 } from "./steps/step2.js";
-import { filterScts, renderStep3 } from "./steps/step3.js";
-import { renderStep4 } from "./steps/step4.js";
-import { renderStep5 } from "./steps/step5.js?v=20260618-step5-copy-remove";
-import { getActiveStep6SctId, renderStep6 } from "./steps/step6.js?v=20260620-channel-loop-detail-fields";
-import { renderStep7 } from "./steps/step7.js";
-import { renderVsmStandalone } from "./vsmStandalone.js";
+} from "../application/workspaceService.js?v=20260724-pptxgenjs";
+import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?v=20260724-pptxgenjs";
+import { getExportViewModel } from "../application/exportViewModels.js?v=20260724-pptxgenjs";
+import { createWorkspaceRepository } from "../infrastructure/fileBackedRepository.js?v=20260717-file-storage";
+import { exportExportIntent } from "../infrastructure/exporters.js?v=20260724-pptxgenjs";
+import { buildE2ERouteDocument } from "../infrastructure/e2eRouteDocuments.js?v=20260724-pptxgenjs";
+import { renderRenameDialog } from "./renameDialog.js?v=20260724-pptxgenjs";
+import { destructiveActionMessage } from "./shared/destructiveActions.js?v=20260724-pptxgenjs";
+import { createE2ERouteExportCoordinator } from "./shared/e2eRouteExport.js?v=20260724-pptxgenjs";
+import { createChannelVarietyExportCoordinator } from "./shared/channelVarietyExport.js?v=20260724-pptxgenjs";
+import { buildAppHash, parseAppHash } from "./shared/appRouting.js?v=20260724-pptxgenjs";
+import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260724-pptxgenjs";
+import { renderProjectManagement } from "./projectManagement.js?v=20260724-pptxgenjs";
+import { applySkinPreference, defaultSkin, readSkinPreference } from "./skinSettings.js?v=20260724-pptxgenjs";
+import { renderStartPage } from "./startPage.js?v=20260724-pptxgenjs";
+import { renderOverview, renderOverviewFullscreenTile } from "./steps/overview.js?v=20260724-pptxgenjs";
+import { renderImplementation, renderImplementationFullscreenTile } from "./steps/implementation.js?v=20260724-pptxgenjs";
+import { getStep1FullscreenTileCount, renderStep1, renderStep1FullscreenTile } from "./steps/step1.js?v=20260724-pptxgenjs";
+import { normalizeStep2Subpage, renderStep2, renderStep2FullscreenTile } from "./steps/step2.js?v=20260724-pptxgenjs";
+import { filterScts, normalizeStep3Subpage, renderStep3, renderStep3FullscreenTile } from "./steps/step3.js?v=20260724-pptxgenjs";
+import { renderStep4, renderStep4FullscreenTile } from "./steps/step4.js?v=20260724-pptxgenjs";
+import { renderStep5, renderStep5FullscreenTile } from "./steps/step5.js?v=20260724-pptxgenjs";
+import { getActiveStep6SctId, renderStep6, renderStep6FullscreenTile } from "./steps/step6.js?v=20260724-pptxgenjs";
+import { renderStep7 } from "./steps/step7.js?v=20260724-pptxgenjs";
+import { renderVsmStandalone } from "./vsmStandalone.js?v=20260724-pptxgenjs";
 import {
   buildVsmHostTree,
   getVsmSystemType,
   recursionLevelLabel,
   recursionLevelValue
-} from "./shared/vsmHostBridge.js";
+} from "./shared/vsmHostBridge.js?v=20260724-pptxgenjs";
 
 const app = document.querySelector("#app");
-const repository = createLocalStorageRepository();
+const repository = createWorkspaceRepository();
 const maxEmbeddedFileSize = 1_000_000;
 let workspace = loadWorkspace(repository);
 if (listWorkspaces(repository).length === 0) {
@@ -95,9 +94,11 @@ if (listWorkspaces(repository).length === 0) {
 let activeView = "start";
 let selectedOrganizationId = workspace.organization.id || "";
 let activeStep1Subpage = "sif";
+let activeStep2Subpage = "assessment";
+let activeStep3Subpage = "signals";
 let isFocusFullscreen = false;
 let activeStep1FullscreenTile = 0;
-let activeGenericFocusTile = 0;
+let activeHostFullscreenTile = "";
 let selectedSctId = "";
 let selectedSctMergeIds = new Set();
 let sctPriorityFilter = "";
@@ -105,14 +106,16 @@ let sctSourceFilter = "";
 let activeStep5System = "3";
 let activeStep6Subpage = "e2e";
 let selectedStep6SctId = "";
+let activeStep7Substep = "7.1";
 let isSettingsOpen = false;
 let renameTarget = null;
 let isNavCollapsed = false;
 let activeSkin = applySkinPreference(readSkinPreference());
-let saveStatus = "Saved";
+let saveStatus = repository.isFileBacked ? "File saved" : "Saved";
 let saveTimer = null;
 let e2eRouteSaveTimer = null;
 let channelVarietySaveTimer = null;
+let isApplyingRouteHash = false;
 let lastAction = { button: null, at: 0 };
 const vsmFramePaths = {
   standalone: [],
@@ -122,12 +125,20 @@ const vsmFramePaneVisibility = {
   standalone: undefined,
   step5: false
 };
+let exportPanelFrame = null;
+let exportPanelReady = false;
+const exportPanelQueue = [];
 const e2eRouteExportCoordinator = createE2ERouteExportCoordinator({ send: postToE2EFrame });
 const channelVarietyExportCoordinator = createChannelVarietyExportCoordinator({ send: postToChannelVarietyFrame });
 
 window.addEventListener("message", handleVsmBridgeMessage);
 window.addEventListener("message", handleE2EBridgeMessage);
 window.addEventListener("message", handleChannelVarietyBridgeMessage);
+window.addEventListener("message", handleStep7BridgeMessage);
+window.addEventListener("message", handleExportBridgeMessage);
+window.addEventListener("hashchange", handleRouteHashChange);
+ensureExportPanelFrame();
+applyRouteState(parseAppHash(window.location.hash));
 render();
 
 app.addEventListener("input", (event) => {
@@ -200,8 +211,71 @@ document.addEventListener("keydown", (event) => {
 
   event.preventDefault();
   isFocusFullscreen = false;
+  activeHostFullscreenTile = "";
   render();
 });
+
+function handleRouteHashChange() {
+  isApplyingRouteHash = true;
+  applyRouteState(parseAppHash(window.location.hash));
+  render();
+  isApplyingRouteHash = false;
+  syncRouteHashToState();
+}
+
+function applyRouteState(route) {
+  activeView = route?.view || "start";
+  if (route?.step1Subpage) {
+    activeStep1Subpage = route.step1Subpage;
+    activeStep1FullscreenTile = 0;
+  }
+  if (route?.step2Subpage) {
+    activeStep2Subpage = normalizeStep2Subpage(route.step2Subpage);
+  }
+  if (route?.step3Subpage) {
+    activeStep3Subpage = normalizeStep3Subpage(route.step3Subpage);
+  }
+  if (route?.step5System) {
+    activeStep5System = route.step5System;
+  }
+  if (route?.step6Subpage) {
+    activeStep6Subpage = route.step6Subpage;
+  }
+  if (route?.step7Substep) {
+    activeStep7Substep = normalizeStep7Substep(route.step7Substep);
+  }
+
+  isSettingsOpen = false;
+  if (!supportsHostTileFullscreen(activeView)) {
+    isFocusFullscreen = false;
+    activeHostFullscreenTile = "";
+  }
+}
+
+function getRouteState() {
+  return {
+    view: activeView,
+    step1Subpage: activeStep1Subpage,
+    step2Subpage: activeStep2Subpage,
+    step3Subpage: activeStep3Subpage,
+    step5System: activeStep5System,
+    step6Subpage: activeStep6Subpage,
+    step7Substep: activeStep7Substep
+  };
+}
+
+function syncRouteHashToState() {
+  if (isApplyingRouteHash) {
+    return;
+  }
+
+  const nextHash = buildAppHash(getRouteState());
+  if (window.location.hash === nextHash) {
+    return;
+  }
+
+  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${nextHash}`);
+}
 
 function render() {
   syncAllocations(workspace);
@@ -214,6 +288,7 @@ function render() {
   document.body.classList.toggle("has-fullscreen-workshop", isFocusFullscreen);
   const projects = listWorkspaces(repository);
   selectedOrganizationId = normalizeSelectedOrganization(projects);
+  syncRouteHashToState();
   const showStepNavigation = activeView !== "start" && activeView !== "projects" && activeView !== "vsm";
 
   app.innerHTML = `
@@ -230,7 +305,6 @@ function render() {
       <div class="topbar-actions">
         ${renderSaveIndicator()}
         ${renderTopbarVsmButton()}
-        ${renderTopbarFocusButton()}
         ${renderTopbarMenu()}
         ${renderSettingsTrigger()}
       </div>
@@ -249,6 +323,7 @@ function render() {
   syncVisibleVsmFrames();
   syncVisibleE2EFrames();
   syncVisibleChannelVarietyFrames();
+  syncVisibleStep7Frames();
 }
 
 function renderPreservingViewport(anchorSctId = "") {
@@ -410,6 +485,214 @@ function syncVisibleChannelVarietyFrames() {
   });
 }
 
+function syncVisibleStep7Frames() {
+  document.querySelectorAll("[data-step7-frame]").forEach((frame) => {
+    if (!(frame instanceof HTMLIFrameElement) || frame.dataset.step7HostWired) {
+      return;
+    }
+
+    frame.dataset.step7HostWired = "true";
+    frame.addEventListener("load", () => syncStep7Frame(frame));
+  });
+}
+
+function handleStep7BridgeMessage(event) {
+  const frame = findStep7FrameForSource(event.source);
+  const message = event.data;
+
+  if (!frame || !isTrustedFrameMessage(event, frame) || !message || typeof message !== "object" || !message.evt) {
+    return;
+  }
+
+  if (message.evt === "ready") {
+    syncStep7Frame(frame);
+    return;
+  }
+
+  if (
+    message.api === 1
+    && (message.evt === "export" || message.evt === "needViewModel" || message.evt === "cancel")
+  ) {
+    handleStep7ExportBridgeMessage(frame, message);
+    return;
+  }
+
+  if (message.evt === "goto") {
+    activeStep7Substep = normalizeStep7Substep(message.substep);
+    syncRouteHashToState();
+    syncStep7Frame(frame);
+    return;
+  }
+
+  if (message.evt === "change") {
+    if (setStep7EditorModel(workspace, message.model)) {
+      scheduleSave();
+    }
+    return;
+  }
+
+  if (message.evt === "rasic") {
+    if (setStep7RasicAssignment(workspace, message.contribId, message.vesselId, message.letter || "")) {
+      scheduleSave();
+    }
+  }
+}
+
+function handleStep7ExportBridgeMessage(frame, message) {
+  if (message.evt === "needViewModel") {
+    sendStep7ExportViewModel(frame, message.stepId || "step7", message.tileId || "all");
+    return;
+  }
+
+  if (message.evt === "export") {
+    void handleStep7ExportIntent(frame, message);
+    return;
+  }
+
+  if (message.evt === "cancel") {
+    postToStep7Frame(frame, { cmd: "closeExport" });
+  }
+}
+
+function sendStep7ExportViewModel(frame, stepId, tileId) {
+  const vm = buildExportViewModel(stepId, tileId, {
+    origin: "step",
+    scope: "step"
+  });
+
+  if (!vm) {
+    postToStep7Frame(frame, {
+      cmd: "exportError",
+      message: "This Step VII export target is not available yet."
+    });
+    return;
+  }
+
+  postToStep7Frame(frame, {
+    cmd: "setViewModel",
+    stepId,
+    tileId,
+    vm
+  });
+}
+
+async function handleStep7ExportIntent(frame, intent) {
+  try {
+    saveNow();
+    if (isStep7OrgChartArtifactExportIntent(intent)) {
+      const artifact = await buildStep7OrgChartArtifactExport(intent);
+      downloadBrowserBlob(artifact.blob, artifact.filename);
+      postToStep7Frame(frame, {
+        cmd: "exportReady",
+        requestId: intent.requestId,
+        downloadName: artifact.filename
+      });
+      return;
+    }
+
+    const artifact = exportExportIntent(workspace, intent);
+    postToStep7Frame(frame, {
+      cmd: "exportReady",
+      requestId: intent.requestId,
+      downloadName: artifact.filename
+    });
+  } catch (error) {
+    postToStep7Frame(frame, {
+      cmd: "exportError",
+      requestId: intent?.requestId,
+      message: error?.message || "The export failed."
+    });
+  }
+}
+
+function isStep7OrgChartArtifactExportIntent(intent) {
+  return intent?.api === 1
+    && intent.evt === "export"
+    && intent.stepId === "step7"
+    && intent.tileId === "org-chart"
+    && intent.artifact?.dataUrl;
+}
+
+async function buildStep7OrgChartArtifactExport(intent) {
+  const response = await fetch(intent.artifact.dataUrl);
+  if (!response.ok) {
+    throw new Error("The org chart export could not be read.");
+  }
+
+  const blob = await response.blob();
+  if (String(intent.format || "").toLowerCase() === "pptx") {
+    const deck = await buildE2ERouteDocument("pptx", blob, {
+      routeName: "Organizational Representation",
+      projectName: workspace.project?.name || "VSM7 project",
+      sctNumber: "SIF",
+      sctTitle: workspace.sif?.name || "System-in-Focus",
+      organizationName: workspace.organization?.name || "",
+      findings: []
+    });
+    const requestedName = String(intent.filename || intent.artifact.suggestedName || "org-chart.pptx");
+    return {
+      blob: deck.blob,
+      filename: /\.pptx$/i.test(requestedName)
+        ? requestedName
+        : `${requestedName.replace(/\.[^.]+$/, "")}.pptx`
+    };
+  }
+
+  return {
+    blob,
+    filename: intent.filename || intent.artifact.suggestedName || `org-chart.${intent.format || "png"}`
+  };
+}
+
+function findStep7FrameForSource(source) {
+  return [...document.querySelectorAll("[data-step7-frame]")]
+    .find((frame) => frame instanceof HTMLIFrameElement && frame.contentWindow === source) || null;
+}
+
+function syncStep7Frame(frame) {
+  const context = getStep7EditorContext(workspace, {
+    scope: getStep7EditorContextScope()
+  });
+  const model = getStep7EditorModel(workspace);
+  postToStep7Frame(frame, {
+    cmd: "setContext",
+    ...context,
+    vessels: model.vessels
+  });
+  postToStep7Frame(frame, { cmd: "loadModel", model });
+  postToStep7Frame(frame, {
+    cmd: "setSkin",
+    skin: activeSkin === "command-deck" ? "deck" : "workshop"
+  });
+  postToStep7Frame(frame, {
+    cmd: "goto",
+    substep: normalizeStep7Substep(activeStep7Substep)
+  });
+}
+
+function getStep7EditorContextScope() {
+  return normalizeStep7Substep(activeStep7Substep) === "7.6" ? "sif" : "all";
+}
+
+function postToStep7Frame(frame, message) {
+  const targetOrigin = getFrameTargetOrigin(frame);
+  frame.contentWindow?.postMessage(message, targetOrigin);
+}
+
+function normalizeStep7Substep(substep) {
+  const aliases = {
+    vessels: "7.1",
+    rasic: "7.2",
+    aspects: "7.3",
+    roles: "7.4",
+    functions: "7.5",
+    meetings: "7.6",
+    org: "7.7"
+  };
+  const value = aliases[substep] || String(substep || "");
+  return /^7\.[1-7]$/.test(value) ? value : "7.1";
+}
+
 function handleChannelVarietyBridgeMessage(event) {
   const frame = findChannelVarietyFrameForSource(event.source);
   const message = event.data;
@@ -569,81 +852,318 @@ function getFrameTargetOrigin(frame) {
   }
 }
 
+function ensureExportPanelFrame() {
+  if (exportPanelFrame) {
+    return exportPanelFrame;
+  }
+
+  const frame = document.createElement("iframe");
+  frame.className = "export-panel-host-frame";
+  frame.dataset.exportPanelFrame = "true";
+  frame.title = "VSM7 export panel";
+  frame.setAttribute("aria-hidden", "true");
+  frame.src = "./design-previews/export-panel.html?host=vsm7&embed=1&v=20260724-pptxgenjs";
+  exportPanelFrame = frame;
+  document.body.appendChild(frame);
+  return frame;
+}
+
+function handleExportBridgeMessage(event) {
+  const frame = ensureExportPanelFrame();
+  const message = event.data;
+
+  if (
+    event.source !== frame.contentWindow
+    || !message
+    || typeof message !== "object"
+    || message.api !== 1
+    || !message.evt
+  ) {
+    return;
+  }
+
+  if (message.evt === "ready") {
+    exportPanelReady = true;
+    syncExportPanelSkin();
+    flushExportPanelQueue();
+    return;
+  }
+
+  if (message.evt === "needViewModel") {
+    sendExportViewModel(message.stepId, message.tileId);
+    return;
+  }
+
+  if (message.evt === "export") {
+    void handleExportIntent(message);
+    return;
+  }
+
+  if (message.evt === "cancel") {
+    setExportPanelActive(false);
+  }
+}
+
+function openExportPanel(stepId, tileId, scope = "tile", origin = "tile") {
+  const normalizedTileId = normalizeExportTileId(tileId);
+  const vm = buildExportViewModel(stepId, normalizedTileId, { origin, scope });
+  if (!vm) {
+    return;
+  }
+
+  setExportPanelActive(true);
+  postToExportPanel({ cmd: "setViewModel", stepId, tileId: normalizedTileId, vm });
+  syncExportPanelSkin();
+  postToExportPanel({ cmd: "open", stepId, tileId: normalizedTileId, scope, origin });
+}
+
+function openStep7ExportPanel() {
+  const frame = document.querySelector("[data-step7-frame]");
+  if (!(frame instanceof HTMLIFrameElement)) {
+    return;
+  }
+
+  syncStep7Frame(frame);
+  const vm = buildExportViewModel("step7", "all", {
+    origin: "step",
+    scope: "step"
+  });
+  postToStep7Frame(frame, {
+    cmd: "openExport",
+    ...(vm ? { vm } : {})
+  });
+}
+
+function sendExportViewModel(stepId, tileId) {
+  const normalizedTileId = normalizeExportTileId(tileId);
+  const vm = buildExportViewModel(stepId, normalizedTileId);
+  if (!vm) {
+    postToExportPanel({
+      cmd: "exportError",
+      message: "This export target is not available yet."
+    });
+    return;
+  }
+
+  postToExportPanel({ cmd: "setViewModel", stepId, tileId: normalizedTileId, vm });
+}
+
+function buildExportViewModel(stepId, tileId, target = {}) {
+  return getExportViewModel(workspace, getExportAppState(), {
+    stepId,
+    tileId,
+    ...target
+  });
+}
+
+function normalizeExportTileId(tileId) {
+  return tileId == null || tileId === "" ? null : tileId;
+}
+
+function getExportAppState() {
+  return {
+    selectedSctIds: [...selectedSctMergeIds],
+    today: new Date().toISOString().slice(0, 10)
+  };
+}
+
+async function handleExportIntent(intent) {
+  try {
+    saveNow();
+    if (isStep6PanelExportIntent(intent)) {
+      const artifact = await buildStep6PanelExport(intent);
+      downloadBrowserBlob(artifact.blob, artifact.filename);
+      postToExportPanel({
+        cmd: "exportReady",
+        requestId: intent.requestId,
+        downloadName: artifact.filename
+      });
+      window.setTimeout(() => setExportPanelActive(false), 120);
+      return;
+    }
+
+    const artifact = exportExportIntent(workspace, intent);
+    postToExportPanel({
+      cmd: "exportReady",
+      requestId: intent.requestId,
+      downloadName: artifact.filename
+    });
+    window.setTimeout(() => setExportPanelActive(false), 120);
+  } catch (error) {
+    postToExportPanel({
+      cmd: "exportError",
+      requestId: intent?.requestId,
+      message: error?.message || "The export failed."
+    });
+  }
+}
+
+function isStep6PanelExportIntent(intent) {
+  return intent?.api === 1
+    && intent.stepId === "step6"
+    && ["step6-e2e", "step6-channels"].includes(normalizeExportTileId(intent.tileId));
+}
+
+async function buildStep6PanelExport(intent) {
+  const tileId = normalizeExportTileId(intent.tileId);
+
+  if (tileId === "step6-e2e") {
+    return buildStep6E2EPanelExport(intent);
+  }
+
+  if (tileId === "step6-channels") {
+    return buildStep6ChannelsPanelExport(intent);
+  }
+
+  throw new Error("This Step VI export target is not available yet.");
+}
+
+async function buildStep6E2EPanelExport(intent) {
+  const requestedFormat = normalizeStep6E2EExportFormat(intent.format);
+  const frameFormat = ["pdf", "pptx"].includes(requestedFormat) ? "png" : requestedFormat;
+  const frame = findPreferredFrame("[data-e2e-frame]");
+  if (!(frame instanceof HTMLIFrameElement)) {
+    throw new Error("The E2E route editor is not ready.");
+  }
+
+  const result = await e2eRouteExportCoordinator.request(
+    frame,
+    frameFormat,
+    ["svg", "png"].includes(requestedFormat) ? intent.filename || "" : ""
+  );
+
+  if (requestedFormat === "pdf" || requestedFormat === "pptx") {
+    const document = await buildE2ERouteDocument(
+      requestedFormat,
+      result.blob,
+      getE2ERouteDocumentContext(frame.dataset.e2eSctId || "")
+    );
+    return {
+      blob: document.blob,
+      filename: exportIntentFilename(intent, document.filename, requestedFormat)
+    };
+  }
+
+  return {
+    blob: result.blob,
+    filename: result.filename || exportIntentFilename(intent, `e2e-route.${requestedFormat}`, requestedFormat)
+  };
+}
+
+async function buildStep6ChannelsPanelExport(intent) {
+  const requestedFormat = normalizeStep6ChannelExportFormat(intent.format);
+  const frame = findPreferredFrame("[data-channel-variety-frame]");
+  if (!(frame instanceof HTMLIFrameElement)) {
+    throw new Error("The communication variety editor is not ready.");
+  }
+
+  const result = await channelVarietyExportCoordinator.request(frame, requestedFormat, intent.filename || "");
+  return {
+    blob: result.blob,
+    filename: result.filename || exportIntentFilename(intent, `communication-variety-check.${requestedFormat}`, requestedFormat)
+  };
+}
+
+function normalizeStep6E2EExportFormat(format) {
+  const value = String(format || "").toLowerCase();
+  if (["svg", "png", "pdf", "pptx"].includes(value)) {
+    return value;
+  }
+
+  throw new Error(`Unsupported E2E route export format: ${format || "unknown"}`);
+}
+
+function normalizeStep6ChannelExportFormat(format) {
+  const value = String(format || "").toLowerCase();
+  if (["svg", "png"].includes(value)) {
+    return value;
+  }
+
+  throw new Error(`Unsupported communication variety export format: ${format || "unknown"}`);
+}
+
+function findPreferredFrame(selector) {
+  const frames = [...document.querySelectorAll(selector)]
+    .filter((frame) => frame instanceof HTMLIFrameElement);
+  return frames.find((frame) => frame.closest(".step1-fullscreen-shell"))
+    || frames.find(isVisibleFrame)
+    || frames[0]
+    || null;
+}
+
+function isVisibleFrame(frame) {
+  return Boolean(frame.getClientRects().length);
+}
+
+function exportIntentFilename(intent, fallback, extension) {
+  const value = String(intent?.filename || "").trim();
+  if (!value) {
+    return fallback;
+  }
+
+  return value.toLowerCase().endsWith(`.${extension}`) ? value : `${value}.${extension}`;
+}
+
+function syncExportPanelSkin() {
+  postToExportPanel({
+    cmd: "setSkin",
+    skin: activeSkin === "command-deck" ? "deck" : "workshop"
+  });
+}
+
+function postToExportPanel(message) {
+  const frame = ensureExportPanelFrame();
+  if (!exportPanelReady) {
+    exportPanelQueue.push(message);
+    return;
+  }
+
+  frame.contentWindow?.postMessage(message, "*");
+}
+
+function flushExportPanelQueue() {
+  const frame = ensureExportPanelFrame();
+  while (exportPanelQueue.length) {
+    frame.contentWindow?.postMessage(exportPanelQueue.shift(), "*");
+  }
+}
+
+function setExportPanelActive(isActive) {
+  const frame = ensureExportPanelFrame();
+  frame.classList.toggle("is-active", Boolean(isActive));
+  frame.setAttribute("aria-hidden", isActive ? "false" : "true");
+
+  if (isActive) {
+    syncExportPanelFrameSize(frame);
+  } else {
+    frame.style.width = "";
+    frame.style.height = "";
+  }
+}
+
+/* Safari heal (belt-and-braces on top of the visibility-based hiding in styles.css): release Safari can
+   leave a previously-hidden iframe's internal viewport at a stale size, so on every open we pin the frame
+   to the LIVE viewport in px — an actual size change forces WebKit to resize the child FrameView — and
+   force a synchronous layout. Kept in sync while open so a mid-open window resize can't go stale either. */
+function syncExportPanelFrameSize(frame) {
+  const root = document.documentElement;
+  frame.style.width = `${root.clientWidth}px`;
+  frame.style.height = `${root.clientHeight}px`;
+  void frame.getBoundingClientRect();
+}
+
+window.addEventListener("resize", () => {
+  if (exportPanelFrame && exportPanelFrame.classList.contains("is-active")) {
+    syncExportPanelFrameSize(exportPanelFrame);
+  }
+});
+
 function scheduleE2ERouteSave() {
   window.clearTimeout(e2eRouteSaveTimer);
   e2eRouteSaveTimer = window.setTimeout(() => {
     e2eRouteSaveTimer = null;
     saveNow();
   }, 180);
-}
-
-async function exportE2ERoute(button) {
-  const section = button.closest(".e2e-route-section");
-  const frame = section?.querySelector("[data-e2e-frame]");
-  const status = section?.querySelector("[data-e2e-export-status]");
-  const requestedFormat = ["svg", "png", "pdf", "pptx"].includes(button.dataset.format)
-    ? button.dataset.format
-    : "svg";
-  const frameFormat = ["pdf", "pptx"].includes(requestedFormat) ? "png" : requestedFormat;
-
-  if (!(frame instanceof HTMLIFrameElement)) {
-    setE2EExportStatus(status, "The route editor is not ready.", true);
-    return;
-  }
-
-  section.querySelector("[data-e2e-export-menu]")?.removeAttribute("open");
-  setE2EExportBusy(section, true);
-  const formatLabel = requestedFormat === "pptx" ? "PowerPoint" : requestedFormat.toUpperCase();
-  setE2EExportStatus(status, `Preparing ${formatLabel}…`);
-
-  try {
-    const result = await e2eRouteExportCoordinator.request(frame, frameFormat);
-    if (requestedFormat === "pdf" || requestedFormat === "pptx") {
-      const document = await buildE2ERouteDocument(
-        requestedFormat,
-        result.blob,
-        getE2ERouteDocumentContext(frame.dataset.e2eSctId || "")
-      );
-      downloadBrowserBlob(document.blob, document.filename);
-    } else {
-      downloadBrowserBlob(result.blob, result.filename || `e2e-route.${requestedFormat}`);
-    }
-    setE2EExportStatus(status, `${formatLabel} downloaded.`);
-  } catch (error) {
-    setE2EExportStatus(status, error?.message || "The route export failed.", true);
-  } finally {
-    setE2EExportBusy(section, false);
-  }
-}
-
-async function exportChannelVariety(button) {
-  const section = button.closest(".channel-variety-section");
-  const frame = section?.querySelector("[data-channel-variety-frame]");
-  const status = section?.querySelector("[data-channel-variety-export-status]");
-  const format = button.dataset.format === "png" ? "png" : "svg";
-
-  if (!(frame instanceof HTMLIFrameElement)) {
-    setE2EExportStatus(status, "The communication variety editor is not ready.", true);
-    return;
-  }
-
-  section.querySelector("[data-channel-variety-export-menu]")?.removeAttribute("open");
-  section.querySelectorAll('[data-action="export-channel-variety"]').forEach((exportButton) => {
-    exportButton.disabled = true;
-  });
-  setE2EExportStatus(status, `Preparing ${format.toUpperCase()}…`);
-
-  try {
-    const result = await channelVarietyExportCoordinator.request(frame, format);
-    downloadBrowserBlob(result.blob, result.filename || `communication-variety-check.${format}`);
-    setE2EExportStatus(status, `${format.toUpperCase()} downloaded.`);
-  } catch (error) {
-    setE2EExportStatus(status, error?.message || "The communication variety export failed.", true);
-  } finally {
-    section.querySelectorAll('[data-action="export-channel-variety"]').forEach((exportButton) => {
-      exportButton.disabled = false;
-    });
-  }
 }
 
 function getE2ERouteDocumentContext(taskId) {
@@ -667,22 +1187,6 @@ function getE2ERouteDocumentContext(taskId) {
     routeName: model?.meta?.name || "E2E Process Robustness Check",
     findings
   };
-}
-
-function setE2EExportBusy(section, busy) {
-  section?.querySelectorAll('[data-action="export-e2e-route"]').forEach((button) => {
-    button.disabled = busy;
-  });
-  section?.querySelector("[data-e2e-export-menu]")?.setAttribute("aria-busy", String(busy));
-}
-
-function setE2EExportStatus(status, message, isError = false) {
-  if (!(status instanceof HTMLElement)) {
-    return;
-  }
-
-  status.textContent = message;
-  status.classList.toggle("is-error", isError);
 }
 
 function downloadBrowserBlob(blob, filename) {
@@ -911,8 +1415,15 @@ function renderTopbarMenu() {
       <div class="topbar-menu-panel">
         <button class="ghost-button ${activeView === "start" ? "is-active" : ""}" data-action="navigate" data-view="start">Start</button>
         <button class="ghost-button ${activeView === "projects" ? "is-active" : ""}" data-action="navigate" data-view="projects">Projects</button>
-        <button class="ghost-button" data-action="export-project-report">Report</button>
-        <button class="ghost-button" data-action="export-project-json">Archive</button>
+        <button
+          class="ghost-button topbar-export-button"
+          data-action="open-export-panel"
+          data-export-step="app"
+          data-export-scope="step"
+          data-export-origin="app"
+          title="Export whole project (Word report / JSON archive)"
+          aria-label="Export whole project"
+        >⬇ Export project</button>
       </div>
     </details>
   `;
@@ -1006,99 +1517,95 @@ function renderFocusFullscreenLayer() {
     return renderStep1FullscreenLayer();
   }
 
-  if (hasGenericFocusMode(activeView)) {
-    return renderGenericFocusFullscreenLayer();
-  }
-
-  return "";
+  return renderHostTileFullscreenLayer();
 }
 
 function renderStep1FullscreenLayer() {
   const tileCount = getStep1FullscreenTileCount(workspace, activeStep1Subpage);
   const safeTileIndex = clampStep1FullscreenTile(activeStep1FullscreenTile, tileCount);
-  const canMoveBack = canMoveStep1Fullscreen("prev", safeTileIndex, tileCount);
-  const canMoveForward = canMoveStep1Fullscreen("next", safeTileIndex, tileCount);
 
   return `
-    <section class="step1-fullscreen-overlay" aria-label="Step I fullscreen focus mode">
-      <button class="fullscreen-exit-button" data-action="step1-fullscreen-close" title="Exit fullscreen focus mode" aria-label="Exit fullscreen focus mode">x</button>
-      ${renderStep1Fullscreen(workspace, activeStep1Subpage, safeTileIndex)}
-      <div class="fullscreen-nav-controls" aria-label="Fullscreen tile navigation">
-        <button class="ghost-button" data-action="step1-fullscreen-prev" ${canMoveBack ? "" : "disabled"}>Back</button>
-        <span>${safeTileIndex + 1} / ${tileCount}</span>
-        <button class="primary-button" data-action="step1-fullscreen-next" ${canMoveForward ? "" : "disabled"}>Forward</button>
-      </div>
+    <section class="step1-fullscreen-overlay is-tile-fullscreen" aria-label="Fullscreen workshop tile">
+      <button class="fullscreen-exit-button" data-action="tile-fullscreen-close" title="Exit fullscreen tile" aria-label="Exit fullscreen tile">x</button>
+      ${renderStep1FullscreenTile(workspace, activeStep1Subpage, safeTileIndex)}
     </section>
   `;
 }
 
-function renderGenericFocusFullscreenLayer() {
-  const tileCount = getGenericFocusTileCount(workspace, activeView, getGenericFocusContext());
-  const safeTileIndex = clampFocusTile(activeGenericFocusTile, tileCount);
-  const canMoveBack = canMoveGenericFocus("prev", safeTileIndex, tileCount);
-  const canMoveForward = canMoveGenericFocus("next", safeTileIndex, tileCount);
+function renderHostTileFullscreenLayer() {
+  const tile = renderHostTileFullscreenContent();
+
+  if (!tile) {
+    return "";
+  }
 
   return `
-    <section class="step1-fullscreen-overlay" aria-label="${escapeAttr(getGenericFocusStepTitle(activeView))} fullscreen focus mode">
-      <button class="fullscreen-exit-button" data-action="focus-fullscreen-close" title="Exit fullscreen focus mode" aria-label="Exit fullscreen focus mode">x</button>
-      ${renderGenericFocusFullscreen(workspace, activeView, safeTileIndex, getGenericFocusContext())}
-      <div class="fullscreen-nav-controls" aria-label="Fullscreen tile navigation">
-        <button class="ghost-button" data-action="focus-fullscreen-prev" ${canMoveBack ? "" : "disabled"}>Back</button>
-        <span>${safeTileIndex + 1} / ${tileCount}</span>
-        <button class="primary-button" data-action="focus-fullscreen-next" ${canMoveForward ? "" : "disabled"}>Forward</button>
-      </div>
+    <section class="step1-fullscreen-overlay is-tile-fullscreen" aria-label="Fullscreen workshop tile">
+      <button class="fullscreen-exit-button" data-action="tile-fullscreen-close" title="Exit fullscreen tile" aria-label="Exit fullscreen tile">x</button>
+      ${tile}
     </section>
   `;
+}
+
+function renderHostTileFullscreenContent() {
+  if (activeView === "overview") {
+    return renderOverviewFullscreenTile(workspace, activeHostFullscreenTile);
+  }
+
+  if (activeView === "step2") {
+    return renderStep2FullscreenTile(workspace, activeHostFullscreenTile);
+  }
+
+  if (activeView === "step3") {
+    return renderStep3FullscreenTile(workspace, taskSources, {
+      selectedSctId,
+      selectedSctMergeIds: [...selectedSctMergeIds],
+      sctPriorityFilter,
+      sctSourceFilter
+    }, activeHostFullscreenTile);
+  }
+
+  if (activeView === "step4" && activeHostFullscreenTile === "contribution-matrix") {
+    return renderStep4FullscreenTile(workspace, { sctPriorityFilter, sctSourceFilter });
+  }
+
+  if (activeView === "step5") {
+    return renderStep5FullscreenTile(workspace, {
+      activeStep5System,
+      sctPriorityFilter,
+      sctSourceFilter,
+      vsmPaneVisible: vsmFramePaneVisibility.step5
+    }, activeHostFullscreenTile);
+  }
+
+  if (activeView === "step6") {
+    return renderStep6FullscreenTile(workspace, {
+      selectedSctId: selectedStep6SctId
+    }, activeHostFullscreenTile);
+  }
+
+  if (activeView === "implementation") {
+    return renderImplementationFullscreenTile(workspace, activeHostFullscreenTile);
+  }
+
+  return "";
 }
 
 function clampStep1FullscreenTile(tileIndex, tileCount) {
   return Math.min(Math.max(Number(tileIndex) || 0, 0), Math.max(tileCount - 1, 0));
 }
 
-function clampFocusTile(tileIndex, tileCount) {
-  return Math.min(Math.max(Number(tileIndex) || 0, 0), Math.max(tileCount - 1, 0));
-}
-
-function getGenericFocusContext() {
-  return {
-    taskSources,
-    vsmSystems,
-    selectedSctId,
-    selectedSctMergeIds: [...selectedSctMergeIds],
-    sctPriorityFilter,
-    sctSourceFilter,
-    activeStep5System,
-    vsmPaneVisible: vsmFramePaneVisibility.step5,
-    selectedStep6SctId
-  };
-}
-
-function canMoveStep1Fullscreen(direction, tileIndex, tileCount) {
-  const subpageIndex = getActiveStep1SubpageIndex();
-
-  if (direction === "prev") {
-    return tileIndex > 0 || subpageIndex > 0;
-  }
-
-  return tileIndex < tileCount - 1 || subpageIndex < step1Subpages.length - 1 || focusStepOrder.length > 0;
-}
-
-function getActiveStep1SubpageIndex() {
-  return Math.max(0, step1Subpages.findIndex((subpage) => subpage.id === activeStep1Subpage));
-}
-
-function canMoveGenericFocus(direction, tileIndex, tileCount) {
-  const stepIndex = getActiveGenericFocusIndex();
-
-  if (direction === "prev") {
-    return tileIndex > 0 || stepIndex > 0 || activeView === focusStepOrder[0];
-  }
-
-  return tileIndex < tileCount - 1 || stepIndex < focusStepOrder.length - 1;
-}
-
-function getActiveGenericFocusIndex() {
-  return Math.max(0, focusStepOrder.findIndex((viewId) => viewId === activeView));
+function supportsHostTileFullscreen(viewId) {
+  return [
+    "overview",
+    "step1",
+    "step2",
+    "step3",
+    "step4",
+    "step5",
+    "step6",
+    "implementation"
+  ].includes(viewId);
 }
 
 function headerContextItem(label, value) {
@@ -1111,7 +1618,11 @@ function headerContextItem(label, value) {
 }
 
 function renderSaveIndicator() {
-  return `<span class="save-indicator ${saveStatus.toLowerCase().startsWith("saved") ? "is-saved" : "is-saving"}" data-save-indicator>${escapeHtml(saveStatus)}</span>`;
+  return `<span
+    class="save-indicator ${isSavedStatus(saveStatus) ? "is-saved" : "is-saving"}"
+    data-save-indicator
+    title="${escapeAttr(repository.description || "")}"
+  >${escapeHtml(saveStatus)}</span>`;
 }
 
 function renderNavigation() {
@@ -1173,8 +1684,9 @@ function renderActiveView(projects) {
     projects: () => renderProjectManagement(workspace, projects, selectedOrganizationId),
     overview: () => renderOverview(workspace),
     step1: () => renderStep1(workspace, activeStep1Subpage),
-    step2: () => renderStep2(workspace),
+    step2: () => renderStep2(workspace, activeStep2Subpage),
     step3: () => renderStep3(workspace, taskSources, vsmSystems, {
+      activeSubpage: activeStep3Subpage,
       selectedSctId: isFocusFullscreen ? "" : selectedSctId,
       selectedSctMergeIds: [...selectedSctMergeIds],
       sctPriorityFilter,
@@ -1196,29 +1708,6 @@ function renderActiveView(projects) {
   };
 
   return (views[activeView] || views.overview)();
-}
-
-function renderTopbarFocusButton() {
-  const canOpenFocusMode = activeView === "step1" || hasGenericFocusMode(activeView);
-  if (!canOpenFocusMode || isFocusFullscreen) {
-    return "";
-  }
-
-  const action = activeView === "step1" ? "step1-fullscreen-open" : "focus-fullscreen-open";
-  const label = activeView === "step1"
-    ? "Open fullscreen focus mode for Step I"
-    : `Open fullscreen focus mode for ${getGenericFocusStepTitle(activeView)}`;
-
-  return `
-    <button
-      class="topbar-focus-button"
-      data-action="${escapeAttr(action)}"
-      title="Open fullscreen focus mode"
-      aria-label="${escapeAttr(label)}"
-    >
-      <span class="fullscreen-corners" aria-hidden="true"><span></span></span>
-    </button>
-  `;
 }
 
 function navLabel(step) {
@@ -1290,7 +1779,7 @@ function getNextAction() {
       segmentation: { label: "Continue with Key Buying Criteria", subpage: "criteria" },
       criteria: { label: "Continue with Six Pack Fields", subpage: "six-pack" },
       "six-pack": { label: "Continue with Evaluation", subpage: "evaluation" },
-      evaluation: { label: "Continue with Manageability", view: "step2" }
+      evaluation: { label: "Continue with Variety Assessment", view: "step2", subpage: "assessment" }
     };
     const next = nextSubpages[activeStep1Subpage];
     return next?.subpage
@@ -1298,9 +1787,30 @@ function getNextAction() {
       : { action: "navigate", ...next };
   }
 
+  if (activeView === "step3") {
+    const nextSubpages = {
+      signals: { label: "Continue with Complexity Drivers", subpage: "drivers" },
+      drivers: { label: "Continue with SCT Register", subpage: "register" },
+      register: { label: "Continue with Central/Decentral", view: "step4" }
+    };
+    const next = nextSubpages[activeStep3Subpage];
+    return next?.subpage
+      ? { action: "step3-subpage", ...next }
+      : { action: "navigate", ...next };
+  }
+
+  if (activeView === "step2") {
+    const nextSubpages = {
+      assessment: { label: "Continue with Steering Challenges", subpage: "challenges" },
+      challenges: { label: "Continue with SCT Input Signals", view: "step3", subpage: "signals" }
+    };
+    const next = nextSubpages[activeStep2Subpage];
+    return next?.subpage
+      ? { action: "step2-subpage", ...next }
+      : { action: "navigate", ...next };
+  }
+
   const nextByView = {
-    step2: { label: "Continue with SCTs", view: "step3" },
-    step3: { label: "Continue with Central/Decentral", view: "step4" },
     step4: { label: "Continue with Design Steering System", view: "step5" },
     step5: { label: "Continue with Channels", view: "step6" },
     step6: { label: "Continue with Representation", view: "step7" },
@@ -1449,12 +1959,14 @@ function handleAction(button) {
 
   if (action === "select-skin") {
     activeSkin = applySkinPreference(button.dataset.skin);
+    syncExportPanelSkin();
     render();
     return;
   }
 
   if (action === "reset-skin") {
     activeSkin = applySkinPreference(defaultSkin);
+    syncExportPanelSkin();
     render();
     return;
   }
@@ -1472,6 +1984,24 @@ function handleAction(button) {
     return;
   }
 
+  if (action === "step2-subpage") {
+    activeStep2Subpage = normalizeStep2Subpage(button.dataset.subpage || "assessment");
+    isFocusFullscreen = false;
+    activeHostFullscreenTile = "";
+    render();
+    window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    return;
+  }
+
+  if (action === "step3-subpage") {
+    activeStep3Subpage = normalizeStep3Subpage(button.dataset.subpage || "signals");
+    isFocusFullscreen = false;
+    activeHostFullscreenTile = "";
+    render();
+    window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    return;
+  }
+
   if (action === "step6-subpage") {
     activeStep6Subpage = button.dataset.subpage === "channels" ? "channels" : "e2e";
     renderAfterInPlaceAction();
@@ -1480,91 +2010,58 @@ function handleAction(button) {
 
   if (action === "navigate") {
     activeView = button.dataset.view || "overview";
+    const navigatesToStep2Subpage = activeView === "step2" && button.dataset.subpage;
+    const navigatesToStep3Subpage = activeView === "step3" && button.dataset.subpage;
+    if (activeView === "step2" && button.dataset.subpage) {
+      activeStep2Subpage = normalizeStep2Subpage(button.dataset.subpage);
+    }
+    if (activeView === "step3" && button.dataset.subpage) {
+      activeStep3Subpage = normalizeStep3Subpage(button.dataset.subpage);
+    }
     isSettingsOpen = false;
-    if (activeView !== "step1" && !hasGenericFocusMode(activeView)) {
+    if (!supportsHostTileFullscreen(activeView)) {
       isFocusFullscreen = false;
+      activeHostFullscreenTile = "";
     }
     render();
+    if (navigatesToStep2Subpage || navigatesToStep3Subpage) {
+      window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    }
     return;
   }
 
-  if (action === "step1-fullscreen-open") {
-    activeStep1FullscreenTile = 0;
+  if (action === "step1-tile-fullscreen-open") {
+    activeStep1Subpage = button.dataset.subpage || activeStep1Subpage;
+    activeStep1FullscreenTile = clampStep1FullscreenTile(button.dataset.tile, getStep1FullscreenTileCount(workspace, activeStep1Subpage));
+    activeHostFullscreenTile = "";
     isFocusFullscreen = true;
     isSettingsOpen = false;
     render();
     return;
   }
 
-  if (action === "step1-fullscreen-close") {
-    isFocusFullscreen = false;
-    render();
-    return;
-  }
-
-  if (action === "step1-fullscreen-prev") {
-    moveStep1Fullscreen("prev");
-    render();
-    return;
-  }
-
-  if (action === "step1-fullscreen-next") {
-    moveStep1Fullscreen("next");
-    render();
-    return;
-  }
-
-  if (action === "focus-fullscreen-open") {
-    activeGenericFocusTile = 0;
+  if (action === "host-tile-fullscreen-open" || action === "step4-tile-fullscreen-open") {
+    activeHostFullscreenTile = button.dataset.tile || "contribution-matrix";
     isFocusFullscreen = true;
     isSettingsOpen = false;
     render();
     return;
   }
 
-  if (action === "focus-fullscreen-close") {
+  if (action === "tile-fullscreen-close" || action === "step1-fullscreen-close") {
     isFocusFullscreen = false;
+    activeHostFullscreenTile = "";
     render();
     return;
   }
 
-  if (action === "focus-fullscreen-prev") {
-    moveGenericFocus("prev");
-    render();
+  if (action === "open-export-panel") {
+    openExportPanel(button.dataset.exportStep, button.dataset.exportTile, button.dataset.exportScope || "tile", button.dataset.exportOrigin || "tile");
     return;
   }
 
-  if (action === "focus-fullscreen-next") {
-    moveGenericFocus("next");
-    render();
-    return;
-  }
-
-  if (action === "export-project-json") {
-    saveNow();
-    exportProjectJson(workspace);
-    return;
-  }
-
-  if (action === "export-project-report") {
-    saveNow();
-    exportProjectReport(workspace);
-    return;
-  }
-
-  if (action === "export-step") {
-    saveNow();
-    exportStepOutcome(workspace, button.dataset.step);
-    return;
-  }
-
-  if (action === "export-e2e-route") {
-    void exportE2ERoute(button);
-    return;
-  }
-
-  if (action === "export-channel-variety") {
-    void exportChannelVariety(button);
+  if (action === "open-step7-export") {
+    openStep7ExportPanel();
     return;
   }
 
@@ -1611,14 +2108,6 @@ function handleAction(button) {
       isFocusFullscreen = false;
       render();
     }
-    return;
-  }
-
-  if (action === "reset-variety-slider" && button.dataset.path) {
-    setPath(workspace, button.dataset.path, "50");
-    markStep2SliderAssessed(workspace, button.dataset.path);
-    saveNow();
-    render();
     return;
   }
 
@@ -1981,81 +2470,6 @@ function addRecursionSameLevel(level) {
   workspace.step1.recursionLevels.sort((left, right) => recursionRank(left.level) - recursionRank(right.level));
 }
 
-function moveStep1Fullscreen(direction) {
-  const tileCount = getStep1FullscreenTileCount(workspace, activeStep1Subpage);
-
-  if (direction === "prev") {
-    if (activeStep1FullscreenTile > 0) {
-      activeStep1FullscreenTile = clampStep1FullscreenTile(activeStep1FullscreenTile - 1, tileCount);
-      return;
-    }
-
-    const previousSubpage = step1Subpages[getActiveStep1SubpageIndex() - 1];
-    if (!previousSubpage) {
-      return;
-    }
-
-    activeStep1Subpage = previousSubpage.id;
-    activeStep1FullscreenTile = getStep1FullscreenTileCount(workspace, activeStep1Subpage) - 1;
-    return;
-  }
-
-  if (activeStep1FullscreenTile < tileCount - 1) {
-    activeStep1FullscreenTile = clampStep1FullscreenTile(activeStep1FullscreenTile + 1, tileCount);
-    return;
-  }
-
-  const nextSubpage = step1Subpages[getActiveStep1SubpageIndex() + 1];
-  if (!nextSubpage) {
-    if (focusStepOrder.length > 0) {
-      activeView = focusStepOrder[0];
-      activeGenericFocusTile = 0;
-    }
-    return;
-  }
-
-  activeStep1Subpage = nextSubpage.id;
-  activeStep1FullscreenTile = 0;
-}
-
-function moveGenericFocus(direction) {
-  const tileCount = getGenericFocusTileCount(workspace, activeView, getGenericFocusContext());
-
-  if (direction === "prev") {
-    if (activeGenericFocusTile > 0) {
-      activeGenericFocusTile = clampFocusTile(activeGenericFocusTile - 1, tileCount);
-      return;
-    }
-
-    const previousStep = focusStepOrder[getActiveGenericFocusIndex() - 1];
-    if (!previousStep) {
-      if (activeView === focusStepOrder[0]) {
-        activeView = "step1";
-        activeStep1Subpage = step1Subpages.at(-1)?.id || "evaluation";
-        activeStep1FullscreenTile = getStep1FullscreenTileCount(workspace, activeStep1Subpage) - 1;
-      }
-      return;
-    }
-
-    activeView = previousStep;
-    activeGenericFocusTile = getGenericFocusTileCount(workspace, activeView, getGenericFocusContext()) - 1;
-    return;
-  }
-
-  if (activeGenericFocusTile < tileCount - 1) {
-    activeGenericFocusTile = clampFocusTile(activeGenericFocusTile + 1, tileCount);
-    return;
-  }
-
-  const nextStep = focusStepOrder[getActiveGenericFocusIndex() + 1];
-  if (!nextStep) {
-    return;
-  }
-
-  activeView = nextStep;
-  activeGenericFocusTile = 0;
-}
-
 function nextRecursionLevel(direction) {
   const values = workspace.step1.recursionLevels
     .map((item) => String(item.level || "").match(/^R([+-]\d+|0)$/)?.[1])
@@ -2179,7 +2593,7 @@ function confirmRename() {
       saveNow();
     } else {
       renameWorkspace(repository, id, name);
-      setSaveStatus("Saved just now");
+      setSaveStatus(savedStatusText());
     }
   } else {
     saveNow();
@@ -2193,7 +2607,7 @@ function confirmRename() {
     }
 
     selectedOrganizationId = id;
-    setSaveStatus("Saved just now");
+    setSaveStatus(savedStatusText());
   }
 
   renameTarget = null;
@@ -2217,7 +2631,7 @@ function deleteProjectFromButton(button) {
   }
 
   selectedOrganizationId = workspace.organization.id || "";
-  setSaveStatus("Saved just now");
+  setSaveStatus(savedStatusText());
   render();
 }
 
@@ -2238,7 +2652,7 @@ function deleteOrganizationFromButton(button) {
   }
 
   selectedOrganizationId = workspace.organization.id || "";
-  setSaveStatus("Saved just now");
+  setSaveStatus(savedStatusText());
   render();
 }
 
@@ -2252,7 +2666,7 @@ function saveNow() {
   window.clearTimeout(saveTimer);
   try {
     saveWorkspace(repository, workspace);
-    setSaveStatus("Saved just now");
+    setSaveStatus(savedStatusText());
   } catch (error) {
     console.error(error);
     const message = error?.name === "StorageQuotaError"
@@ -2268,8 +2682,17 @@ function setSaveStatus(status) {
   if (indicator) {
     indicator.textContent = status;
     indicator.classList.toggle("is-saving", status.toLowerCase().startsWith("saving"));
-    indicator.classList.toggle("is-saved", status.toLowerCase().startsWith("saved"));
+    indicator.classList.toggle("is-saved", isSavedStatus(status));
   }
+}
+
+function savedStatusText() {
+  return repository.isFileBacked ? "File saved" : "Saved just now";
+}
+
+function isSavedStatus(status) {
+  const normalized = String(status || "").toLowerCase();
+  return normalized.startsWith("saved") || normalized.startsWith("file saved");
 }
 
 function updateVarietyPreview(target) {

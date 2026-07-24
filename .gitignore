@@ -1,5 +1,18 @@
+# Canonical workshop/project data stays local and is backed up separately.
+VSM7-Workspaces/
+
+# Installed dependencies and generated test output.
 node_modules/
-dist/
-build/
-coverage/
-*.log
+**/node_modules/
+test-results/
+**/test-results/
+
+# Machine-local editor and agent settings.
+.claude/settings.local.json
+
+# macOS and Python-generated files.
+.DS_Store
+**/.DS_Store
+__pycache__/
+**/__pycache__/
+*.py[cod]

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { inflateRawSync } from "node:zlib";
 import {
   buildE2ERouteDocument,
   buildE2ERoutePdfBytes,
@@ -45,23 +46,32 @@ test("PDF export builds a real image-backed document with findings", () => {
   assert.match(text, /%%EOF\n$/);
 });
 
-test("PowerPoint export contains the route image and a findings slide", () => {
-  const bytes = buildE2ERoutePptxBytes(tinyPng, 1, 1, context);
-  const entries = readStoredZip(bytes);
+test("PowerPoint export contains the route image and a findings slide", async () => {
+  const bytes = await buildE2ERoutePptxBytes(tinyPng, 1, 1, context);
+  const entries = readZip(bytes);
 
   assert.ok(entries.has("[Content_Types].xml"));
   assert.ok(entries.has("ppt/presentation.xml"));
   assert.ok(entries.has("ppt/slides/slide1.xml"));
   assert.ok(entries.has("ppt/slides/slide2.xml"));
-  assert.deepEqual(entries.get("ppt/media/route.png"), tinyPng);
+  const slideMaster = decode(entries.get("ppt/slideMasters/slideMaster1.xml"));
+  assert.match(slideMaster, /<p:sldLayoutId id="2147483649" r:id="rId1"\/>/);
+  assert.doesNotMatch(slideMaster, /<p:sldLayoutId id="1"/);
+  const theme = decode(entries.get("ppt/theme/theme1.xml"));
+  assert.equal(countStyleMatrixChildren(theme, "fillStyleLst", "(?:solidFill|gradFill|blipFill|pattFill|grpFill|noFill)"), 3);
+  assert.equal(countStyleMatrixChildren(theme, "lnStyleLst", "ln"), 3);
+  assert.equal(countStyleMatrixChildren(theme, "effectStyleLst", "effectStyle"), 3);
+  assert.equal(countStyleMatrixChildren(theme, "bgFillStyleLst", "(?:solidFill|gradFill|blipFill|pattFill|grpFill|noFill)"), 3);
+  const routeImage = [...entries.entries()].find(([name]) => /^ppt\/media\/.*\.png$/.test(name))?.[1];
+  assert.deepEqual(routeImage, tinyPng);
   assert.match(decode(entries.get("ppt/slides/slide1.xml")), /Order-to-delivery robustness route/);
   assert.match(decode(entries.get("ppt/slides/slide2.xml")), /Bottleneck \/ High/);
   assert.match(decode(entries.get("ppt/slides/slide2.xml")), /Approval queue exceeds/);
 });
 
-test("PowerPoint export omits the findings slide when the route has none", () => {
-  const bytes = buildE2ERoutePptxBytes(tinyPng, 1, 1, { ...context, findings: [] });
-  const entries = readStoredZip(bytes);
+test("PowerPoint export omits the findings slide when the route has none", async () => {
+  const bytes = await buildE2ERoutePptxBytes(tinyPng, 1, 1, { ...context, findings: [] });
+  const entries = readZip(bytes);
 
   assert.equal(entries.has("ppt/slides/slide2.xml"), false);
   assert.match(decode(entries.get("ppt/presentation.xml")), /<p:sldIdLst><p:sldId /);
@@ -87,7 +97,7 @@ test("browser document orchestration returns correct MIME types and filenames", 
   await assert.rejects(buildE2ERouteDocument("docx", pngBlob, context), /Unsupported route document format/);
 });
 
-function readStoredZip(bytes) {
+function readZip(bytes) {
   const source = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   const entries = new Map();
   const decoder = new TextDecoder();
@@ -98,13 +108,21 @@ function readStoredZip(bytes) {
     if (view.getUint32(0, true) !== 0x04034b50) {
       break;
     }
+    const compressionMethod = view.getUint16(8, true);
     const compressedSize = view.getUint32(18, true);
     const nameLength = view.getUint16(26, true);
     const extraLength = view.getUint16(28, true);
     const nameStart = offset + 30;
     const dataStart = nameStart + nameLength + extraLength;
     const name = decoder.decode(source.slice(nameStart, nameStart + nameLength));
-    entries.set(name, source.slice(dataStart, dataStart + compressedSize));
+    const compressed = source.slice(dataStart, dataStart + compressedSize);
+    if (compressionMethod === 0) {
+      entries.set(name, compressed);
+    } else if (compressionMethod === 8) {
+      entries.set(name, Uint8Array.from(inflateRawSync(compressed)));
+    } else {
+      throw new Error(`Unsupported ZIP compression method ${compressionMethod} for ${name}`);
+    }
     offset = dataStart + compressedSize;
   }
 
@@ -113,4 +131,9 @@ function readStoredZip(bytes) {
 
 function decode(bytes) {
   return new TextDecoder().decode(bytes);
+}
+
+function countStyleMatrixChildren(xml, listTag, childTag) {
+  const list = xml.match(new RegExp(`<a:${listTag}>([\\s\\S]*?)</a:${listTag}>`))?.[1] || "";
+  return (list.match(new RegExp(`<a:${childTag}(?:\\s|>)`, "g")) || []).length;
 }

@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step VII · Reuse Inspector — meeting charter concept</title>
+<style>
+* { box-sizing: border-box; }
+:root{
+  --bg:#f3f6f5; --surface:#ffffff; --surface-soft:#f7fafb; --panel:#eef3f2;
+  --line:#cfdad5; --line-strong:#9dafaa; --ink:#1f2935; --muted:#667482;
+  --blue:#3386bf; --blue-soft:#e8f2f9; --teal:#178275; --teal-soft:#e5f3ef;
+  --green:#63b16c; --green-soft:#e8f5e9; --amber:#efbd45; --amber-soft:#fff5d8;
+  --red:#df6353; --red-soft:#fbe8e5; --violet:#8171b4; --violet-soft:#eeeaf8;
+  --magenta:#c0399f; --magenta-soft:#fbe6f2;
+  --s1:#34404c; --s2:#efbd45; --s3:#df6353; --s3star:#b85045; --s4:#63b16c; --s5:#9dbed2;
+  --radius:9px; --shadow:0 4px 16px rgba(20,40,40,.08);
+}
+body[data-skin="deck"]{
+  --bg:#0f1822; --surface:#172430; --surface-soft:#1c2c3a; --panel:#13202b;
+  --line:#2c3f4f; --line-strong:#3d5568; --ink:#eaf1f6; --muted:#90a6b6;
+  --blue:#57aee6; --blue-soft:#16303f; --teal:#3fb9a6; --teal-soft:#123330;
+  --green:#6fd07c; --green-soft:#14331c; --amber:#f1c75c; --amber-soft:#33290c;
+  --red:#f0796a; --red-soft:#341615; --violet:#a596d8; --violet-soft:#241f37;
+  --magenta:#e070c0; --magenta-soft:#33112a;
+  --s5:#7fa9c8; --shadow:0 6px 22px rgba(0,0,0,.45);
+}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px}
+h1,h2,h3,h4{margin:0}
+.wrap{max-width:1160px;margin:0 auto;padding:16px 18px 60px}
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
+.brand{display:flex;align-items:center;gap:10px}
+.badge{width:34px;height:34px;border-radius:9px;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:900;font-size:13px}
+.crumb{font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.title{font-size:18px;font-weight:800}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--surface);color:var(--muted);padding:6px 11px;font-weight:700;font-size:12px;cursor:pointer}
+.seg button.on{background:var(--blue);color:#fff}
+.subhead{font-size:12.5px;color:var(--muted);margin:2px 0 12px}
+.subhead b{color:var(--ink)}
+/* layout */
+.split{display:grid;grid-template-columns:236px 1fr;gap:16px;align-items:start}
+.panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}
+/* meeting list */
+.listhead{display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid var(--line)}
+.listhead select,.listhead input{border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);font-size:11.5px;padding:5px 7px}
+.list{padding:6px}
+.lirow{border-radius:8px;padding:8px 10px 8px 12px;cursor:pointer;position:relative;border-left:4px solid var(--line);margin-bottom:3px}
+.lirow:hover{background:var(--surface-soft)}
+.lirow.on{background:var(--blue-soft)}
+.lirow.mix-graph{border-left-color:var(--violet)}
+.lirow.mix-here{border-left-color:var(--amber)}
+.lirow.mix-auth{border-left-color:var(--teal)}
+.lirow .nm{font-weight:750;font-size:12.5px;line-height:1.2}
+.lirow .mt{font-size:10.5px;color:var(--muted);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.lirow.newrow{border-left:1px dashed var(--line-strong);color:var(--muted);font-weight:700;font-size:12px;display:flex;align-items:center;gap:6px}
+.cadchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:20px;padding:0 7px;font-size:10px;color:var(--muted)}
+/* charter */
+.charter{padding:0}
+.ch-top{padding:13px 15px;border-bottom:1px solid var(--line)}
+.ch-name{font-size:16px;font-weight:800;border:1px solid transparent;border-radius:7px;padding:3px 6px;margin:-3px -6px 0;width:100%;background:transparent;color:var(--ink)}
+.ch-name:hover{border-color:var(--line)}
+.ch-name:focus{outline:none;border-color:var(--blue);background:var(--surface)}
+.ch-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:9px}
+.scopechip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line-strong);border-radius:7px;padding:3px 8px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;background:var(--surface)}
+.cad-ed{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted)}
+.cad-ed select,.cad-ed input{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font-size:11px;padding:3px 5px}
+.cad-ed.ghosty{opacity:.6}
+.tag{display:inline-flex;align-items:center;gap:3px;border-radius:5px;padding:1px 6px;font-size:9.5px;font-weight:800;letter-spacing:.2px;border:1px solid}
+.tag.derived{background:var(--violet-soft);border-color:var(--violet);color:var(--violet)}
+.tag.cand{background:var(--amber-soft);border-color:var(--amber);color:#9a6a06}
+.tag.human{background:var(--teal-soft);border-color:var(--teal);color:var(--teal)}
+.tag.acc{background:var(--green-soft);border-color:var(--green);color:var(--green)}
+body[data-skin="deck"] .tag.cand{color:var(--amber)}
+.algbtn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--magenta);color:var(--magenta);background:transparent;border-radius:7px;padding:3px 9px;font-size:11px;font-weight:800;cursor:pointer}
+.algbtn.on{background:var(--magenta);color:#fff}
+/* bands */
+.band{border-top:1px solid var(--line)}
+.band>summary{list-style:none;padding:9px 15px;cursor:pointer;display:flex;align-items:center;gap:9px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);user-select:none}
+.band>summary::-webkit-details-marker{display:none}
+.band[open]>summary{color:var(--ink)}
+.band>summary .gly{font-size:13px;width:16px;text-align:center}
+.band>summary .cnt{margin-left:auto;font-weight:700;color:var(--muted);font-size:10.5px}
+.hk{border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:9px;font-weight:800;color:var(--muted)}
+.rail{display:flex;flex-wrap:wrap;gap:6px;padding:2px 15px 12px}
+.bandhint{font-size:11px;color:var(--muted);padding:0 15px 11px;margin-top:-2px}
+.agenda-ta{width:100%;min-height:76px;border:1px solid var(--line);border-left:3px dotted var(--teal);border-radius:8px;padding:9px 11px;font:inherit;font-size:12.5px;line-height:1.55;background:var(--surface);color:var(--ink);resize:vertical}
+.agenda-ta:focus{outline:none;border-color:var(--blue);border-left-color:var(--teal)}
+.bandhint.warn{color:#b8402f;font-weight:600}
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 8px 4px 6px;font-size:11.5px;font-weight:600;position:relative;overflow:hidden;padding-left:10px;max-width:340px}
+.chip.editable{cursor:pointer}
+.chip.editable:hover{background:var(--surface-soft)}
+.chip .lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px}
+.chip.ghost{opacity:.6;border-style:dashed;border-color:var(--line-strong)}
+.chip.o-graph{border-left:3px solid var(--violet)}
+.chip.o-here{border-left:3px dashed var(--amber)}
+.chip.o-auth{border-left:3px dotted var(--teal)}
+.chip.o-loop{border-left:3px solid var(--s3)}
+.chip.o-alg{border-left:3px solid var(--magenta)}
+.chip .src{font-size:9px;font-weight:800;letter-spacing:.3px;border:1px solid var(--line);border-radius:4px;padding:1px 4px;color:var(--muted)}
+.chip .sub{font-size:9.5px;color:var(--muted);font-weight:600}
+.chip .ratify{color:var(--muted);font-size:12px;font-weight:900;cursor:pointer;margin-left:2px}
+.chip .rm{color:var(--muted);font-size:12px;cursor:pointer;opacity:.6}
+.chip .rm:hover{opacity:1;color:var(--red)}
+.chip .sys{display:inline-grid;place-items:center;min-width:22px;height:16px;border-radius:4px;color:#fff;font-size:9px;font-weight:900}
+.sys.S1{background:var(--s1)} .sys.S2{background:var(--s2);color:#3a2c00} .sys.S3{background:var(--s3)} .sys.S3star{background:var(--s3star)} .sys.S4{background:var(--s4)} .sys.S5{background:var(--s5);color:#1c2a33}
+.roletype{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:20px;padding:1px 7px;font-size:9.5px;font-weight:700;color:var(--muted);cursor:pointer;background:var(--surface-soft)}
+.addpill{display:inline-flex;align-items:center;gap:5px;border:1px dashed var(--line-strong);border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:700;color:var(--muted);cursor:pointer;background:transparent}
+.addpill:hover{color:var(--blue);border-color:var(--blue)}
+.addpill .hk{border-color:var(--line-strong)}
+/* use editor */
+.use-ed{display:flex;flex-wrap:wrap;gap:7px;align-items:center;width:100%;margin:4px 0 2px;padding:8px 10px;border:1px solid var(--line);border-left:3px solid var(--violet);border-radius:8px;background:var(--surface-soft)}
+.use-ed .f{display:flex;flex-direction:column;gap:2px}
+.use-ed label{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.use-ed input,.use-ed select{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font-size:11px;padding:3px 6px;min-width:78px}
+.use-ed .go{border:0;background:var(--blue);color:#fff;border-radius:6px;padding:5px 10px;font-weight:800;font-size:11px;cursor:pointer;align-self:end}
+/* picker */
+.picker{position:absolute;width:308px;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;box-shadow:var(--shadow);z-index:60;padding:7px;font-size:12px}
+.picker input.q{width:100%;border:1px solid var(--line);border-radius:7px;background:var(--surface-soft);color:var(--ink);font-size:12.5px;padding:7px 9px;margin-bottom:6px}
+.pk-lab{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:4px 6px 2px}
+.pk-row{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:7px;cursor:pointer}
+.pk-row .rlbl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk-row .rc{font-size:9.5px;color:var(--muted)}
+.pk-row.act{background:var(--blue-soft)}
+.pk-row .dot{width:9px;height:9px;border-radius:3px;flex:none}
+.dot.graph{background:var(--violet)} .dot.here{background:var(--amber)} .dot.auth{background:var(--teal)} .dot.loop{background:var(--s3)}
+.pk-none{font-size:11px;color:var(--muted);padding:6px 8px 2px;font-style:italic}
+.pk-create{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:7px;cursor:pointer;border:1px dashed var(--line-strong);color:var(--muted);font-weight:700;margin-top:2px}
+.pk-create.act{background:var(--amber-soft);border-color:var(--amber);color:#9a6a06}
+.dupewarn{display:flex;align-items:center;gap:6px;font-size:10.5px;background:var(--amber-soft);border:1px solid var(--amber);color:#8a5e08;border-radius:7px;padding:5px 8px;margin:4px 0 2px}
+.dupewarn b{font-weight:800}
+.pk-hr{border:0;border-top:1px solid var(--line);margin:6px 2px}
+.pk-crumb{font-size:10px;color:var(--muted);padding:2px 6px 6px;display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.pk-crumb .st{border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.pk-crumb .st.on{border-color:var(--blue);color:var(--blue)}
+.defmark{font-size:8px;vertical-align:super;color:var(--muted);font-weight:800;margin-left:2px}
+.scopefold{font-size:10.5px;color:var(--blue);cursor:pointer;padding:5px 8px;font-weight:700}
+/* misc */
+.warnbox{margin:0 15px 11px;border:2px solid var(--red);background:var(--red-soft);border-radius:8px;padding:8px 11px;font-size:11.5px;font-weight:600;color:#b8402f;display:flex;gap:8px;align-items:flex-start}
+.regen{margin:11px 15px 0;border:1px solid var(--line-strong);background:var(--panel);border-radius:8px;padding:8px 11px;font-size:11.5px;display:flex;gap:9px;align-items:center}
+.regen .dotg{width:9px;height:9px;border-radius:3px;background:var(--violet);flex:none}
+.regen button{margin-left:auto;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:7px;padding:4px 10px;font-weight:700;font-size:11px;cursor:pointer}
+.hintstrip{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--muted);padding:10px 15px;border-top:1px solid var(--line);background:var(--surface-soft);border-radius:0 0 var(--radius) var(--radius)}
+.hintstrip kbd{border:1px solid var(--line-strong);border-radius:4px;padding:0 5px;font-size:10px;font-weight:800;background:var(--surface)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:14px;padding:11px 13px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
+.legend .sw{display:inline-block;width:20px;height:0;border-top-width:3px;border-top-style:solid;vertical-align:middle;margin-right:5px}
+.note{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5}
+.note b{color:var(--ink)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:8px 14px;border-radius:9px;font-size:12px;box-shadow:var(--shadow);z-index:90;display:flex;gap:12px;align-items:center;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1;pointer-events:auto}
+.toast button{border:0;background:transparent;color:var(--amber);font-weight:800;cursor:pointer;font-size:12px}
+</style>
+</head>
+<body data-skin="workshop">
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="badge">V7</div>
+      <div>
+        <div class="crumb">VSM · Step VII — Representation · 7.6</div>
+        <div class="title">Meetings &amp; Agendas — the Reuse Inspector</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="panel">
+      <div class="listhead">
+        <select id="scopeSel" title="Scope (R0/SIF is the default lens)">
+          <option value="sif" selected>Scope: R0 / SIF</option>
+          <option value="all">Scope: all levels</option>
+        </select>
+      </div>
+      <div class="list" id="meetList"></div>
+    </div>
+    <div class="panel charter" id="charter"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ============================ SAMPLE MODEL (R0/SIF) ============================ */
+const VESSELS={
+  'r-pf':{name:'Portfolio Steering Lead',type:'role',sys:'S3'},
+  'r-co':{name:'Coordination Officer',type:'role',sys:'S2'},
+  'r-au':{name:'Audit Lead',type:'role',sys:'S3star'},
+  'r-st':{name:'Strategy & Foresight Lead',type:'role',sys:'S4'},
+  'r-id':{name:'Identity & Norms Custodian',type:'role',sys:'S5'},
+  'r-rc':{name:'Resource Controller',type:'role',sys:'S3'},
+  'r-mob':{name:'MD Mobility',type:'role',sys:'S1'},
+  'r-ind':{name:'MD Industrial Technology',type:'role',sys:'S1'},
+  'f-fin':{name:'Finance',type:'function',sys:'S3'},
+  'f-str':{name:'Strategy Office',type:'function',sys:'S4'}
+};
+const CONTRIB={
+  c1:{did:'SCT-001',name:'Set group strategy & foresight',sys:'S4'},
+  c2:{did:'SCT-002',name:'Allocate resources across units',sys:'S3'},
+  c3:{did:'SCT-003',name:'Coordinate cross-unit delivery',sys:'S2'},
+  c4:{did:'SCT-004',name:'Audit operational ground truth',sys:'S3star'},
+  c6:{did:'SCT-006',name:'Run algedonic escalation',sys:'S5'}
+};
+// RASIC: contrib -> {vessel:letter}
+const RASIC={
+  c1:{'r-st':'A','r-pf':'R','r-id':'C','r-mob':'I','f-str':'S'},
+  c2:{'r-rc':'A','r-pf':'R','r-mob':'S','r-ind':'S','r-co':'C','f-fin':'S'},
+  c3:{'r-co':'A','r-mob':'R','r-ind':'R','r-pf':'I'},
+  c4:{'r-au':'A'},
+  c6:{'r-id':'A','r-pf':'A','r-mob':'R'}   // deliberately two A's → double-accountability demo
+};
+const METRICDEFS={
+  'k-dct':{text:'Decision cycle time',n:4},'k-afc':{text:'Audit findings closed (%)',n:2},
+  'k-srl':{text:'Strategy refresh lead time',n:1},'k-ru':{text:'Resource utilization',n:3},
+  'k-ci':{text:'Coordination incidents',n:2}
+};
+const ARTIFACTS={'a-dl':'Decision log','a-rm':'Roadmap','a-ar':'Audit report','a-db':'Dashboard','a-bl':'Backlog','a-rr':'Risk register','a-sop':'Strategy one-pager'};
+const TOOLS={'t-wm':{t:'Wardley Mapping',prod:'a-sop'},'t-okr':{t:'OKR review',prod:''},'t-retro':{t:'Retrospective',prod:''},'t-aw':{t:'Audit walk',prod:'a-ar'},'t-sp':{t:'Scenario planning',prod:'a-rm'}};
+const LOOPS={'L-h34':{label:'S4–S3 homeostat',sys:'S4'},'L-s2':{label:'S2 coordination',sys:'S2'},'L-d':{label:'S3–S1 resource',sys:'S3'},'L-b':{label:'S3* audit',sys:'S3star'},'L-g':{label:'S5–S1 algedonic',sys:'S5'}};
+// which SCT carries which reusable KPI defs / artifacts (7.3 aspects)
+const SCT_KPI={c1:['k-srl'],c2:['k-ru'],c3:['k-ci'],c4:['k-afc'],c6:['k-dct']};
+const SCT_ART={c1:['a-sop','a-rm'],c2:['a-rr','a-db'],c3:['a-db'],c4:['a-ar'],c6:['a-dl']};
+
+// meetings — each steers some contributions; loop from prov
+const MEET_SEED={
+  'm-strat':{name:'Quarterly Strategy Review',cad:{f:'Quarterly',n:1,d:120},contribs:['c1'],loop:'L-h34',alg:false,state:'accepted'},
+  'm-res':{name:'Resource Bargain Council',cad:{f:'Monthly',n:1,d:90},contribs:['c2'],loop:'L-d',alg:false,state:'accepted'},
+  'm-coord':{name:'Weekly Coordination Sync',cad:{f:'Weekly',n:1,d:45},contribs:['c3'],loop:'L-s2',alg:false,state:'accepted'},
+  'm-audit':{name:'Audit Walk',cad:{f:'Twice a year',n:1,d:60},contribs:['c4'],loop:'L-b',alg:false,state:'candidate'},
+  'm-alg':{name:'Algedonic Escalation Line',cad:{f:'On signal',n:1,d:0},contribs:['c6'],loop:'L-g',alg:true,state:'candidate'}
+};
+
+/* ============================ CHARTER STATE (derive-then-refine) ============================ */
+const ROLETYPES=['chair','decision owner','contributor','consulted','informed','escalation owner'];
+const RASIC2ROLE={A:'decision owner',R:'contributor',S:'contributor',C:'consulted',I:'informed'};
+const AGENDA_SEED={
+  'm-strat':'• Review environment scan & unit performance\n• Decide the strategy refresh\n• Set S4↔S3 priorities',
+  'm-res':'• Review resource requests\n• Bargain grants ↔ accountability\n• Confirm allocations',
+  'm-coord':'• Surface cross-unit clashes\n• Agree anti-oscillation actions',
+  'm-audit':'• Walk the operational ground truth\n• Log audit findings',
+  'm-alg':'• Handle the raised signal\n• Escalate to S5 if unresolved'
+};
+const charters={};
+let localSeq=0; const localId=p=>`local:${p}-${++localSeq}`;
+
+function deriveCharter(mid){
+  const s=MEET_SEED[mid];
+  const ch={mid,name:s.name,cad:{...s.cad},alg:s.alg,state:s.state,scope:'R0',agenda:AGENDA_SEED[mid]||'',
+    steering:[], participants:[], inputs:[], outputs:[], tools:[], measures:[], rights:[], loops:[], escalation:[]};
+  // steering = the meeting's contributions (solid — they are the spine)
+  s.contribs.forEach(cid=>ch.steering.push({ref:cid,label:CONTRIB[cid].did+' '+CONTRIB[cid].name,sys:CONTRIB[cid].sys,origin:'graph',sub:'steers '+cid,ghost:false}));
+  // participants derived from RASIC (ghost)
+  const seenP={};
+  s.contribs.forEach(cid=>{ Object.keys(RASIC[cid]||{}).forEach(v=>{ if(seenP[v])return; seenP[v]=1;
+    const L=RASIC[cid][v]; ch.participants.push({ref:v,label:VESSELS[v].name,sys:VESSELS[v].sys,origin:'graph',sub:'RASIC · '+L+' on '+cid,roleType:RASIC2ROLE[L]||'contributor',ghost:true}); }); });
+  // measures derived from SCT KPI defs (ghost, definition-only until a use is set)
+  s.contribs.forEach(cid=>(SCT_KPI[cid]||[]).forEach(k=>ch.measures.push({defRef:k,label:METRICDEFS[k].text,origin:'graph',sub:'from '+CONTRIB[cid].did,ghost:true,use:null})));
+  // outputs derived from SCT artifacts (ghost)
+  s.contribs.forEach(cid=>(SCT_ART[cid]||[]).forEach(a=>ch.outputs.push({ref:a,label:ARTIFACTS[a],origin:'graph',sub:'from '+CONTRIB[cid].did,ghost:true})));
+  // decision rights: one A -> ghost right; two A -> both ghost + warn
+  s.contribs.forEach(cid=>{ const as=Object.keys(RASIC[cid]||{}).filter(v=>RASIC[cid][v]==='A');
+    as.forEach(v=>ch.rights.push({decision:'Approve '+CONTRIB[cid].name.toLowerCase(),owner:v,ownerLabel:VESSELS[v].name,affected:cid,affectedLabel:CONTRIB[cid].did,origin:'graph',ghost:true}));
+    ch._dblA=(ch._dblA||[]); if(as.length>1)ch._dblA.push(cid); });
+  // loop from prov (ghost)
+  if(s.loop)ch.loops.push({ref:s.loop,label:LOOPS[s.loop].label,sys:LOOPS[s.loop].sys,relation:'supports',origin:'graph',sub:'from Step VI prov',ghost:true});
+  // escalation for algedonic meeting
+  if(s.alg)ch.escalation.push({label:'Pain signal → S5',origin:'graph',sub:'algedonic',ghost:true});
+  return ch;
+}
+function ch(mid){ return charters[mid]||(charters[mid]=deriveCharter(mid)); }
+
+/* ============================ RENDER: meeting list ============================ */
+let selMid=null;
+function originBlend(c){
+  const all=[...c.participants,...c.inputs,...c.outputs,...c.tools,...c.measures,...c.rights,...c.loops];
+  if(!all.length)return '';
+  const cnt={graph:0,here:0,auth:0}; all.forEach(x=>cnt[x.origin==='here'?'here':x.origin==='auth'?'auth':'graph']++);
+  const top=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
+  return 'mix-'+top;
+}
+function renderList(){
+  const scope=$('#scopeSel').value;
+  const rows=Object.keys(MEET_SEED).map(mid=>{
+    const c=ch(mid); const on=mid===selMid;
+    const ghostN=[...c.participants,...c.measures,...c.outputs,...c.rights,...c.loops].filter(x=>x.ghost).length;
+    return `<div class="lirow ${originBlend(c)} ${on?'on':''}" data-mid="${mid}">
+      <div class="nm">${esc(c.name)}</div>
+      <div class="mt"><span class="cadchip">⟲ ${esc(c.cad.f)}</span>${c.alg?'<span style="color:var(--magenta);font-weight:800">▲</span>':''}${ghostN?`<span title="derived, awaiting ratification">◌ ${ghostN} to confirm</span>`:'<span class="tag acc">ratified</span>'}</div>
+    </div>`;
+  }).join('');
+  $('#meetList').innerHTML=rows+`<div class="lirow newrow" data-new="1">＋ new meeting</div>`;
+}
+
+/* ============================ RENDER: charter ============================ */
+const BANDS=[
+  {k:'steering',label:'Steering · SCT contributions',gly:'◆',hk:'s',verb:'contribution'},
+  {k:'participants',label:'Participants',gly:'◐',hk:'p',verb:'participant'},
+  {k:'agenda',label:'Agenda',gly:'≡',hk:'a',verb:'',special:'agenda'},
+  {k:'inputs',label:'Inputs',gly:'▽',hk:'i',verb:'input'},
+  {k:'outputs',label:'Outputs & decisions',gly:'△',hk:'o',verb:'output'},
+  {k:'tools',label:'Tools / methods',gly:'⚙',hk:'t',verb:'tool'},
+  {k:'measures',label:'Measures · KPIs',gly:'◷',hk:'m',verb:'measure'},
+  {k:'rights',label:'Decision rights',gly:'⚖',hk:'d',verb:'decision right'},
+  {k:'loops',label:'Step VI loops',gly:'↺',hk:'l',verb:'loop'},
+  {k:'escalation',label:'Escalation / algedonic',gly:'▲',hk:'A',verb:'path'}
+];
+function sysChip(sys){ return sys?`<span class="sys ${sys}">${sys.replace('star','*').replace('S','S')}</span>`:''; }
+function originClass(o){ return o==='here'?'o-here':o==='auth'?'o-auth':'o-graph'; }
+function originTag(o){ return o==='here'?'<span class="tag cand">on this meeting</span>':o==='auth'?'<span class="tag human">typed here</span>':'<span class="tag derived">from graph</span>'; }
+
+function chipHTML(bandKey,x,i){
+  const gh=x.ghost?'ghost':'';
+  const stripe = bandKey==='loops'?'o-loop':bandKey==='escalation'?'o-alg':originClass(x.origin);
+  let inner='';
+  if(x.sys)inner+=sysChip(x.sys);
+  if(bandKey==='steering'&&x.ref)inner+=`<span class="src">${esc(CONTRIB[x.ref]?CONTRIB[x.ref].did:'')}</span>`;
+  if((bandKey==='inputs'||bandKey==='outputs')&&x.kind==='meeting')inner+=`<span class="src" title="a meeting — communication triggers communication">⟲ meeting</span>`;
+  inner+=`<span class="lbl" title="${esc(x.label)}">${esc(x.label)}</span>`;
+  // measures: definition→use rendering
+  if(bandKey==='measures'){
+    if(x.use){ inner=sysChip('')+`<span class="lbl">${esc(x.label)} · ${esc(x.use.target)} · ${esc(x.use.freq)}${x.use.source?' · '+esc(ARTIFACTS[x.use.source]||x.use.source):''}</span><span class="tag cand">· target authored</span>`; }
+    else { inner+=`<span class="defmark">def</span><span class="sub">set a local use →</span>`; }
+  }
+  if(bandKey==='participants'){ inner+=`<span class="sub">${esc(x.sub||'')}</span><span class="roletype" data-rt="${i}">${esc(x.roleType)} ▾</span>`; }
+  else if(bandKey==='rights'){ inner=`<span class="lbl" title="${esc(x.decision)}">${esc(x.decision)}</span><span class="sub">⇒ ${esc(x.ownerLabel)} · ${esc(x.affectedLabel)}</span>`; }
+  else if(bandKey==='loops'){ inner=`<span class="lbl">${esc(x.relation)} ${esc(x.label)}</span><span class="sub">${esc(x.sub||'')}</span>`; }
+  else if(x.sub && bandKey!=='participants' && bandKey!=='measures'){ inner+=`<span class="sub">${esc(x.sub)}</span>`; }
+  else if(bandKey!=='participants'&&bandKey!=='measures'&&bandKey!=='rights'&&bandKey!=='loops'){ inner+=' '+originTag(x.origin); }
+  const rat=x.ghost?`<span class="ratify" data-ratify="${bandKey}:${i}" title="Ratify (↵)">↵</span>`:'';
+  const flip=(bandKey==='inputs'||bandKey==='outputs')?`<span class="rm" data-flip="${bandKey}:${i}" title="Move to ${bandKey==='inputs'?'outputs':'inputs'}">⇄</span>`:'';
+  const rm=`<span class="rm" data-rm="${bandKey}:${i}" title="Remove">✕</span>`;
+  const editable=['measures','rights','loops','inputs','outputs'].includes(bandKey)?'editable':'';
+  const ttl=bandKey==='measures'?'title="Click to edit the local use"':bandKey==='rights'?'title="Click to edit"':bandKey==='loops'?'title="Click to switch supports ↔ closes"':'';
+  return `<span class="chip ${stripe} ${gh} ${editable}" data-chip="${bandKey}:${i}" ${ttl}>${inner}${rat}${flip}${rm}</span>`;
+}
+function bandCount(c,k){ return (c[k]||[]).length; }
+function renderCharter(){
+  if(!selMid){ $('#charter').innerHTML='<div style="padding:40px 20px;text-align:center;color:var(--muted)">Select a meeting to open its charter.</div>'; return; }
+  const c=ch(selMid);
+  let bands='';
+  BANDS.forEach(b=>{
+    if(b.special==='agenda'){   // free-authored bullet list — not a reuse rail
+      const lines=(c.agenda||'').split('\n').filter(l=>l.trim());
+      bands+=`<details class="band" data-band="agenda">
+        <summary><span class="gly">${b.gly}</span>${esc(b.label)}<span class="hk">a</span><span class="cnt">${lines.length}</span></summary>
+        <div class="rail" style="display:block" data-rail="agenda"><textarea id="agendaText" class="agenda-ta" placeholder="• Type the agenda…">${esc(c.agenda||'')}</textarea></div>
+      </details>`;
+      return;
+    }
+    const items=c[b.k]||[];
+    let rail=items.map((x,i)=>chipHTML(b.k,x,i)).join('');
+    rail+=`<span class="addpill" data-add="${b.k}">＋ ${esc(b.verb)} <span class="hk">${b.hk}</span></span>`;
+    let warn='';
+    if(b.k==='rights'&&c._dblA&&c._dblA.length){ warn=`<div class="warnbox">⚠ <div>Two vessels are <b>Accountable</b> on ${c._dblA.map(x=>CONTRIB[x].did).join(', ')} — resolve in 7.2 or ratify the exception.</div></div>`; }
+    bands+=`<details class="band" ${b.k==='participants'||b.k==='measures'?'open':''} data-band="${b.k}">
+      <summary><span class="gly">${b.gly}</span>${esc(b.label)}<span class="hk">${b.hk}</span><span class="cnt">${items.length}</span></summary>
+      ${warn}
+      <div class="rail" data-rail="${b.k}">${rail}</div>
+    </details>`;
+  });
+  $('#charter').innerHTML=`
+    <div class="ch-top">
+      <input class="ch-name" id="chName" value="${esc(c.name)}" spellcheck="false">
+      <div class="ch-meta">
+        <span class="scopechip" title="Scope">⌖ R0 · SIF</span>
+        <span class="cad-ed">⟲
+          <select id="cadF">${['Weekly','Fortnightly','Monthly','Quarterly','Twice a year','On signal'].map(f=>`<option ${f===c.cad.f?'selected':''}>${f}</option>`).join('')}</select>
+          every <input id="cadN" type="number" min="1" value="${c.cad.n}" style="width:44px">·
+          <input id="cadD" type="number" min="0" value="${c.cad.d}" style="width:52px"> min
+        </span>
+        <button class="algbtn ${c.alg?'on':''}" id="algBtn">▲ algedonic</button>
+        <span class="tag ${c.state==='accepted'?'acc':'cand'}">${c.state}</span>
+      </div>
+    </div>
+    ${bands}`;
+}
+function render(){ renderList(); renderCharter(); }
+
+/* ============================ THE ONE RANKED PICKER ============================ */
+let picker=null, pkState=null;
+const undoStack=[];
+
+function poolFor(bandKey,c){
+  // returns [{ref,label,sub,origin,sys?,rc?,suggested?}]
+  const used=new Set((c[bandKey]||[]).map(x=>x.ref||x.defRef));
+  if(bandKey==='steering'){ return Object.keys(CONTRIB).filter(id=>!used.has(id)).map(id=>({ref:id,label:CONTRIB[id].did+' '+CONTRIB[id].name,sys:CONTRIB[id].sys,origin:'graph',sub:CONTRIB[id].did,suggested:true})); }
+  if(bandKey==='participants'){
+    const sugg=new Set(); c.steering.forEach(s=>Object.keys(RASIC[s.ref]||{}).forEach(v=>sugg.add(v)));
+    return Object.keys(VESSELS).filter(v=>!used.has(v)).map(v=>({ref:v,label:VESSELS[v].name,sys:VESSELS[v].sys,origin:'graph',sub:VESSELS[v].type,suggested:sugg.has(v)}));
+  }
+  if(bandKey==='measures'){ return Object.keys(METRICDEFS).filter(k=>!used.has(k)).map(k=>({ref:k,label:METRICDEFS[k].text,origin:'graph',rc:METRICDEFS[k].n,def:true,suggested:c.steering.some(s=>(SCT_KPI[s.ref]||[]).includes(k))})); }
+  if(bandKey==='inputs'||bandKey==='outputs'){
+    const sugg=new Set(); c.steering.forEach(s=>(SCT_ART[s.ref]||[]).forEach(a=>sugg.add(a)));
+    // cross-link: outputs of sibling meetings become suggested INPUTS
+    let cross={};
+    if(bandKey==='inputs'){ Object.keys(MEET_SEED).forEach(m=>{ if(m===selMid)return; (ch(m).outputs||[]).forEach(o=>{ if(o.ref)cross[o.ref]='output of '+MEET_SEED[m].name; }); }); }
+    const artRows=Object.keys(ARTIFACTS).filter(a=>!used.has(a)).map(a=>({ref:a,label:ARTIFACTS[a],kind:'artifact',origin:sugg.has(a)?'graph':'here',sub:cross[a]||'',suggested:sugg.has(a)||!!cross[a]}));
+    // a meeting can be an input/output of a meeting — communication triggers communication
+    const meetRows=Object.keys(MEET_SEED).filter(m=>m!==selMid&&!used.has(m)).map(m=>({ref:m,label:MEET_SEED[m].name,kind:'meeting',origin:'graph',sub:bandKey==='inputs'?'meeting triggers this':'this triggers a meeting',suggested:false}));
+    return [...artRows,...meetRows];
+  }
+  if(bandKey==='tools'){ return Object.keys(TOOLS).filter(t=>!used.has(t)).map(t=>({ref:t,label:TOOLS[t].t,origin:'here',sub:TOOLS[t].prod?'→ '+ARTIFACTS[TOOLS[t].prod]:'',suggested:false})); }
+  if(bandKey==='rights'){ return []; } // rights use the mini-composer (create path)
+  if(bandKey==='escalation'){ return [{ref:'esc-s5',label:'Pain signal → S5',origin:'graph',suggested:true}]; }
+  return [];
+}
+
+function openPicker(bandKey,anchor){
+  closePicker();
+  const c=ch(selMid); const b=BANDS.find(x=>x.k===bandKey);
+  const pool=poolFor(bandKey,c);
+  pkState={bandKey,pool,query:'',active:0,anchor};
+  picker=document.createElement('div'); picker.className='picker';
+  document.body.appendChild(picker);
+  positionPicker(anchor);
+  drawPicker();
+  const q=$('.q',picker); q.focus();
+  q.addEventListener('input',()=>{ pkState.query=q.value; pkState.active=0; drawPicker(); });
+  q.addEventListener('keydown',pickerKey);
+}
+function positionPicker(anchor){
+  const r=anchor.getBoundingClientRect();
+  let top=r.bottom+window.scrollY+6, left=r.left+window.scrollX;
+  picker.style.top=top+'px'; picker.style.left=left+'px';
+  requestAnimationFrame(()=>{ const pr=picker.getBoundingClientRect();
+    if(pr.right>window.innerWidth-8)picker.style.left=(window.innerWidth-pr.width-8+window.scrollX)+'px';
+    if(pr.bottom>window.innerHeight-8)picker.style.top=(r.top+window.scrollY-pr.height-6)+'px'; });
+}
+function fuzzy(pool,q){ if(!q)return pool.slice(); const s=q.toLowerCase(); return pool.filter(x=>x.label.toLowerCase().includes(s)); }
+function dupeCheck(pool,q){ if(!q)return null; const s=q.toLowerCase().trim(); const words=s.split(/\s+/).filter(w=>w.length>=4);
+  return pool.find(x=>{ const l=x.label.toLowerCase(); return l===s||l.includes(s)||words.some(w=>l.includes(w)); })||null; }
+
+function pickerRows(){
+  const {pool,query,bandKey}=pkState;
+  const filtered=fuzzy(pool,query);
+  const sugg=filtered.filter(x=>x.suggested);
+  const rest=filtered.filter(x=>!x.suggested);
+  const rows=[...sugg,...rest].map(x=>({type:'pick',data:x}));
+  const exact=filtered.some(x=>x.label.toLowerCase()===query.toLowerCase().trim());
+  const canCreate = query.trim() && bandKey!=='loops' && bandKey!=='steering' && !exact;
+  const dupe = canCreate ? dupeCheck(pool,query) : null;
+  if(canCreate) rows.push({type:'create',label:query.trim(),dupe});
+  return {rows,sugCount:sugg.length,filtered};
+}
+function drawPicker(){
+  const {bandKey,query}=pkState;
+  const {rows,sugCount}=pickerRows();
+  const b=BANDS.find(x=>x.k===bandKey);
+  let html=`<input class="q" placeholder="Reuse or create…" value="${esc(query)}"><div class="pk-crumb"><span>Scope: R0 ▾</span></div>`;
+  let idx=0;
+  const picks=rows.filter(r=>r.type==='pick');
+  if(picks.length){
+    html+=sugCount?`<div class="pk-lab">Suggested · from the graph</div>`:`<div class="pk-lab">Matches</div>`;
+    rows.forEach(r=>{
+      if(r.type!=='pick'){ return; }
+      if(idx===sugCount && sugCount>0) html+=`<div class="pk-lab">Matches</div>`;
+      const x=r.data; const act=idx===pkState.active?'act':'';
+      const oc=x.origin==='here'?'here':x.origin==='auth'?'auth':x.def?'graph':'graph';
+      html+=`<div class="pk-row ${act}" data-i="${idx}"><span class="dot ${oc}"></span><span class="rlbl">${esc(x.label)}${x.def?'<span class="defmark">def</span>':''}</span>${x.sub?`<span class="rc">${esc(x.sub)}</span>`:''}${x.rc?`<span class="rc">used ${x.rc}×</span>`:''}</div>`;
+      idx++;
+    });
+  } else if(query.trim()){ html+=`<div class="pk-none">no existing match</div>`; }
+  const createRow=rows.find(r=>r.type==='create');
+  if(createRow){
+    if(createRow.dupe)html+=`<div class="dupewarn">≈ Looks like <b>${esc(createRow.dupe.label)}</b> — reuse it? <span style="margin-left:auto;color:var(--muted)">↑ to pick</span></div>`;
+    html+=`<hr class="pk-hr"><div class="pk-create ${idx===pkState.active?'act':''}" data-create="1">＋ Create new “${esc(createRow.label)}” <span style="margin-left:auto;font-size:9px">authored</span></div>`;
+  }
+  if(bandKey==='loops'&&!query) html+=`<div class="scopefold">loops come from Step VI — pick one to formalise</div>`;
+  picker.innerHTML=html;
+  // reattach input
+  const q=$('.q',picker); q.value=query; placeCaretEnd(q); q.focus();
+  q.addEventListener('input',()=>{ pkState.query=q.value; pkState.active=0; drawPicker(); });
+  q.addEventListener('keydown',pickerKey);
+  picker.querySelectorAll('.pk-row').forEach(el=>el.addEventListener('mousedown',e=>{e.preventDefault();pkState.active=+el.dataset.i;commitPick();}));
+  const cr=$('.pk-create',picker); if(cr)cr.addEventListener('mousedown',e=>{e.preventDefault();commitCreate();});
+  const positioner=pkState.anchor; if(positioner)positionPicker(positioner);
+}
+function placeCaretEnd(el){ try{ const v=el.value; el.value=''; el.value=v; }catch(_){} }
+function rowCount(){ const {rows}=pickerRows(); return rows.length; }
+function pickerKey(e){
+  const {rows}=pickerRows(); const n=rows.length;
+  if(e.key==='ArrowDown'){ e.preventDefault(); pkState.active=Math.min(n-1,pkState.active+1); drawPicker(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); pkState.active=Math.max(0,pkState.active-1); drawPicker(); }
+  else if(e.key==='Enter'){ e.preventDefault();
+    const r=rows[pkState.active]||rows[0];
+    if(!r){ return; }
+    if(r.type==='create'){ commitCreate(); } else { commitPick(); }
+  }
+  else if(e.key==='Escape'){ e.preventDefault(); closePicker(); }
+  else if(e.key==='Tab'){ e.preventDefault(); const bk=pkState.bandKey; const r=rows[pkState.active]||rows[0]; if(r&&r.type==='pick')commitPick(true); else closePicker(); jumpNextBand(bk); }
+}
+function jumpNextBand(bk){ const order=BANDS.map(b=>b.k); const i=order.indexOf(bk); for(let j=i+1;j<order.length;j++){ const nb=order[j]; if(nb==='steering')continue; const pill=document.querySelector(`[data-add="${nb}"]`); if(pill){ const det=pill.closest('details'); if(det&&!det.open)det.open=true; setTimeout(()=>openPicker(nb,pill),0); return; } } }
+
+function commitPick(keepQuietToast){
+  const {rows}=pickerRows(); const bandKey=pkState.bandKey; const r=rows[pkState.active]||rows[0]; if(!r||r.type!=='pick')return;
+  const x=r.data; const c=ch(selMid);
+  addChip(bandKey,x,c);
+  closePicker(); render();
+  if(!keepQuietToast)flash('Reused “'+x.label+'” — solid, provenance stamped', bandKey);
+}
+function commitCreate(){
+  const {rows}=pickerRows(); const bandKey=pkState.bandKey; const cr=rows.find(r=>r.type==='create'); if(!cr)return;
+  const c=ch(selMid);
+  addChip(bandKey,{ref:localId(bandKey),label:cr.label,origin:'auth'},c,true);
+  closePicker(); render();
+  flash('Created “'+cr.label+'” (authored) — becomes reusable once the host mints an id', bandKey);
+}
+function addChip(bandKey,x,c,authored){
+  const origin=authored?'auth':x.origin||'here';
+  if(bandKey==='participants'){ c.participants.push({ref:x.ref,label:x.label,sys:x.sys,origin,sub:authored?'typed here':(x.sub||''),roleType:'contributor',ghost:false}); }
+  else if(bandKey==='measures'){ const m={defRef:x.ref,label:x.label,origin:origin==='auth'?'auth':'graph',sub:x.sub||'',ghost:false,use:{target:'',freq:c.cad.f,source:'',owner:''}}; c.measures.push(m); openUseEditor(c.measures.length-1); }
+  else if(bandKey==='rights'){ c.rights.push(x); }   // rights arrive via the composer (below), fully formed
+  else if(bandKey==='steering'){ c.steering.push({ref:x.ref,label:x.label,sys:x.sys,origin:'graph',sub:'steers '+x.ref,ghost:false}); }
+  else if(bandKey==='loops'){ c.loops.push({ref:x.ref,label:x.label,sys:LOOPS[x.ref]?LOOPS[x.ref].sys:'',relation:'supports',origin:'graph',sub:'linked from Step VI',ghost:false}); }
+  else if(bandKey==='escalation'){ c.escalation.push({label:x.label,origin:'graph',sub:'algedonic',ghost:false}); }
+  else { c[bandKey].push({ref:x.ref,label:x.label,kind:x.kind,origin,sub:authored?'':(x.sub||''),ghost:false});
+    if(bandKey==='tools'&&x.ref&&TOOLS[x.ref]&&TOOLS[x.ref].prod){ const pa=TOOLS[x.ref].prod;   // tool → produces → offer the artifact as an Output (confirm-first, non-blocking)
+      setTimeout(()=>flashAction('“'+x.label+'” produces “'+ARTIFACTS[pa]+'”.','＋ Add to Outputs',()=>{ if(!ch(selMid).outputs.some(o=>o.ref===pa)){ ch(selMid).outputs.push({ref:pa,label:ARTIFACTS[pa],origin:'here',sub:'from '+x.label,ghost:false}); render(); } }),140); } }
+  undoStack.push({bandKey,mid:selMid});
+}
+function closePicker(){ if(picker){picker.remove();picker=null;pkState=null;} }
+document.addEventListener('mousedown',e=>{ if(picker&&!picker.contains(e.target)&&!e.target.closest('[data-add]'))closePicker(); });
+
+/* ============================ KPI USE EDITOR ============================ */
+let useEditIdx=null;
+function openUseEditor(i){ const m=ch(selMid).measures[i]; if(m&&!m.use)m.use={target:'',freq:ch(selMid).cad.f,source:'',owner:''};  // a ghost def has no use yet — init it so clicking sets it
+  useEditIdx=i; render(); setTimeout(()=>{ const el=$('#useTarget'); if(el){el.focus();el.select();} },0); }
+// inject the use editor into the measures rail after render
+const _renderCharter=renderCharter;
+renderCharter=function(){ _renderCharter(); if(useEditIdx!=null&&selMid){ const c=ch(selMid); const m=c.measures[useEditIdx]; if(!m){useEditIdx=null;return;} if(!m.use)m.use={target:'',freq:c.cad.f,source:'',owner:''};
+  const rail=$('[data-rail="measures"]'); if(!rail)return;
+  const ed=document.createElement('div'); ed.className='use-ed';
+  ed.innerHTML=`<div class="f"><label>Metric</label><span style="font-size:11px;font-weight:700">${esc(m.label)} <span class="defmark">def</span></span></div>
+    <div class="f"><label>Target</label><input id="useTarget" placeholder="&lt; 10 days" value="${esc(m.use.target)}"></div>
+    <div class="f"><label>Frequency</label><select id="useFreq">${['Weekly','Monthly','Quarterly','Twice a year'].map(f=>`<option ${f===m.use.freq?'selected':''}>${f}</option>`).join('')}</select></div>
+    <div class="f"><label>Source / description (free)</label><input id="useSrc" list="artdl" placeholder="artifact name — or type freely" value="${esc(m.use.source||'')}"><datalist id="artdl">${Object.keys(ARTIFACTS).map(a=>`<option value="${esc(ARTIFACTS[a])}">`).join('')}</datalist></div>
+    <div class="f"><label>Owner (participant)</label><select id="useOwner"><option value="">—</option>${c.participants.map(p=>`<option value="${p.ref}" ${p.ref===m.use.owner?'selected':''}>${esc(p.label)}</option>`).join('')}</select></div>
+    <button class="go" id="useGo">Add ↵</button>`;
+  rail.appendChild(ed);
+  $('#useTarget').addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();commitUse();} });
+  $('#useGo').addEventListener('click',commitUse);
+}};
+function commitUse(){ const c=ch(selMid); const m=c.measures[useEditIdx]; if(!m)return;
+  m.use.target=$('#useTarget').value||'target TBD'; m.use.freq=$('#useFreq').value; m.use.source=$('#useSrc').value; m.use.owner=$('#useOwner').value; m.ghost=false;
+  useEditIdx=null; render(); flash('Measure set'); }
+
+/* ============================ DECISION-RIGHTS COMPOSER (3-slot inline mini-composer) ============================ */
+let rcPop=null;
+function editRight(i,anchor){ openRightComposer(anchor,i); }   // click a right → edit it
+function openRightComposer(anchor,editIdx){
+  closePicker(); closeRc(); const c=ch(selMid);
+  const cur = editIdx!=null ? c.rights[editIdx] : null;
+  const ownerDefault = cur ? cur.owner : (c.participants.find(p=>p.roleType==='decision owner')||c.participants.find(p=>p.roleType==='chair')||c.participants[0]||{}).ref||'';
+  const affDefault = cur ? cur.affected : (c.steering[0]||{}).ref;
+  rcPop=document.createElement('div'); rcPop.className='picker'; rcPop.style.width='308px';
+  rcPop.innerHTML=`<div class="pk-lab">${cur?'Edit':'New'} decision right</div>
+    <input class="q" id="rcDec" placeholder="Decision — e.g. Approve budget reallocation" value="${cur?esc(cur.decision):''}">
+    <div class="pk-crumb"><span class="st on">decision</span>›<span class="st">owner</span>›<span class="st">affected</span></div>
+    <div style="display:flex;flex-direction:column;gap:5px;padding:2px 4px 4px">
+      <label style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Owner · reuse a participant</label>
+      <select id="rcOwner" style="border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);padding:5px 6px;font-size:12px">${c.participants.length?c.participants.map(p=>`<option value="${p.ref}" ${p.ref===ownerDefault?'selected':''}>${esc(p.label)} · ${esc(p.roleType)}</option>`).join(''):'<option value="">— add a participant first —</option>'}</select>
+      <label style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Affected · a steered contribution</label>
+      <select id="rcAff" style="border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);padding:5px 6px;font-size:12px">${c.steering.map(s=>`<option value="${s.ref}" ${s.ref===affDefault?'selected':''}>${esc(s.label)}</option>`).join('')}</select>
+    </div>
+    <hr class="pk-hr"><div class="pk-create act" id="rcAdd">${cur?'✓ Save':'＋ Add'} decision right <span style="margin-left:auto;font-size:9px">↵</span></div>`;
+  document.body.appendChild(rcPop);
+  const r=anchor.getBoundingClientRect(); rcPop.style.top=(r.bottom+window.scrollY+6)+'px'; rcPop.style.left=(r.left+window.scrollX)+'px';
+  requestAnimationFrame(()=>{ const pr=rcPop.getBoundingClientRect(); if(pr.right>window.innerWidth-8)rcPop.style.left=(window.innerWidth-pr.width-8+window.scrollX)+'px'; if(pr.bottom>window.innerHeight-8)rcPop.style.top=(r.top+window.scrollY-pr.height-6)+'px'; });
+  const dec=$('#rcDec',rcPop); dec.focus(); dec.select();
+  const commit=()=>{ const c2=ch(selMid); const ow=$('#rcOwner',rcPop).value, af=$('#rcAff',rcPop).value;
+    const rec={decision:dec.value.trim()||'Decide',owner:ow,ownerLabel:ow?VESSELS[ow].name:'—',affected:af,affectedLabel:af?CONTRIB[af].did:'—',origin:cur?cur.origin:'auth',ghost:false};
+    if(cur){ c2.rights[editIdx]=rec; } else { c2.rights.push(rec); undoStack.push({bandKey:'rights',mid:selMid}); }
+    closeRc(); render(); flash(cur?'Decision right updated':'Decision right added'); };
+  $('#rcAdd',rcPop).addEventListener('mousedown',e=>{e.preventDefault();commit();});
+  dec.addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();commit();} else if(e.key==='Escape'){e.preventDefault();closeRc();} });
+}
+function toggleLoopRelation(i){ const c=ch(selMid); const l=c.loops[i]; if(!l)return; l.relation=l.relation==='supports'?'closes':'supports'; l.ghost=false; render(); flash('Loop: '+l.relation+' '+l.label); }
+function flipDirection(band,i){ const c=ch(selMid); const arr=c[band]; const x=arr&&arr[i]; if(!x)return; const to=band==='inputs'?'outputs':'inputs'; arr.splice(i,1); x.ghost=false; c[to].push(x); render(); flash('Moved to '+to); }
+function closeRc(){ if(rcPop){rcPop.remove();rcPop=null;} }
+document.addEventListener('mousedown',e=>{ if(rcPop&&!rcPop.contains(e.target)&&!e.target.closest('[data-add="rights"]'))closeRc(); });
+
+/* ============================ INTERACTIONS ============================ */
+function ratify(bandKey,i){ const c=ch(selMid); const x=c[bandKey][i]; if(x){ x.ghost=false; render(); flash('Ratified “'+(x.label||x.decision)+'”',bandKey); } }
+function removeChip(bandKey,i){ const c=ch(selMid); const x=c[bandKey][i]; if(!x)return;
+  if(bandKey==='participants'&&x.origin==='graph'&&x.sub&&x.sub.indexOf('RASIC')>=0){ if(!confirm('“'+x.label+'” is a RASIC fact from 7.2. Remove from this meeting only (mark not-attending)? The 7.2 assignment stays.'))return; }
+  c[bandKey].splice(i,1); render(); }
+
+let rtOpenIdx=null, rtPop=null;
+function openRoleType(i,anchor){ closeRt(); rtOpenIdx=i; const c=ch(selMid);
+  rtPop=document.createElement('div'); rtPop.className='picker'; rtPop.style.width='170px';
+  rtPop.innerHTML=`<div class="pk-lab">Role in meeting</div>`+ROLETYPES.map(rt=>`<div class="pk-row ${c.participants[i].roleType===rt?'act':''}" data-rt="${rt}"><span class="rlbl">${esc(rt)}</span></div>`).join('');
+  document.body.appendChild(rtPop);
+  const r=anchor.getBoundingClientRect(); rtPop.style.top=(r.bottom+window.scrollY+5)+'px'; rtPop.style.left=(r.left+window.scrollX)+'px';
+  rtPop.querySelectorAll('[data-rt]').forEach(el=>el.addEventListener('mousedown',e=>{ e.preventDefault(); const c2=ch(selMid); c2.participants[i].roleType=el.dataset.rt; c2.participants[i].ghost=false; closeRt(); render(); }));
+}
+function closeRt(){ if(rtPop){rtPop.remove();rtPop=null;rtOpenIdx=null;} }
+document.addEventListener('mousedown',e=>{ if(rtPop&&!rtPop.contains(e.target)&&!e.target.closest('[data-rt]'))closeRt(); });
+
+/* delegated clicks */
+document.addEventListener('click',e=>{
+  const mrow=e.target.closest('[data-mid]'); if(mrow){ selMid=mrow.dataset.mid; useEditIdx=null; render(); return; }
+  if(e.target.closest('[data-new]')){ flash('New meeting → reuse an accepted meeting vessel from 7.1, or create one (create is always the last option)'); return; }
+  const add=e.target.closest('[data-add]'); if(add){ if(add.dataset.add==='rights')openRightComposer(add); else openPicker(add.dataset.add,add); return; }
+  const rat=e.target.closest('[data-ratify]'); if(rat){ const [b,i]=rat.dataset.ratify.split(':'); ratify(b,+i); return; }
+  const rm=e.target.closest('[data-rm]'); if(rm){ const [b,i]=rm.dataset.rm.split(':'); removeChip(b,+i); return; }
+  const rt=e.target.closest('[data-rt]'); if(rt&&rt.classList.contains('roletype')){ openRoleType(+rt.dataset.rt,rt); return; }
+  const flip=e.target.closest('[data-flip]'); if(flip){ const [b,i]=flip.dataset.flip.split(':'); flipDirection(b,+i); return; }
+  const chip=e.target.closest('.chip'); if(chip&&chip.dataset.chip&&!e.target.closest('[data-ratify],[data-rm],[data-rt],[data-flip]')){ const [b,i]=chip.dataset.chip.split(':'); const ix=+i;
+    if(b==='measures'){ openUseEditor(ix); return; }              // click a measure → set/edit its local use
+    if(b==='rights'){ editRight(ix,chip); return; }                // click a decision right → re-open composer
+    if(b==='loops'){ toggleLoopRelation(ix); return; }             // click a loop → supports ↔ closes
+    if(chip.classList.contains('ghost')){ ratify(b,ix); return; }  // other ghosts → ratify
+    return; }
+  if(e.target.id==='algBtn'){ const c=ch(selMid); c.alg=!c.alg; render(); return; }
+});
+/* skin is HOST-DRIVEN (Codex's relay) — no standalone toggle; accept both command variants like org-chart/meeting-landscape */
+window.addEventListener('message',e=>{ const m=e.data; if(m&&typeof m==='object'&&(m.cmd==='setSkin'||m.cmd==='skin')&&(m.skin==='workshop'||m.skin==='deck'))document.body.dataset.skin=m.skin; });
+document.addEventListener('input',e=>{ if(e.target.id==='chName'){ ch(selMid).name=e.target.value; }
+  if(e.target.id==='cadF'){ ch(selMid).cad.f=e.target.value; } if(e.target.id==='cadN'){ ch(selMid).cad.n=e.target.value; } if(e.target.id==='cadD'){ ch(selMid).cad.d=e.target.value; }
+  if(e.target.id==='agendaText'){ ch(selMid).agenda=e.target.value; } });  // store agenda, do NOT re-render (keep focus/caret)
+/* agenda: Enter continues the bullet list */
+document.addEventListener('keydown',e=>{ if(e.target.id==='agendaText'&&e.key==='Enter'){ e.preventDefault(); const ta=e.target,s=ta.selectionStart,v=ta.value;
+  ta.value=v.slice(0,s)+'\n• '+v.slice(ta.selectionEnd); ta.selectionStart=ta.selectionEnd=s+3; ch(selMid).agenda=ta.value; } });
+$('#scopeSel').addEventListener('change',renderList);
+
+/* slot hotkeys — guarded incl. contenteditable */
+document.addEventListener('keydown',e=>{
+  if(picker||rtPop||rcPop)return;
+  const t=e.target; if(/^(input|textarea|select)$/i.test(t.tagName)||t.isContentEditable)return;
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){ e.preventDefault(); undoLast(); return; }
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if(!selMid)return;
+  const map={p:'participants',m:'measures',i:'inputs',o:'outputs',t:'tools',d:'rights',l:'loops',s:'steering'};
+  let k=e.key.toLowerCase();
+  if(e.shiftKey&&e.key==='A'){ e.preventDefault(); openAdd('escalation'); return; }
+  if(k==='a'){ e.preventDefault(); const det=document.querySelector('[data-band="agenda"]'); if(det&&!det.open)det.open=true; setTimeout(()=>{ const ta=$('#agendaText'); if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);} },0); return; }
+  if(map[k]){ e.preventDefault(); openAdd(map[k]); }
+});
+function openAdd(bandKey){ const det=document.querySelector(`[data-band="${bandKey}"]`); if(det&&!det.open)det.open=true; setTimeout(()=>{ const pill=document.querySelector(`[data-add="${bandKey}"]`); if(pill){ if(bandKey==='rights')openRightComposer(pill); else openPicker(bandKey,pill); } },0); }
+function undoLast(){ const u=undoStack.pop(); if(!u){flash('Nothing to undo');return;} const c=charters[u.mid]; if(c&&c[u.bandKey]&&c[u.bandKey].length){ const x=c[u.bandKey].pop(); render(); flash('Removed “'+(x.label||x.decision||'chip')+'”'); } }
+
+/* toast */
+let toastT=null;
+function flash(msg,band){ const el=$('#toast'); el.innerHTML=esc(msg)+' <button data-undo="1">Undo</button>'; el.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2600);
+  el.querySelector('[data-undo]').onclick=()=>{ undoLast(); el.classList.remove('show'); }; }
+function flashAction(msg,label,fn){ const el=$('#toast'); el.innerHTML=esc(msg)+` <button data-a2="1">${esc(label)}</button>`; el.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),4200);
+  el.querySelector('[data-a2]').onclick=()=>{ fn(); el.classList.remove('show'); }; }
+
+/* boot */
+selMid='m-strat';
+render();
+</script>
+</body>
+</html>

@@ -4,13 +4,18 @@ import {
   getStep5MappingDiagnostics,
   isStep5ContributionAssigned,
   vsmSystems
-} from "../../domain/vsm.js";
-import { emptyState, escapeAttr, escapeHtml, stepHeader } from "../shared/renderHelpers.js";
-import { renderVsmHostFrame } from "../shared/vsmHostBridge.js";
+} from "../../domain/vsm.js?v=20260724-pptxgenjs";
+import { emptyState, escapeAttr, escapeHtml, fullscreenTile, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260724-pptxgenjs";
+import { renderVsmHostFrame } from "../shared/vsmHostBridge.js?v=20260724-pptxgenjs";
 
 export function renderStep5(workspace, context = {}) {
   return `
-    ${stepHeader("Step V", "Design Steering System", "Map the real R0 SCT contributions of the System-in-Focus to the systems of the VSM.")}
+    ${stepHeader(
+      "Step V",
+      "Design Steering System",
+      "Map the real R0 SCT contributions of the System-in-Focus to the systems of the VSM.",
+      ""
+    )}
     ${renderStep5Mapping(workspace, context)}
   `;
 }
@@ -25,13 +30,16 @@ export function renderStep5Mapping(workspace, context = {}) {
   const isPaneVisible = context.vsmPaneVisible === true;
 
   return `
-    <section class="work-section step5-mapping-section">
+    <section class="work-section step5-mapping-section ${context.fullscreen ? "fullscreen-matrix-section" : ""}">
       <div class="section-heading">
         <div>
           <h2>SCT-to-VSM-System Mapping</h2>
           <p>Select a VSM system, then assign each real R0/SIF contribution to exactly one VSM system. If one contribution seems to serve several systems, split or decompose it upstream first.</p>
         </div>
-        <button class="ghost-button" data-action="export-step" data-step="step5">Download Outcome</button>
+        <div class="section-actions">
+          ${tileExportButton("step5", "step5-mapping", "Export SCT-to-VSM mapping")}
+          ${context.fullscreen ? "" : tileFullscreenButton("step5-mapping", "Open SCT-to-VSM mapping fullscreen")}
+        </div>
       </div>
 
       <div class="step5-doctrine-switch step5-lens-switch" aria-label="Step V mapping lens">
@@ -89,6 +97,30 @@ export function renderStep5Mapping(workspace, context = {}) {
     </section>
     ${renderSteeringSignals(diagnostics)}
   `;
+}
+
+export function renderStep5FullscreenTile(workspace, context = {}, tileId = "step5-mapping") {
+  if (tileId === "step5-signals") {
+    return fullscreenTile({
+      kicker: "Step V · Steering System",
+      title: "Steering-System Signals",
+      description: "Use the larger view to inspect mapping distribution, unmapped R0/SIF contributions, and discussion signals.",
+      counter: "Signals",
+      variant: "is-table",
+      tileClass: "step5-fullscreen-tile",
+      content: renderSteeringSignals(getStep5MappingDiagnostics(workspace), { fullscreen: true })
+    });
+  }
+
+  return fullscreenTile({
+    kicker: "Step V · Steering System",
+    title: "SCT-to-VSM-System Mapping",
+    description: "Map real R0/SIF contributions to one VSM system while keeping unmapped and mapped work visible.",
+    counter: "Mapping",
+    variant: "is-embedded-tool",
+    tileClass: "step5-fullscreen-tile",
+    content: renderStep5Mapping(workspace, { ...context, fullscreen: true })
+  });
 }
 
 function renderStep5FilterBar(contributions, context) {
@@ -220,15 +252,16 @@ function getVisibleStep5Systems(workspace) {
   return workspace.step5.includeSystem1 === false ? vsmSystems.filter((systemId) => systemId !== "1") : vsmSystems;
 }
 
-function renderSteeringSignals(diagnostics) {
+function renderSteeringSignals(diagnostics, { fullscreen = false } = {}) {
   return `
-    <section class="work-section step5-signals">
+    <section class="work-section step5-signals ${fullscreen ? "fullscreen-matrix-section" : ""}">
       <div class="section-heading">
         <div>
           <p class="eyebrow">Computed interpretation help</p>
           <h2>Steering-System Signals</h2>
           <p>Patterns for workshop discussion, not claims of organizational truth.</p>
         </div>
+        ${fullscreen ? "" : `<div class="section-actions">${tileFullscreenButton("step5-signals", "Open steering-system signals fullscreen")}</div>`}
       </div>
       <div class="step5-signal-grid">
         <article class="step5-signal-panel">

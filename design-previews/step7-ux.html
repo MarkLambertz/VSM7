@@ -12,6 +12,7 @@
   --blue:#3386bf; --blue-soft:#e8f2f9; --teal:#178275; --teal-soft:#e5f3ef;
   --green:#63b16c; --green-soft:#e8f5e9; --amber:#efbd45; --amber-soft:#fff5d8;
   --red:#df6353; --red-soft:#fbe8e5; --violet:#8171b4; --violet-soft:#eeeaf8;
+  --magenta:#c0399f; --magenta-soft:#fbe6f2;
   --s1:#34404c; --s2:#efbd45; --s3:#df6353; --s3star:#b85045; --s4:#63b16c; --s5:#9dbed2;
   --radius:9px; --shadow:0 4px 16px rgba(20,40,40,.08);
 }
@@ -22,6 +23,7 @@ body[data-skin="deck"]{
   --blue:#57aee6; --blue-soft:#16303f; --teal:#3fb9a6; --teal-soft:#123330;
   --green:#6fd07c; --green-soft:#14331c; --amber:#f1c75c; --amber-soft:#33290c;
   --red:#f0796a; --red-soft:#341615; --violet:#a596d8; --violet-soft:#241f37;
+  --magenta:#e070c0; --magenta-soft:#33112a;
   --s5:#7fa9c8; --shadow:0 6px 22px rgba(0,0,0,.45);
 }
 body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px}
@@ -32,6 +34,9 @@ small{color:var(--muted)}
 
 /* ---- topbar ---- */
 .topbar{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px;height:64px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--surface)}
+/* embedded in the host app (body.embed, same pattern as org-chart): the host topbar already shows
+   brand + organization/project/SIF — collapse our duplicate chrome, keep only the ⬇/⛶ tools slim + right-aligned */
+body.embed .topbar{display:none}   /* embedded: host provides brand/org/project/SIF chrome, and export/fullscreen now live in each substep head — no internal topbar needed */
 .brand{display:flex;align-items:center;gap:11px}
 .brand-mark{display:grid;place-items:center;width:40px;height:40px;border:1px solid var(--line-strong);border-radius:8px;background:var(--blue-soft);color:var(--blue);font-weight:900;font-size:15px}
 .brand b{font-size:18px;letter-spacing:.2px}
@@ -50,22 +55,45 @@ body[data-skin="deck"] .btn.primary{color:#04121c}
 .btn.ghost{border-color:transparent;background:transparent}
 .btn:hover{border-color:var(--blue)}
 
-/* ---- shell ---- */
-.shell{flex:1;display:grid;grid-template-columns:212px 1fr;min-height:0}
-.side{border-right:1px solid var(--line);background:var(--surface);padding:12px 10px;display:flex;flex-direction:column;gap:3px}
-.side .grp{font-size:9.5px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.6px;padding:9px 8px 4px}
-.navb{display:flex;gap:9px;align-items:flex-start;text-align:left;border:1px solid transparent;border-radius:8px;background:transparent;padding:8px 9px;width:100%}
-.navb .n{flex:none;width:30px;height:22px;border-radius:5px;background:var(--panel);color:var(--muted);font-weight:800;font-size:11px;display:grid;place-items:center}
-.navb b{font-size:12.5px;display:block;line-height:1.25}
-.navb span{font-size:10.5px;color:var(--muted)}
-.navb.on{background:var(--blue-soft);border-color:var(--blue)}
-.navb.on .n{background:var(--blue);color:#fff}
-body[data-skin="deck"] .navb.on .n{color:#04121c}
-.navb:hover{background:var(--surface-soft)}
-.side-note{margin-top:auto;font-size:10.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:10px}
+/* ---- shell: single column; substeps render as a horizontal numbered tab bar (matches the host .substep-bar) ---- */
+.shell{flex:1;display:flex;flex-direction:column;min-height:0}
+.substep-wrap{padding:16px 22px 0}
+.substep-wrap .grp{font-size:9.5px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.6px;margin:0 2px 7px}
+.substep-bar{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.step1-substep-bar{gap:6px;padding:6px;border-radius:12px;background:var(--surface);box-shadow:0 10px 28px rgba(31,41,51,.05)}
+.substep-button{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;height:36px;min-height:0;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink);font-weight:800;line-height:1.1;padding:0 12px;white-space:nowrap}
+.step1-substep-bar .substep-button{gap:8px;height:38px;border-radius:9px;padding:0 12px 0 10px;font-size:13px}
+.step1-substep-bar .substep-button span{display:grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--blue-soft);color:var(--blue);font-size:11px;font-weight:900}
+.substep-button:hover{border-color:var(--blue)}
+.substep-button.is-active{border-color:var(--blue);background:var(--blue);color:#fff}
+body[data-skin="deck"] .substep-button.is-active{color:#04121c}
+.step1-substep-bar .substep-button.is-active span{background:rgba(255,255,255,.22);color:#fff}
+body[data-skin="deck"] .step1-substep-bar .substep-button.is-active span{color:#04121c}
 
-.main{min-width:0;overflow:auto;padding:18px 22px 60px}
+.main{flex:1;min-height:0;min-width:0;overflow:auto;padding:14px 22px 60px}
 .head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+/* tile-level fullscreen (house pattern): per-work-surface ⛶, Codex-tile look */
+.tilefs{flex:none;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:7px;width:36px;height:36px;font-size:15px;cursor:pointer}
+/* canonical host tile-action pair (matches Step II assessment): green ⬇ export + blue ⛶ fullscreen, 34px icon squares, side by side */
+.head-actions{display:flex;gap:6px;align-items:center;flex:none}
+.tile-export-button,.tile-fullscreen-button{display:inline-grid;place-items:center;width:34px;height:34px;padding:0;border-radius:6px;box-shadow:0 8px 18px rgba(31,41,51,.05);cursor:pointer;flex:none}
+.tile-export-button{border:1px solid rgba(20,129,113,.32);background:#e8f5e9;color:#148171;font-size:15px;font-weight:850;line-height:1}
+.tile-export-button:hover,.tile-export-button:focus-visible{border-color:#148171;background:#fff;outline:none}
+.tile-fullscreen-button{border:1px solid rgba(0,123,192,.32);background:#e8f2f8;color:#2f7fb9}
+.tile-fullscreen-button:hover,.tile-fullscreen-button:focus-visible{border-color:#2f7fb9;background:#fff;outline:none}
+.fullscreen-corners{position:relative;width:18px;height:18px;display:block}
+.fullscreen-corners span{display:block}
+.fullscreen-corners::before,.fullscreen-corners::after,.fullscreen-corners span::before,.fullscreen-corners span::after{position:absolute;width:7px;height:7px;border-color:currentColor;content:""}
+.fullscreen-corners::before{top:0;left:0;border-top:2px solid;border-left:2px solid}
+.fullscreen-corners::after{top:0;right:0;border-top:2px solid;border-right:2px solid}
+.fullscreen-corners span::before{right:0;bottom:0;border-right:2px solid;border-bottom:2px solid}
+.fullscreen-corners span::after{bottom:0;left:0;border-bottom:2px solid;border-left:2px solid}
+body[data-skin="deck"] .tile-export-button,body[data-skin="deck"] .tile-fullscreen-button{border-color:#4b5260;background:#171b24;color:var(--ink);box-shadow:none;border-radius:14px 3px 3px 14px}
+.tilefs:hover{border-color:var(--blue);color:var(--blue)}
+#tileFsHost{display:none}
+#tileFsHost.on{display:block;position:fixed;inset:0;z-index:300;background:var(--bg);overflow:auto;padding:18px 22px}
+#tileFsHost:fullscreen,#tileFsHost:-webkit-full-screen{background:var(--bg)}
+.tilefs-exit{position:fixed;top:12px;right:16px;z-index:320}
 .head h1{margin:0;font-size:21px}
 .head p{margin:3px 0 0;color:var(--muted);font-size:12.5px;max-width:620px}
 
@@ -88,18 +116,25 @@ body[data-skin="deck"] .tag.cand{color:var(--amber)} body[data-skin="deck"] .tag
 .warn.red{background:var(--red-soft);color:#a8392b;border-color:#eebcb3}
 body[data-skin="deck"] .warn{color:var(--amber)} body[data-skin="deck"] .warn.red{color:var(--red)}
 .warn .ico{font-weight:900}
-.alg{color:var(--violet);font-weight:900}
+.alg{color:var(--magenta);font-weight:900}
 
 /* ---- 7.1 vessels ---- */
 .vgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
 .vcol h3{margin:0 0 8px;font-size:13px;display:flex;align-items:center;gap:8px}
 .vcol .count{font-size:10.5px;color:var(--muted);font-weight:700}
-.vcard{border:1px solid var(--line);border-radius:8px;padding:10px 11px;margin-bottom:9px;background:var(--surface)}
-.vcard.cand{border-style:dashed;background:var(--surface-soft)}
-.vcard b{font-size:13px}
-.vcard .pp{font-size:11.5px;color:var(--muted);margin:3px 0 7px}
-.vcard .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+/* vessel cards reuse the Step-5 contribution-card language: flat card, 4px state-coloured left stripe, identity row + body + footer */
+.vcard{border:1px solid var(--line);border-left:4px solid var(--green);border-radius:8px;padding:11px 12px;margin-bottom:9px;background:var(--surface);display:grid;gap:7px}
+.vcard.cand{border:1px dashed var(--line-strong);border-left:4px solid var(--amber);background:var(--surface-soft)}
+.videntity{display:flex;gap:9px;align-items:flex-start}
+.vid-main{display:grid;gap:2px;min-width:0}
+.vid-main strong{font-size:13px;overflow-wrap:anywhere}
+.vid-main .vsub{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
+.vcard .vpp{margin:0;font-size:11.5px;color:var(--ink);line-height:1.45;overflow-wrap:anywhere}
+.vcard .vpp.tbd{color:var(--muted);font-style:italic}
 .vcard .acts{display:flex;gap:6px;flex-wrap:wrap}
+.vcol-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.vcol-head h3{margin:0}
+.vsort-sel{font-size:10.5px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--muted);padding:2px 6px}
 .mini{border:1px solid var(--line-strong);background:var(--surface);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:700}
 .mini.go{border-color:var(--green);color:var(--green)} .mini.no{border-color:var(--red);color:var(--red)}
 .prov{font-size:10px;color:var(--muted);font-style:italic}
@@ -117,12 +152,13 @@ table.rasic thead th{position:sticky;z-index:3;background:var(--panel);font-weig
 table.rasic thead tr:first-child th{top:0;height:24px}
 table.rasic thead tr:nth-child(2) th{top:24px}
 table.rasic .grouphdr{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);cursor:pointer}
-table.rasic .idcol{position:sticky;left:0;z-index:2;background:var(--surface);text-align:left;padding:7px 9px;min-width:230px;max-width:230px}
+table.rasic .idcol{position:sticky;left:0;z-index:2;background:var(--surface);text-align:left;padding:7px 9px;min-width:250px;max-width:250px}
 table.rasic thead .idcol{z-index:4}
 table.rasic tbody tr:hover .idcol{background:var(--surface-soft)}
 table.rasic tr.sel .idcol{background:var(--blue-soft)}
-.idcol .sname{font-weight:700;font-size:12px;display:block;line-height:1.2}
-.idcol .sscope{font-size:10.5px;color:var(--muted)}
+.idcol .sname{font-weight:700;font-size:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.2}
+.idcol .sscope{font-size:10.5px;color:var(--muted);display:block}
+.idcol .sctext{font-size:10.5px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;margin-top:1px;font-style:italic}
 .cell{width:42px;height:38px;text-align:center;vertical-align:middle}
 .cell button{width:30px;height:26px;border-radius:6px;border:1px solid var(--line);background:var(--surface);font-weight:900;font-size:12px;color:var(--muted)}
 /* RASIC pastel spectrum: A=red · R=yellow · S=blue · I=light grey · C=dark grey */
@@ -145,7 +181,10 @@ table.rasic thead th.g-meeting{background:#fbf2da}
 body[data-skin="deck"] table.rasic thead th.g-role{background:#1a2e3c}
 body[data-skin="deck"] table.rasic thead th.g-function{background:#173138}
 body[data-skin="deck"] table.rasic thead th.g-meeting{background:#36321f}
-.vhname{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:9px;line-height:1.2;max-width:64px;margin:0 auto;overflow-wrap:break-word;hyphens:auto}
+.vhname{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:10.5px;font-weight:700;color:var(--ink);line-height:1.18;max-width:96px;min-width:72px;margin:0 auto;overflow-wrap:anywhere;hyphens:auto}
+/* header hover-peek: reading 20-30 narrow vessel columns (esp. several "Director …" that clip to the same stub) — hover any header to pop its full name */
+/* header hover tooltip: position:fixed so it is NOT clipped by the matrix's overflow:auto and never jumps (replaces the old label-morph peek) */
+.vhtip{position:fixed;transform:translateX(-50%);background:var(--panel);color:var(--ink);border:1px solid var(--line-strong);border-radius:7px;padding:5px 9px;box-shadow:var(--shadow);font-size:11.5px;line-height:1.28;z-index:200;pointer-events:none;white-space:normal;max-width:240px;text-align:center;display:none}
 .dblA-tag{display:inline-block;background:#d83a29;color:#fff;font-size:9px;font-weight:800;border-radius:4px;padding:1px 5px;letter-spacing:.3px}
 table.rasic tr.rowdbl .idcol{box-shadow:inset 3px 0 0 #d83a29}
 .lk{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;font-weight:900;font-size:11px;border:1px solid}
@@ -197,6 +236,17 @@ textarea.fld-i{width:100%;min-height:46px;resize:vertical;font-size:12.5px;paddi
 .mchip button{border:0;background:none;color:var(--red);font-weight:800;cursor:pointer;padding:0 4px;line-height:1}
 .inh-note{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:4px}
 .inh-items{display:flex;flex-wrap:wrap;gap:5px}
+/* source tag on aspect rows: violet = shared/inherited from an SCT (write-through), teal = vessel-specific */
+.inh-src{flex:none;font-size:9px;font-weight:800;letter-spacing:.3px;border:1px solid var(--violet);color:var(--violet);background:var(--violet-soft);border-radius:4px;padding:1px 5px;white-space:nowrap}
+.inh-src.own{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}
+/* optional owner per aspect row — compact vessel picker (role / function / meeting) */
+.own-sel{flex:none;max-width:150px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--muted);font-size:11px;padding:6px 5px}
+.own-sel.set{color:var(--ink);border-color:var(--line-strong)}
+/* metric detail sub-row: target · frequency · source (KPIs only) */
+.aspdetail{display:flex;flex-wrap:wrap;gap:8px;margin:-2px 0 8px 2px;padding:7px 9px;border-left:2px solid var(--line-strong);background:var(--surface-soft);border-radius:0 7px 7px 0}
+.aspdetail label{display:flex;flex-direction:column;gap:2px;font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.aspdetail label:nth-child(3){flex:1;min-width:150px}
+.aspdetail input,.aspdetail select{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font-size:11.5px;padding:5px 7px;font-weight:600;text-transform:none;letter-spacing:0}
 
 /* ---- 7.5 meetings ---- */
 .mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;align-items:start}
@@ -228,23 +278,7 @@ body[data-overlay="vsm"] .node[data-sys]{border-left-width:6px}
 .node[data-sys="S3*"]{border-left-color:var(--s3star)} .node[data-sys="S4"]{border-left-color:var(--s4)}
 .node[data-sys="S5"]{border-left-color:var(--s5)} .node[data-sys="S1"]{border-left-color:var(--s1)}
 
-/* ---- focus mode ---- */
-.focus-layer{display:none}
-body.focus{overflow:hidden}
-body.focus .focus-layer{display:flex;flex-direction:column;position:fixed;inset:0;z-index:50;background:var(--bg);padding:0}
-.focus-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--surface)}
-.focus-bar .ft{display:flex;gap:10px;align-items:center}
-.focus-tiles{flex:1;overflow:auto;padding:26px 30px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-content:start}
-.ftile{border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow);padding:22px 24px}
-.ftile h2{margin:0 0 6px;font-size:24px}
-.ftile .lead{font-size:16px;line-height:1.5;margin:0 0 14px}
-.ftile .outcome{background:var(--teal-soft);border-radius:9px;padding:11px 13px;font-size:14px;margin-bottom:14px}
-.ftile .prompts{margin:0;padding-left:20px;font-size:14.5px;line-height:1.7}
-.ftile .coach{margin-top:13px;font-size:12.5px;color:var(--muted);font-style:italic}
-.focus-steps{display:flex;gap:6px;flex-wrap:wrap}
-.focus-steps button{border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:6px 10px;font-size:12px;font-weight:700}
-.focus-steps button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
-body[data-skin="deck"] .focus-steps button.on{color:#04121c}
+
 
 /* ---- add-vessel modal ---- */
 .modal-layer{display:none;position:fixed;inset:0;z-index:80;align-items:flex-start;justify-content:center;background:rgba(15,25,30,.42);padding:6vh 20px}
@@ -271,6 +305,70 @@ body[data-skin="deck"] .dupewarn{color:var(--amber)}
 .empty b{color:var(--ink);font-size:15px;display:block;margin-bottom:4px}
 .hint{font-size:11px;color:var(--muted)}
 .sectitle{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:18px 0 8px}
+/* ===== 7.6 Reuse Inspector (scoped under .rins; popovers/toast are global, appended to body) ===== */
+.rins .rsheet{border:1px solid var(--line);border-radius:9px;background:var(--surface);overflow:visible}
+.rins .rhead{padding:12px 14px;border-bottom:1px solid var(--line)}
+.rins .ch-name{font-size:15px;font-weight:800;border:1px solid transparent;border-radius:7px;padding:3px 6px;margin:-3px -6px 0;width:100%;background:transparent;color:var(--ink)}
+.rins .ch-name:hover{border-color:var(--line)} .rins .ch-name:focus{outline:none;border-color:var(--blue);background:var(--surface)}
+.rins .ch-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:9px}
+.rins .scopechip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line-strong);border-radius:7px;padding:3px 8px;font-size:11px;font-weight:700;color:var(--muted);background:var(--surface)}
+.rins .cad-ed{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted)}
+.rins .cad-ed select,.rins .cad-ed input{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font-size:11px;padding:3px 5px}
+.rins .algbtn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--magenta);color:var(--magenta);background:transparent;border-radius:7px;padding:3px 9px;font-size:11px;font-weight:800;cursor:pointer}
+.rins .algbtn.on{background:var(--magenta);color:#fff}
+.rins .band{border-top:1px solid var(--line)}
+.rins .band>summary{list-style:none;padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:9px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);user-select:none}
+.rins .band>summary::-webkit-details-marker{display:none}
+.rins .band[open]>summary{color:var(--ink)}
+.rins .band>summary .gly{font-size:13px;width:16px;text-align:center}
+.rins .band>summary .cnt{margin-left:auto;font-weight:700;color:var(--muted);font-size:10.5px}
+.rins .hk{border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:9px;font-weight:800;color:var(--muted)}
+.rins .rail{display:flex;flex-wrap:wrap;gap:6px;padding:2px 14px 12px}
+.rins .chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 8px 4px 10px;font-size:11.5px;font-weight:600;position:relative;overflow:hidden;max-width:340px}
+.rins .chip.editable{cursor:pointer} .rins .chip.editable:hover{background:var(--surface-soft)}
+.rins .chip .lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.rins .chip.ghost{opacity:.6;border-style:dashed;border-color:var(--line-strong)}
+.rins .chip.o-graph{border-left:3px solid var(--violet)} .rins .chip.o-here{border-left:3px dashed var(--amber)} .rins .chip.o-auth{border-left:3px dotted var(--teal)}
+.rins .chip.o-loop{border-left:3px solid var(--s3)} .rins .chip.o-alg{border-left:3px solid var(--magenta)}
+.rins .chip .src{font-size:9px;font-weight:800;letter-spacing:.3px;border:1px solid var(--line);border-radius:4px;padding:1px 4px;color:var(--muted)}
+.rins .chip .sub{font-size:9.5px;color:var(--muted);font-weight:600}
+.rins .chip .ratify{color:var(--muted);font-size:12px;font-weight:900;cursor:pointer;margin-left:2px}
+.rins .chip .rm{color:var(--muted);font-size:12px;cursor:pointer;opacity:.6} .rins .chip .rm:hover{opacity:1;color:var(--red)}
+.rins .chip .sys{min-width:22px;height:16px;font-size:9px;border-radius:4px;padding:0 4px}
+.rins .roletype{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:20px;padding:1px 7px;font-size:9.5px;font-weight:700;color:var(--muted);cursor:pointer;background:var(--surface-soft)}
+.rins .addpill{display:inline-flex;align-items:center;gap:5px;border:1px dashed var(--line-strong);border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:700;color:var(--muted);cursor:pointer;background:transparent}
+.rins .addpill:hover{color:var(--blue);border-color:var(--blue)}
+.rins .use-ed{display:flex;flex-wrap:wrap;gap:7px;align-items:flex-end;width:100%;margin:4px 0 2px;padding:8px 10px;border:1px solid var(--line);border-left:3px solid var(--violet);border-radius:8px;background:var(--surface-soft)}
+.rins .use-ed .f{display:flex;flex-direction:column;gap:2px}
+.rins .use-ed label{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.rins .use-ed input,.rins .use-ed select{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font-size:11px;padding:3px 6px;min-width:82px}
+.rins .use-ed .go{border:0;background:var(--blue);color:#fff;border-radius:6px;padding:5px 10px;font-weight:800;font-size:11px;cursor:pointer}
+.rins .agenda-ta{width:100%;min-height:76px;border:1px solid var(--line);border-left:3px dotted var(--teal);border-radius:8px;padding:9px 11px;font:inherit;font-size:12.5px;line-height:1.55;background:var(--surface);color:var(--ink);resize:vertical}
+.rins .agenda-ta:focus{outline:none;border-color:var(--blue);border-left-color:var(--teal)}
+.rins .list .lirow{position:relative;border-left:4px solid var(--line)}
+.rins .lirow.mix-graph{border-left-color:var(--violet)} .rins .lirow.mix-here{border-left-color:var(--amber)} .rins .lirow.mix-auth{border-left-color:var(--teal)}
+.rins .lirow.newrow{border-left:1px dashed var(--line-strong);color:var(--muted);font-weight:700}
+.rins .warnbox{margin:0 14px 11px;border:2px solid var(--red);background:var(--red-soft);border-radius:8px;padding:8px 11px;font-size:11.5px;font-weight:600;color:#b8402f}
+.picker{position:absolute;width:308px;max-height:min(60vh,400px);overflow-y:auto;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;box-shadow:var(--shadow);z-index:120;padding:7px;font-size:12px;color:var(--ink)}
+.picker input.q{width:100%;border:1px solid var(--line);border-radius:7px;background:var(--surface-soft);color:var(--ink);font-size:12.5px;padding:7px 9px;margin-bottom:6px}
+.pk-lab{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:4px 6px 2px}
+.pk-row{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:7px;cursor:pointer}
+.pk-row .rlbl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk-row .rc{font-size:9.5px;color:var(--muted)}
+.pk-row.act{background:var(--blue-soft)}
+.pk-row .dot{width:9px;height:9px;border-radius:3px;flex:none}
+.pk-row .dot.graph{background:var(--violet)}.pk-row .dot.here{background:var(--amber)}.pk-row .dot.auth{background:var(--teal)}
+.pk-none{font-size:11px;color:var(--muted);padding:6px 8px 2px;font-style:italic}
+.pk-create{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:7px;cursor:pointer;border:1px dashed var(--line-strong);color:var(--muted);font-weight:700;margin-top:2px}
+.pk-create.act{background:var(--amber-soft);border-color:var(--amber);color:#9a6a06}
+.pk-hr{border:0;border-top:1px solid var(--line);margin:6px 2px}
+.pk-crumb{font-size:10px;color:var(--muted);padding:2px 6px 6px;display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.pk-crumb .st{border:1px solid var(--line);border-radius:5px;padding:1px 6px}.pk-crumb .st.on{border-color:var(--blue);color:var(--blue)}
+.dupewarn{display:flex;align-items:center;gap:6px;font-size:10.5px;background:var(--amber-soft);border:1px solid var(--amber);color:#8a5e08;border-radius:7px;padding:5px 8px;margin:4px 0 2px}
+.defmark{font-size:8px;vertical-align:super;color:var(--muted);font-weight:800;margin-left:2px}
+.rtoast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:8px 14px;border-radius:9px;font-size:12px;box-shadow:var(--shadow);z-index:130;display:flex;gap:12px;align-items:center;opacity:0;transition:opacity .2s;pointer-events:none}
+.rtoast.show{opacity:1;pointer-events:auto}
+.rtoast button{border:0;background:transparent;color:var(--amber);font-weight:800;cursor:pointer;font-size:12px}
 </style>
 </head>
 <body data-skin="workshop" data-overlay="none">
@@ -282,38 +380,24 @@ body[data-skin="deck"] .dupewarn{color:var(--amber)}
       <div><label>Project</label><strong>Transformation 2026</strong></div>
       <div><label>System-in-Focus</label><strong>EU AI Solutions SE · R0</strong></div>
     </div>
-    <div class="tools">
-      <div class="seg" id="skinSeg" title="Interface skin (visual only)">
-        <button data-skin="workshop" class="on">Workshop</button>
-        <button data-skin="deck">Command Deck</button>
-      </div>
-      <button class="btn" id="fsBtn" title="Full screen — maximize this substep (F)">⛶ Full screen</button>
-      <button class="btn" id="focusBtn" title="Facilitation tiles">▦ Focus</button>
-    </div>
+    <div class="tools"></div><!-- export ⬇ + fullscreen ⛶ now live in each substep head as the house pair (F key still toggles fullscreen) -->
   </header>
 
   <div class="shell">
-    <nav class="side" id="side">
+    <div class="substep-wrap">
       <div class="grp">VSM · Step VII — Representation</div>
-      <!-- nav injected -->
-    </nav>
+      <div class="substep-bar step1-substep-bar" id="substeps"><!-- substep tabs injected --></div>
+    </div>
     <main class="main" id="view"></main>
   </div>
 </div>
 
-<!-- focus overlay -->
-<div class="focus-layer">
-  <div class="focus-bar">
-    <div class="ft"><strong style="font-size:15px">Facilitation · Step VII</strong>
-      <div class="focus-steps" id="focusSteps"></div>
-    </div>
-    <button class="btn" id="focusExit">Esc · Exit focus</button>
-  </div>
-  <div class="focus-tiles" id="focusTiles"></div>
-</div>
 
 <!-- add-vessel modal -->
 <div class="modal-layer" id="modal"></div>
+
+<!-- persistent host for tile-level fullscreen: the active work surface renders in here (survives re-renders) -->
+<div id="tileFsHost"></div>
 
 <script>
 /* ============================ SAMPLE DATA (realistic, canonical-id based) ============================ */
@@ -386,6 +470,9 @@ const VESSELS=[
   {id:'m-audit',type:'meeting',name:'Audit Walk',purpose:'S3* ground-truth review.',scope:'u-sif',prov:'Step VI · loop.communication (S3*)',state:'candidate',sys:'S3*'},
   {id:'m-norm',type:'meeting',name:'Normative Alignment Forum',purpose:'S5→S4/S3 normative.',scope:'u-sif',prov:'Step VI · loop.communication (S5 normative)',state:'candidate',sys:'S5'},
 ];
+const CTX_META={sif:'u-sif',sifName:'EU AI Solutions SE'};
+// canonical reuse registries + Step VI loops fed by the host (D1/D7). Empty until the host sends them → pools fall back to ASPECTS-derived.
+const CTX_METRICDEFS=[], CTX_ARTIFACTDEFS=[], CTX_TOOLDEFS=[], CTX_DECISIONDEFS=[], CTX_LOOPS=[];
 // RASIC assignments keyed contrib|vessel -> letter. Crafted to produce realistic warning states.
 const RASIC={
   // c1 strategy: clean (A strat lead, S strat fn, C portfolio, I coord)
@@ -428,8 +515,9 @@ const STEPS=[
   {id:'7.6',n:'7.6',t:'Meetings & Agendas',s:'Steering organs, not calendar'},
   {id:'7.7',n:'7.7',t:'Organizational Representation',s:'Code-native hierarchy'},
 ];
+function defaultFilters(){return {scope:'sif',sys:'',prio:'',unit:'',vtype:'',attn:false,q:''};}
 const state={step:'7.2',selContrib:'c4',selVessel:null,selRole:'r-au',selFn:'f-strat',selNode:null,selAspect:'s1',
-  collapsed:{}, filter:{sys:'',prio:'',unit:'',vtype:'',attn:false,q:''}, rolePreview:false, focusStep:'7.2'};
+  collapsed:{}, filter:defaultFilters(), vsort:{}, rolePreview:false, focusStep:'7.2', tileFs:null};
 
 /* ============================ HELPERS ============================ */
 const $=s=>document.querySelector(s), ce=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
@@ -457,17 +545,12 @@ function needsAttention(cid){return warnings(cid).length>0;}
 
 /* ============================ NAV + SHELL ============================ */
 function renderNav(){
-  const s=$('#side'); [...s.querySelectorAll('.navb')].forEach(n=>n.remove());
-  const note=s.querySelector('.side-note');
-  STEPS.forEach(st=>{
-    const b=ce('button','navb'+(st.id===state.step?' on':''));
-    b.dataset.step=st.id;
-    b.innerHTML=`<span class="n">${st.n}</span><span><b>${esc(st.t)}</b><span>${esc(st.s)}</span></span>`;
-    s.insertBefore(b,note);
-  });
+  const bar=$('#substeps');
+  bar.innerHTML=STEPS.map((st,i)=>`<button class="substep-button${st.id===state.step?' is-active':''}" data-step="${st.id}" title="${esc(st.t)} — ${esc(st.s)}"><span>${String(i+1).padStart(2,'0')}</span>${esc(st.t)}</button>`).join('');
 }
 function render(){
   renderNav();
+  const fsb7=document.getElementById('fsBtn'); if(fsb7) fsb7.style.display = state.step==='7.7' ? 'none' : '';   // 7.7: the embedded org-chart owns fullscreen — one ⛶ per screen (UX streamline S3)
   const v=$('#view');const st=STEPS.find(s=>s.id===state.step);
   let body='';
   if(state.step==='7.1')body=viewVessels();
@@ -477,27 +560,45 @@ function render(){
   else if(state.step==='7.5')body=viewFunctions();
   else if(state.step==='7.6')body=viewMeetings();
   else if(state.step==='7.7')body=viewOrg();
-  v.innerHTML=`<div class="head"><div><h1>${st.n} · ${esc(st.t)}</h1><p>${headBlurb(st.id)}</p></div></div>${body}`;
+  /* tile-level fullscreen (house pattern, like the host's own tiles): every work surface carries its own ⛶; 7.7 defers to the embedded org-chart's */
+  const fsb=state.step!=='7.7'?`<div class="head-actions"><button class="tile-export-button" data-act="headexport" title="Export the Step VII report (Word / PDF)" aria-label="Export Step VII report"><span aria-hidden="true">⬇</span></button><button class="tile-fullscreen-button" data-act="tilefs" title="Full screen — this work surface (Esc exits)" aria-label="Full screen"><span class="fullscreen-corners" aria-hidden="true"><span></span></span></button></div>`:'';   // export ⬇ next to the tile fullscreen ⛶ (the house pair); 7.7 defers to the org-chart's own pair
+  const head=on=>`<div class="head"><div><h1>${esc(st.t)}</h1><p>${headBlurb(st.id)}</p></div>${on?'':fsb}</div>`;   // no "7.x ·" prefix — the substep nav already carries the numbering (PO polish 2026-07-22); the exported report keeps its numbered headings
+  const th=document.getElementById('tileFsHost');
+  if(state.tileFs===state.step&&th){                 // the work surface lives in the persistent fullscreen host; #view holds a placeholder
+    const mo=document.getElementById('modal'); if(mo&&mo.parentNode===th)document.body.appendChild(mo);   // rescue the dialog before innerHTML wipes the host
+    th.innerHTML=`<button class="tilefs tilefs-exit" data-act="tilefsexit" title="Exit full screen (Esc)">✕</button>${head(true)}${body}`;
+    if(mo)th.appendChild(mo);                        // dialogs must live INSIDE the fullscreened element to be visible
+    v.innerHTML=`${head(true)}<div class="card pad"><div class="empty"><b>Shown full screen</b>Press Esc to return.</div></div>`;
+  } else { if(th)th.innerHTML=''; v.innerHTML=head(false)+body; }
+  armEmbeddedSkinBridge();
 }
+function enterTileFs(){ if(state.step==='7.7')return; state.tileFs=state.step; const th=document.getElementById('tileFsHost'); th.classList.add('on'); render();
+  try{ const fn=th.requestFullscreen||th.webkitRequestFullscreen; const p=fn&&fn.call(th); if(p&&p.catch)p.catch(()=>{}); }catch(_){/* overlay fallback (.on) covers denial */} }
+function exitTileFs(){ if(!state.tileFs)return; state.tileFs=null; const th=document.getElementById('tileFsHost'); th.classList.remove('on');
+  const mo=document.getElementById('modal'); if(mo&&mo.parentNode!==document.body)document.body.appendChild(mo);
+  if(document.fullscreenElement===th||document.webkitFullscreenElement===th){ try{ const fn=document.exitFullscreen||document.webkitExitFullscreen; fn&&fn.call(document); }catch(_){}}
+  th.innerHTML=''; render(); }
+/* popovers/toasts appended to <body> are invisible inside a fullscreened element — parent them into the active tile host instead */
+function popHost(){ const th=document.getElementById('tileFsHost'); return (th&&th.classList.contains('on'))?th:document.body; }
 function headBlurb(id){return {
-  '7.1':'Build an exploratory register of roles, functions and meetings. Suggestions are seeded from Step VI evidence — the facilitator accepts, edits, merges, or rejects each one. Nothing is forced.',
-  '7.2':'Allocate RASIC accountability per SCT contribution × vessel. Soft warnings invite a human decision but never block the workshop — and a second Accountable on one SCT is flagged loudly, since double accountability should be a deliberate exception.',
-  '7.3':'Optionally enrich each SCT with the operating detail that makes it real — KPIs &amp; metrics, artifacts &amp; result types, and the tools &amp; methods used. Everything here is optional: add only what helps, an empty SCT is perfectly valid.',
-  '7.4':'For each role: read its linked SCTs grouped by RASIC (accountable → responsible → support → consulted → informed), write the purpose &amp; interfaces, optionally add it to meetings, and carry KPIs / artifacts / tools — inherited from its SCTs plus any role-specific ones. Everything below is optional.',
-  '7.5':'Functions are capability containers — same as roles: linked SCTs by RASIC, editable purpose &amp; interfaces, optional meeting membership, and inherited + function-specific KPIs / artifacts / tools.',
-  '7.6':'Meetings are steering organs derived from assigned SCTs and Step VI channel evidence — purpose, participants, cadence, inputs/outputs, and decision types.',
-  '7.7':'A code-native representation of the Step I recursion structure, units, functions and roles. The chart is a view, not canonical truth — click any node to reveal its SCTs and RASIC.'
+  '7.1':'Review the suggested roles, functions and meetings — accept, edit, merge or reject.',
+  '7.2':'Allocate RASIC per SCT contribution × vessel. Warnings invite a decision, never block.',
+  '7.3':'Optional per SCT: KPIs &amp; metrics, artifacts &amp; result types, tools &amp; methods.',
+  '7.4':'Linked SCTs by RASIC, purpose &amp; interfaces, meetings, KPIs / artifacts / tools.',
+  '7.5':'Same as roles — for the capability containers.',
+  '7.6':'Meetings as steering organs — purpose, participants, cadence, decisions.',
+  '7.7':'The org chart — a view over the canonical model. Click any node for its SCTs and RASIC.'
 }[id];}
 
 /* ============================ 7.1 VESSELS ============================ */
 function vcard(v){
   const acc=v.state==='accepted';
-  return `<div class="vcard ${acc?'':'cand'}" data-vid="${v.id}">
-    <div class="meta"><span class="tag ${acc?'acc':'cand'}">${acc?'accepted':'candidate'}</span>${v.alg?'<span class="alg" title="Algedonic / escalation right">▲ algedonic</span>':''}</div>
-    <b>${esc(v.name)}</b>
-    <div class="pp">${esc(v.purpose)}</div>
-    ${v.id==='r-rc'?'<div class="dupe">⚠ Possible duplicate of “Resource Allocation Board” (function) — review / merge.</div>':''}
-    <div class="acts" style="margin-top:8px">
+  return `<div class="vcard ${acc?'acc':'cand'}" data-vid="${v.id}">
+    <div class="videntity"><span class="tag ${acc?'acc':'cand'}">${acc?'accepted':'candidate'}</span>
+      <div class="vid-main"><strong>${esc(v.name)}</strong><span class="vsub">${esc(v.prov||'')}${v.alg?' · <span class="alg" title="Algedonic / escalation right">▲ algedonic</span>':''}</span></div></div>
+    <p class="vpp${v.purpose?'':' tbd'}">${v.purpose?esc(v.purpose):'(purpose to be written)'}</p>
+    ${v.id==='r-rc'?'<div class="dupe">⚠ Possible duplicate of “Resource Allocation Board” — review / merge.</div>':''}
+    <div class="acts">
       ${acc?`<button class="mini" data-act="vstate" data-vid="${v.id}">↩ Back to candidate</button>`
             :`<button class="mini go" data-act="vstate" data-vid="${v.id}">✓ Accept</button>`}
       <button class="mini" data-act="noop">✎ Edit</button>
@@ -506,18 +607,23 @@ function vcard(v){
     </div>
   </div>`;
 }
+function sortVessels(arr,by){ const a=arr.slice();
+  if(by==='state')a.sort((x,y)=>(x.state==='candidate'?0:1)-(y.state==='candidate'?0:1)||String(x.name).localeCompare(y.name));
+  else if(by==='sys')a.sort((x,y)=>String(x.sys||'~').localeCompare(String(y.sys||'~'))||String(x.name).localeCompare(y.name));
+  else a.sort((x,y)=>String(x.name).localeCompare(y.name));
+  return a; }
 function viewVessels(){
   const cols=[['role','Roles','From Step VI loop.role + Step I units'],['function','Functions / departments','From Step I units + SCT clusters'],['meeting','Meetings / committees','From Step VI loop.communication']];
   const colHtml=cols.map(([t,label,sub])=>{
-    const items=VESSELS.filter(v=>v.type===t);
+    const items=sortVessels(VESSELS.filter(v=>v.type===t),'name');   // fixed A–Z; the per-column sort dropdowns were removed (PO polish 2026-07-22 — keep 7.1 simple)
     const cands=items.filter(v=>v.state==='candidate').length;
-    return `<div class="vcol"><h3>${esc(label)} <span class="count">${items.length} · ${cands} candidate</span></h3>
+    return `<div class="vcol"><div class="vcol-head"><h3>${esc(label)} <span class="count">${items.length} · ${cands} candidate</span></h3></div>
       <div class="hint" style="margin-bottom:8px">${esc(sub)}</div>
       ${items.map(vcard).join('')}
       <button class="mini" data-act="newvessel" data-t="${t}" style="width:100%;border-style:dashed">+ New ${t}</button></div>`;
   }).join('');
   return `<div class="card pad" style="margin-bottom:14px"><div class="row" style="justify-content:space-between">
-      <div><b>Vessel register</b> <span class="hint">— candidates are dashed. loop.artifact feeds vessel outputs &amp; later agendas.</span></div>
+      <div><b>Vessel register</b> <span class="hint">— candidates are dashed.</span></div>
       <div class="row"><span class="tag cand">candidate</span><span class="tag acc">accepted</span></div>
     </div></div>
     <div class="vgrid">${colHtml}</div>`;
@@ -526,7 +632,9 @@ function viewVessels(){
 /* ============================ 7.2 RASIC ============================ */
 function viewRasic(){
   const f=state.filter;
+  normalizeFilterScope();
   let rows=CONTRIBS.slice();
+  rows=rows.filter(scopeMatchesContribution);
   if(f.sys)rows=rows.filter(c=>c.sys===f.sys);
   if(f.unit)rows=rows.filter(c=>c.accUnit===f.unit);
   if(f.prio)rows=rows.filter(c=>sct(c.sct).prio===f.prio);
@@ -542,7 +650,7 @@ function viewRasic(){
     const col=state.collapsed[gt];
     head1+=`<th colspan="${col?1:vs.length}" class="grouphdr g-${gt} ${col?'colgroup-collapsed':''}" data-act="togglegroup" data-grp="${gt}">${col?'▸':'▾'} ${gl} (${vs.length})</th>`;
     if(col){head2+=`<th class="grouphdr g-${gt}">…</th>`;}
-    else vs.forEach(v=>{head2+=`<th class="g-${gt}" title="${esc(v.name)}"><div class="vhname">${esc(v.name)}</div>${v.state==='candidate'?'<div class="tag cand" style="margin-top:3px">cand</div>':''}</th>`;});
+    else vs.forEach(v=>{head2+=`<th class="g-${gt}" data-full="${esc(v.name)}"><div class="vhname">${esc(v.name)}</div>${v.state==='candidate'?'<div class="tag cand" style="margin-top:3px">cand</div>':''}</th>`;});
   });
   head1+='</tr>';head2+='</tr>';
   // rows
@@ -560,22 +668,99 @@ function viewRasic(){
         tds+=`<td class="cell g-${gt}"><button class="${l} ${conflict?'conflict':(attnCell?'attn':'')}" data-act="cycle" data-c="${c.id}" data-v="${v.id}" title="${esc(v.name)}">${l||'·'}</button></td>`;});
     });
     return `<tr class="${state.selContrib===c.id?'sel':''}${dblA?' rowdbl':''}" data-act="selcontrib" data-c="${c.id}">
-      <td class="idcol">${sysChip(c.sys)} <span class="sname">${esc(sct(c.sct).name)}</span>
-        <span class="sscope">${esc(sct(c.sct).did)} · ${esc(unit(c.unit).name)}${dblA?' <span class="dblA-tag" title="Two vessels marked Accountable — exception">⚠ 2× A</span>':(attn?' <span class="alg" style="color:var(--amber)">⚠</span>':'')}</span></td>
+      <td class="idcol">${sysChip(c.sys)} <span class="sname" title="${esc(sct(c.sct).name)}">${esc(sct(c.sct).name)}</span>
+        <span class="sscope">${esc(sct(c.sct).did)} · ${esc(unit(c.unit).name)}${dblA?' <span class="dblA-tag" title="Two vessels marked Accountable — exception">⚠ 2× A</span>':(attn?' <span class="alg" style="color:var(--amber)">⚠</span>':'')}</span>
+        <span class="sctext" title="${esc(c.text)}">${esc(c.text)}</span></td>
       ${tds}</tr>`;
   }).join('');
   const matrix=`<div class="matrix-scroll"><table class="rasic"><thead>${head1}${head2}</thead><tbody>${bodyRows||'<tr><td class="idcol">No contributions match the filter.</td></tr>'}</tbody></table></div>
     <div class="legend"><span class="lk A">A</span> accountable <span class="lk R">R</span> responsible <span class="lk S">S</span> support <span class="lk I">I</span> informed <span class="lk C">C</span> consulted · click a cell to cycle · empty is valid · <span style="color:#cf2e1e;font-weight:800">⚠ 2× A = double accountability (exception)</span></div>`;
   return `<div class="filters">
+      ${scopeFilter()}
       ${selF('sys','VSM system',['S1','S2','S3','S3*','S4','S5'])}
       ${selF('prio','Priority',['high','med','low'])}
-      ${selF('unit','Accountable unit',UNITS.map(u=>[u.id,u.name]))}
       ${selF('vtype','Vessel type',[['role','Roles'],['function','Functions'],['meeting','Meetings']])}
       <label class="chip" style="cursor:pointer"><input type="checkbox" data-act="attn" ${f.attn?'checked':''} style="margin-right:5px">Needs attention</label>
       <input placeholder="Search SCT…" data-act="search" value="${esc(f.q)}" style="min-width:150px">
-      ${f.sys||f.prio||f.unit||f.vtype||f.attn||f.q?'<button class="btn ghost" data-act="clearf">Clear</button>':''}
+      ${hasActiveFilters()?'<button class="btn ghost" data-act="clearf">Clear</button>':''}
     </div>
     <div class="rasic-wrap"><div>${matrix}</div><div>${rasicInspector()}</div></div>`;
+}
+function scopeFilter(countsOverride){
+  const cur=state.filter.scope||'sif';
+  const counts=countsOverride||scopeCounts();
+  const levels=[...new Set(UNITS.map(u=>normalizeLevel(u.level)).filter(l=>l&&l!=='R0'))].sort((a,b)=>recursionLevelValue(b)-recursionLevelValue(a));
+  const levelOptions=levels.map(l=>{
+    const count=counts.levels[l]||0;
+    return `<option value="level:${esc(l)}" ${cur===`level:${l}`?'selected':''} ${count?'':'disabled'}>Scope: ${esc(l)} (${count})</option>`;
+  }).join('');
+  return `<select data-act="filter" data-key="scope">
+    <option value="sif" ${cur==='sif'?'selected':''}>Scope: R0 / SIF (${counts.sif})</option>
+    <option value="all" ${cur==='all'?'selected':''}>Scope: all recursion levels (${counts.all})</option>
+    ${levelOptions}
+  </select>`;
+}
+function normalizeFilterScope(){
+  const scope=state.filter.scope||'sif';
+  if(!scope.startsWith('level:'))return;
+  const level=scope.slice(6);
+  if(!(scopeCounts().levels[level]||0))state.filter.scope='sif';
+}
+function scopeCounts(){
+  const counts={sif:0,all:CONTRIBS.length,levels:{}};
+  const sifIds=sifScopeUnitIds();
+  CONTRIBS.forEach(c=>{
+    const level=normalizeLevel(unit(c.unit).level);
+    if(level)counts.levels[level]=(counts.levels[level]||0)+1;
+    if(sifIds.has(c.unit)||level==='R0')counts.sif+=1;
+  });
+  return counts;
+}
+function scopeSctCounts(){
+  const counts={sif:0,all:0,levels:{}};
+  const sifIds=sifScopeUnitIds();
+  const allScts=new Set(), sifScts=new Set(), levelScts={};
+  CONTRIBS.forEach(c=>{
+    if(!sct(c.sct).id)return;
+    allScts.add(c.sct);
+    const level=normalizeLevel(unit(c.unit).level);
+    if(level){
+      if(!levelScts[level])levelScts[level]=new Set();
+      levelScts[level].add(c.sct);
+    }
+    if(sifIds.has(c.unit)||level==='R0')sifScts.add(c.sct);
+  });
+  counts.all=allScts.size;
+  counts.sif=sifScts.size;
+  Object.keys(levelScts).forEach(level=>{counts.levels[level]=levelScts[level].size;});
+  return counts;
+}
+function scopeMatchesContribution(c){
+  const scope=state.filter.scope||'sif';
+  if(scope==='all')return true;
+  const u=unit(c.unit);
+  if(scope==='sif'){
+    return sifScopeUnitIds().has(c.unit)||normalizeLevel(u.level)==='R0';
+  }
+  if(scope.startsWith('level:'))return normalizeLevel(u.level)===scope.slice(6);
+  return c.unit===scope;
+}
+function sifScopeUnitIds(){
+  const ids=new Set();
+  if(CTX_META.sif&&UNITS.some(u=>u&&u.id===CTX_META.sif))ids.add(CTX_META.sif);
+  UNITS.forEach(u=>{if(u&&(u.sif===true||normalizeLevel(u.level)==='R0'))ids.add(u.id);});
+  const fallback=defaultScopeUnitId();
+  if(fallback)ids.add(fallback);
+  return ids;
+}
+function normalizeLevel(level){return String(level||'').trim().toUpperCase().replace(/\s+/g,'');}
+function recursionLevelValue(level){
+  const m=normalizeLevel(level).match(/^R([+-]?\d+)$/);
+  return m?Number(m[1]):0;
+}
+function hasActiveFilters(){
+  const f=state.filter;
+  return (f.scope&&f.scope!=='sif')||f.sys||f.prio||f.unit||f.vtype||f.attn||f.q;
 }
 function selF(key,label,opts){
   const cur=state.filter[key];
@@ -596,39 +781,120 @@ function rasicInspector(){
       <div class="assign-list">${A.length?A.map(x=>`<div><span>${x.v.name} <small>${x.v.type}</small></span><b class="cell"><button class="${x.l}" data-act="cycle" data-c="${c.id}" data-v="${x.v.id}">${x.l}</button></b></div>`).join(''):'<div class="muted" style="border:0">No assignments yet — empty is valid.</div>'}</div></div>
     <div class="kv"><label>Soft warnings (${W.length})</label>
       ${W.length?W.map(w=>`<div class="warn ${w.red?'red':''} ${w.loud?'loud':''}" style="margin-bottom:5px"><span class="ico">⚠</span><span>${esc(w.t)}</span></div>`).join(''):'<div class="warn" style="background:var(--green-soft);color:#3c7a44;border-color:#bfe3c5"><span class="ico">✓</span>Clean — accountable, supported, in scope.</div>'}
-      <div class="hint" style="margin-top:6px">Warnings invite a decision — they never block the workshop.</div></div>
+</div>
   </div>`;
 }
 
 /* ============================ 7.3 METRICS, ARTIFACTS & TOOLS — optional per-SCT enrichment ============================ */
+// 7.3 aspect items are objects { id, text } (host aligns to Codex's stable-id shape; extra fields tolerated, never keyed by text)
 const ASPECTS={
-  s1:{kpis:['Strategy adoption across units (%)','Time-to-decision on strategic bets'],artifacts:['Wardley Map','Strategy one-pager'],tools:['Wardley Mapping','Scenario planning']},
-  s2:{kpis:['Budget variance vs. plan (%)'],artifacts:['Finance planning Excel','Capital-allocation board'],tools:['Zero-based budgeting']},
-  s4:{kpis:['Audit findings closed (%)'],artifacts:['Audit-walk report'],tools:['Sampling protocol']},
-  s6:{kpis:['Time from signal to S5 response (h)'],artifacts:['Escalation log'],tools:[]}
+  s1:{kpis:[{id:'ai-s1-k1',text:'Strategy adoption across units (%)'},{id:'ai-s1-k2',text:'Time-to-decision on strategic bets'}],artifacts:[{id:'ai-s1-a1',text:'Wardley Map'},{id:'ai-s1-a2',text:'Strategy one-pager'}],tools:[{id:'ai-s1-t1',text:'Wardley Mapping'},{id:'ai-s1-t2',text:'Scenario planning'}]},
+  s2:{kpis:[{id:'ai-s2-k1',text:'Budget variance vs. plan (%)'}],artifacts:[{id:'ai-s2-a1',text:'Finance planning Excel'},{id:'ai-s2-a2',text:'Capital-allocation board'}],tools:[{id:'ai-s2-t1',text:'Zero-based budgeting'}]},
+  s4:{kpis:[{id:'ai-s4-k1',text:'Audit findings closed (%)'}],artifacts:[{id:'ai-s4-a1',text:'Audit-walk report'}],tools:[{id:'ai-s4-t1',text:'Sampling protocol'}]},
+  s6:{kpis:[{id:'ai-s6-k1',text:'Time from signal to S5 response (h)'}],artifacts:[{id:'ai-s6-a1',text:'Escalation log'}],tools:[]}
 };
+let _aiSeq=0; function aspItemId(){ return 'ai-local-'+(++_aiSeq); }                     // local temp ids; host assigns canonical
+function itxt(it){ return it&&typeof it==='object'?(it.text||''):(it||''); }             // tolerant read: {id,text} or legacy string
+function setItemText(arr,i,val){ const cur=arr[i]; arr[i]=(cur&&typeof cur==='object')?Object.assign(cur,{text:val}):{id:aspItemId(),text:val}; }
+/* optional detail fields per aspect item (host shape {id,text,owner?,target?,frequency?,source?}) — set or delete, never empty strings */
+function setItemField(arr,i,f,val){ let cur=arr[i]; if(!cur||typeof cur!=='object')cur=arr[i]={id:aspItemId(),text:itxt(cur)}; if(val)cur[f]=val; else delete cur[f]; }
+function setItemOwner(arr,i,vid){ setItemField(arr,i,'owner',vid); }                     // owner = a VESSEL id (role / function / meeting), picked not typed
+function aspItemById(id){ let f=null; if(id)Object.values(ASPECTS).forEach(a=>['kpis','artifacts','tools'].forEach(k=>((a&&a[k])||[]).forEach(x=>{ if(x&&typeof x==='object'&&x.id===id)f=x; }))); return f; }
+const FREQOPTS=['Daily','Twice per week','Weekly','Bi-Weekly','Monthly','Quarterly','Twice a year','Yearly','On signal','Custom'];
+/* one frequency <select> used by every substep (7.3/7.4/7.5 metric detail · 7.6 use-editor · 7.6 cadence). Preserves a stored custom value. */
+function freqSelect(cur,attrs){ cur=cur||''; const custom=cur&&cur!=='Custom'&&!FREQOPTS.includes(cur);
+  return `<select ${attrs||''}><option value=""${cur===''?' selected':''}>—</option>${custom?`<option value="${esc(cur)}" selected>${esc(cur)} · custom</option>`:''}${FREQOPTS.map(f=>`<option${f===cur?' selected':''}>${esc(f)}</option>`).join('')}</select>`; }
+/* "Custom" → prompt for a free-text cadence; returns the typed value, or the previous value if cancelled */
+function resolveFreq(v,prev){ if(v!=='Custom')return v; const seed=(prev&&!FREQOPTS.includes(prev))?prev:''; const t=(window.prompt('Custom frequency — type it freely (e.g. every 6 weeks):',seed)||'').trim(); return t||prev||''; }
+function ownerName(o){ return o?(vessel(o).name||String(o)):''; }                        // tolerant: unknown id (or host free text) displays as-is
+function ownerSelect(act,d){ const cur=(d.owner==null?'':String(d.owner)), known=cur&&!!vessel(cur).id;
+  const grp=(t,label)=>{ const vs=VESSELS.filter(v=>v.type===t); return vs.length?`<optgroup label="${label}">${vs.map(v=>`<option value="${esc(v.id)}" ${v.id===cur?'selected':''}>${esc(v.name)}</option>`).join('')}</optgroup>`:''; };
+  return `<select class="own-sel${cur?' set':''}" data-act="${act}"${d.sct?` data-sct="${esc(d.sct)}"`:''}${d.id?` data-id="${esc(d.id)}"`:''} data-kind="${esc(d.kind)}" data-i="${d.i}" title="Owner (optional) — a role, function or meeting accountable for this entry">
+    <option value="">${cur?'— no owner —':'owner …'}</option>${cur&&!known?`<option value="${esc(cur)}" selected>${esc(cur)}</option>`:''}${grp('role','Roles')}${grp('function','Functions')}${grp('meeting','Meetings')}</select>`; }
+/* metric detail sub-row (KPIs only): target · frequency · source/description — the same fields a 7.6 meeting-use overrides */
+function aspDetailRow(act,d,it){ if(d.kind!=='kpis')return ''; const t=(it&&it.target)||'',fr=(it&&it.frequency)||'',src=(it&&it.source)||'';
+  const dd=`data-act="${act}"${d.sct?` data-sct="${esc(d.sct)}"`:''}${d.id!=null&&d.id!==''?` data-id="${esc(d.id)}"`:''} data-kind="${esc(d.kind)}" data-i="${d.i}"`;
+  return `<div class="aspdetail">
+    <label>Target<input ${dd} data-f="target" value="${esc(t)}" placeholder="e.g. < 10 days"></label>
+    <label>Frequency${freqSelect(fr,`${dd} data-f="frequency"`)}</label>
+    <label>Source / description (free)<input ${dd} data-f="source" list="step7-artifact-list" value="${esc(src)}" placeholder="artifact — or type freely"></label>
+  </div>`; }
+function artifactDatalist(){ return `<datalist id="step7-artifact-list">${artifactPool().map(a=>`<option value="${esc(a.label)}">`).join('')}</datalist>`; }
+/* write a metric detail field (target/frequency/source) to the canonical item — 7.3 by index, 7.4/7.5 inherited by stable id (write-through) */
+function applyAspDetail(el){ const d=el.dataset,f=d.f; if(!f)return; let A,idx;
+  if(d.act==='aspdetail'){ A=ensureAspects(state.selAspect); idx=+d.i; if(!A[d.kind]||idx>=A[d.kind].length)return; }
+  else { const hit=inhAspItem(d.sct,d.kind,d.id,null); if(!hit)return; A=hit.A; idx=hit.idx; }
+  let val=el.value; if(f==='frequency')val=resolveFreq(val,A[d.kind][idx]&&A[d.kind][idx].frequency);
+  setItemField(A[d.kind],idx,f,val); const it=A[d.kind][idx]; if(it&&it.id)el.dataset.id=it.id; _mtgVer++; emitChange();
+  if(f==='frequency')render(); }   // reflect the picked/custom value in the select (change event — no caret to preserve)
 function aspectsOf(id){ return ASPECTS[id]||{kpis:[],artifacts:[],tools:[]}; }
 function ensureAspects(id){ if(!ASPECTS[id])ASPECTS[id]={kpis:[],artifacts:[],tools:[]}; return ASPECTS[id]; }
 function aspectCount(id){ const a=ASPECTS[id]; return a?(a.kpis.length+a.artifacts.length+a.tools.length):0; }
+function kpiSuggestionValues(){
+  const seen=new Set(), values=[];
+  Object.values(ASPECTS).forEach(bundle=>{
+    (bundle&&Array.isArray(bundle.kpis)?bundle.kpis:[]).forEach(item=>{
+      const value=itxt(item).trim();
+      const key=value.toLowerCase();
+      if(value&&!seen.has(key)){seen.add(key);values.push(value);}
+    });
+  });
+  return values.sort((a,b)=>a.localeCompare(b));
+}
+function kpiAutocompleteAttr(){
+  return kpiSuggestionValues().length?' list="step7-kpi-suggestions"':'';
+}
+function kpiSuggestionList(){
+  const values=kpiSuggestionValues();
+  return values.length?`<datalist id="step7-kpi-suggestions">${values.map(v=>`<option value="${esc(v)}"></option>`).join('')}</datalist>`:'';
+}
+function scopedAspectSctEntries(){
+  normalizeFilterScope();
+  const bySct=new Map();
+  CONTRIBS.filter(scopeMatchesContribution).forEach(c=>{
+    if(!sct(c.sct).id)return;
+    if(!bySct.has(c.sct))bySct.set(c.sct,[]);
+    bySct.get(c.sct).push(c);
+  });
+  return SCTS.filter(s=>bySct.has(s.id)).map(s=>({s,contribs:bySct.get(s.id)}));
+}
+function scopedSystemChips(contribs){
+  const systems=[...new Set((contribs||[]).map(c=>c.sys).filter(Boolean))];
+  return systems.length?systems.map(sysChip).join(' '):'<span class="hint">unmapped</span>';
+}
+function scopeContributionLabel(contribs){
+  if(!contribs||!contribs.length)return 'no contribution in this scope';
+  if(contribs.length===1)return unit(contribs[0].unit).name||'one contribution';
+  return contribs.length+' contributions';
+}
 function viewAspects(){
-  const sel=state.selAspect, a=aspectsOf(sel), s=sct(sel);
-  const list=SCTS.map(x=>{const n=aspectCount(x.id);return `<button class="lirow ${x.id===sel?'on':''}" data-act="selaspect" data-id="${x.id}"><b>${esc(x.name)}</b><span>${sysChip(x.sys)} ${esc(x.did)} · ${n?n+' aspect'+(n>1?'s':''):'none yet'}</span></button>`;}).join('');
+  const entries=scopedAspectSctEntries();
+  if(entries.length&&!entries.some(x=>x.s.id===state.selAspect))state.selAspect=entries[0].s.id;
+  const sel=state.selAspect, selected=entries.find(x=>x.s.id===sel)||null;
+  if(!selected){
+    return `<div class="filters">${scopeFilter(scopeSctCounts())}</div>
+      <div class="card pad"><div class="empty"><b>No SCTs in this scope</b>Choose another recursion level to see SCTs with contributions there.</div></div>`;
+  }
+  const a=aspectsOf(sel), s=selected.s;
+  const list=entries.map(({s:x,contribs})=>{const n=aspectCount(x.id);return `<button class="lirow ${x.id===sel?'on':''}" data-act="selaspect" data-id="${x.id}"><b>${esc(x.name)}</b><span>${scopedSystemChips(contribs)} ${esc(x.did)} · ${esc(scopeContributionLabel(contribs))} · ${n?n+' aspect'+(n>1?'s':''):'none yet'}</span></button>`;}).join('');
   const sec=(kind,label,q,ph,items)=>`
     <div class="desc-sec">
       <div class="sh"><b>${label}</b><span class="tag" style="background:var(--surface-soft);color:var(--muted)">optional</span></div>
       <div class="guideq2">${q}</div>
-      <div class="aspitems">${items.length?items.map((it,i)=>`<div class="asprow"><input class="fld-i" data-act="aspedit" data-kind="${kind}" data-i="${i}" value="${esc(it)}" placeholder="${esc(ph)}"><button class="mini no" data-act="asprm" data-kind="${kind}" data-i="${i}" title="Remove">✕</button></div>`).join(''):'<div class="hint" style="margin:1px 0 6px">none yet — optional</div>'}</div>
+      <div class="aspitems">${items.length?items.map((it,i)=>`<div class="asprow"><input class="fld-i" data-act="aspedit" data-kind="${kind}" data-i="${i}" value="${esc(itxt(it))}" placeholder="${esc(ph)}"${kind==='kpis'?kpiAutocompleteAttr():''}>${ownerSelect('aspowner',{kind,i,owner:it&&it.owner})}<button class="mini no" data-act="asprm" data-kind="${kind}" data-i="${i}" title="Remove">✕</button></div>${aspDetailRow('aspdetail',{kind,i,id:it&&it.id},it)}`).join(''):'<div class="hint" style="margin:1px 0 6px">none yet — optional</div>'}</div>
       <button class="mini" data-act="aspadd" data-kind="${kind}" style="border-style:dashed">+ Add</button>
     </div>`;
-  return `<div class="split">
+  return `<div class="filters">${scopeFilter(scopeSctCounts())}${(state.filter.scope&&state.filter.scope!=='sif')?'<button class="btn ghost" data-act="clearf">Clear</button>':''}</div>
+  <div class="split">
     <div><div class="sectitle">SCTs</div><div class="list">${list}</div>
-      <div class="hint" style="margin-top:8px">Per-SCT enrichment is <b>optional</b> — add only what helps; an empty SCT is fine.</div></div>
+</div>
     <div><div class="card pad">
-      <div class="row">${sysChip(s.sys)}<h3 style="margin:0">${esc(s.name)}</h3></div>
-      <div class="hint" style="margin-bottom:10px">${esc(s.did)} — optional operating detail. Leave any section empty if it doesn't apply.</div>
-      ${sec('kpis','KPIs & Metrics','How do we know this SCT is on course?','e.g. on-time delivery (%)',a.kpis)}
+      <div class="row">${scopedSystemChips(selected.contribs)}<h3 style="margin:0">${esc(s.name)}</h3></div>
+      <div class="hint" style="margin-bottom:10px">${esc(s.did)} · ${esc(scopeContributionLabel(selected.contribs))} · optional</div>
+      ${sec('kpis','Metrics & KPIs','How do we know this SCT is on course?','e.g. on-time delivery (%)',a.kpis)}
       ${sec('artifacts','Artifacts & Result Types','Where is the work / object kept track of?','e.g. Finance planning Excel · Wardley Map',a.artifacts)}
-      ${sec('tools','Tools & Methods','How is the work done — which method or tool? (its output is usually an artifact)','e.g. Wardley Mapping → produces the Wardley Map',a.tools)}
+      ${sec('tools','Tools & Methods','How is the work done — which method or tool?','e.g. Wardley Mapping',a.tools)}
+      ${kpiSuggestionList()}${artifactDatalist()}
     </div></div></div>`;
 }
 
@@ -639,19 +905,31 @@ const HUMAN={ // editable human-authored description text per vessel
   'f-strat':{purpose:'A small, senior capability that keeps the SIF oriented to its environment and future, and turns that into options the board can decide on.',interfaces:'Feeds the Quarterly Strategy Review; consumes environment scans and unit performance.'}
 };
 const MEMBERSHIP={ 'r-au':['m-audit'], 'r-st':['m-strat','m-norm'], 'r-rc':['m-res'], 'f-strat':['m-strat'] };   // vessel id -> meeting ids it sits in
-const VASPECTS={ 'r-au':{kpis:[],artifacts:['Audit findings tracker'],tools:[]} };                              // vessel-specific OPTIONAL kpis/artifacts/tools
+const VASPECTS={ 'r-au':{kpis:[],artifacts:[{id:'ai-rau-a1',text:'Audit findings tracker'}],tools:[]} };          // vessel-specific OPTIONAL {id,text} kpis/artifacts/tools
 function ensureDesc(id){ if(!HUMAN[id])HUMAN[id]={purpose:'',interfaces:''}; return HUMAN[id]; }
 function ensureMembership(id){ if(!MEMBERSHIP[id])MEMBERSHIP[id]=[]; return MEMBERSHIP[id]; }
 function ensureVAspects(id){ if(!VASPECTS[id])VASPECTS[id]={kpis:[],artifacts:[],tools:[]}; return VASPECTS[id]; }
 function linkedByRASIC(vid){ const g={A:[],R:[],S:[],C:[],I:[]}; CONTRIBS.forEach(c=>{const l=rg(c.id,vid); if(l&&g[l])g[l].push(c);}); return g; }
 function inheritedAspects(vid){ const seen=new Set(),out={kpis:[],artifacts:[],tools:[]}; CONTRIBS.forEach(c=>{ if(rg(c.id,vid)&&!seen.has(c.sct)){ seen.add(c.sct); const a=ASPECTS[c.sct]; if(a)['kpis','artifacts','tools'].forEach(k=>a[k].forEach(x=>out[k].push({sct:c.sct,v:x}))); } }); return out; }
+/* resolve an inherited (shared, SCT-owned) aspect item for write-through editing from 7.4/7.5: by stable id, falling back to the row's rendered text for legacy string items */
+function inhAspItem(sctId,kind,id,input){ const A=ASPECTS[sctId]; if(!A||!Array.isArray(A[kind]))return null;
+  let idx=id?A[kind].findIndex(x=>x&&typeof x==='object'&&x.id===id):-1;
+  if(idx<0&&input)idx=A[kind].findIndex(x=>itxt(x)===input.defaultValue);
+  return idx<0?null:{A,idx}; }
 function curDescV(){ return state.step==='7.5'?state.selFn:state.selRole; }
 const RLABEL={A:'Accountable for',R:'Responsible for',S:'Support',C:'Consulted',I:'Informed'};
 function viewRoles(){return descView('role');}
 function viewFunctions(){return descView('function');}
 function descView(kind){
-  const sel=kind==='role'?state.selRole:state.selFn;
   const items=VESSELS.filter(v=>v.type===kind);
+  let sel=kind==='role'?state.selRole:state.selFn;
+  if(!items.some(v=>v.id===sel)){
+    sel=items[0]?.id||'';
+    if(kind==='role')state.selRole=sel; else state.selFn=sel;
+  }
+  if(!sel){
+    return `<div class="card pad"><div class="empty"><b>No ${kind==='role'?'roles':'functions'} yet</b>Create or accept vessels in 7.1 first.</div></div>`;
+  }
   const list=items.map(v=>`<button class="lirow ${v.id===sel?'on':''}" data-act="${kind==='role'?'selrole':'selfn'}" data-id="${v.id}"><b>${esc(v.name)}</b><span>${esc(unit(v.scope).name)} · ${v.state}</span></button>`).join('');
   const v=vessel(sel), byR=linkedByRASIC(sel), desc=HUMAN[sel]||{}, inh=inheritedAspects(sel), own=VASPECTS[sel]||{kpis:[],artifacts:[],tools:[]}, mids=MEMBERSHIP[sel]||[];
   // linked SCTs, hierarchical by RASIC: A → R → S → C → I, with the SCT names
@@ -662,12 +940,13 @@ function descView(kind){
   const meetChips=mids.map(mid=>`<span class="mchip">${esc(vessel(mid).name)}<button data-act="rmmeeting" data-mid="${mid}" title="Remove">✕</button></span>`).join('') || '<span class="hint">not in any meeting yet</span>';
   const addable=VESSELS.filter(x=>x.type==='meeting'&&!mids.includes(x.id));
   const meetAdd=addable.length?`<select class="fld-i" data-act="addmeeting" style="max-width:240px;margin-top:7px"><option value="">+ Add to a meeting…</option>${addable.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>`:'';
-  // KPIs / Artifacts / Tools — inherited from linked SCTs (read-only) + optional vessel-specific
+  // KPIs / Artifacts / Tools — inherited from linked SCTs (EDITABLE, write-through to the shared SCT entry) + optional vessel-specific
   const aspSec=(kk,label,q,ph)=>{ const inhItems=inh[kk], ownItems=own[kk]||[];
     return `<div class="desc-sec"><div class="sh"><b>${label}</b><span class="tag" style="background:var(--surface-soft);color:var(--muted)">optional</span></div>
       <div class="guideq2">${q}</div>
-      ${inhItems.length?`<div class="inh-note">From linked SCTs</div><div class="inh-items">${inhItems.map(it=>`<span class="chip">${esc(it.v)} <small class="muted">${esc(sct(it.sct).did)}</small></span>`).join(' ')}</div>`:'<div class="hint">none inherited from linked SCTs</div>'}
-      <div class="aspitems" style="margin-top:8px">${ownItems.map((it,i)=>`<div class="asprow"><input class="fld-i" data-act="vaspedit" data-kind="${kk}" data-i="${i}" value="${esc(it)}" placeholder="${esc(ph)}"><button class="mini no" data-act="vasprm" data-kind="${kk}" data-i="${i}">✕</button></div>`).join('')}</div>
+      ${inhItems.length?`<div class="inh-note">From linked SCTs — shared entries: an edit here changes them everywhere they are inherited</div>
+      <div class="aspitems">${inhItems.map((it,i)=>`<div class="asprow"><input class="fld-i" data-act="inhaspedit" data-sct="${esc(it.sct)}" data-kind="${kk}" data-id="${esc(it.v&&it.v.id||'')}" data-i="${i}" value="${esc(itxt(it.v))}" title="Shared entry from ${esc(sct(it.sct).did)} — editing changes it in 7.3 and every role/function that inherits it"${kk==='kpis'?kpiAutocompleteAttr():''}>${ownerSelect('inhaspowner',{sct:it.sct,id:it.v&&it.v.id||'',kind:kk,i,owner:it.v&&it.v.owner})}<span class="inh-src" title="${esc(sct(it.sct).name)}">${esc(sct(it.sct).did)}</span><button class="mini no" data-act="inhasprm" data-sct="${esc(it.sct)}" data-kind="${kk}" data-id="${esc(it.v&&it.v.id||'')}" data-i="${i}" title="Remove from ${esc(sct(it.sct).did)} (everywhere it is inherited)">✕</button></div>${aspDetailRow('inhaspdetail',{sct:it.sct,id:it.v&&it.v.id||'',kind:kk,i},it.v)}`).join('')}</div>`:'<div class="hint">none inherited from linked SCTs</div>'}
+      <div class="aspitems" style="margin-top:8px">${ownItems.map((it,i)=>`<div class="asprow"><input class="fld-i" data-act="vaspedit" data-kind="${kk}" data-i="${i}" value="${esc(itxt(it))}" placeholder="${esc(ph)}"${kk==='kpis'?kpiAutocompleteAttr():''}><span class="inh-src own">${kind}</span><button class="mini no" data-act="vasprm" data-kind="${kk}" data-i="${i}">✕</button></div>`).join('')}</div>
       <button class="mini" data-act="vaspadd" data-kind="${kk}" style="border-style:dashed">+ Add ${kind}-specific</button>
     </div>`;
   };
@@ -675,7 +954,7 @@ function descView(kind){
     <div><div class="sectitle">${kind==='role'?'Roles':'Functions'}</div><div class="list">${list}</div></div>
     <div><div class="card pad">
       <div class="row"><h3 style="margin:0">${esc(v.name)}</h3>${v.alg?'<span class="alg">▲ algedonic</span>':''}</div>
-      <div class="hint" style="margin-bottom:10px">${esc(unit(v.scope).name)} · ${v.state} · everything below is optional</div>
+      <div class="hint" style="margin-bottom:10px">${esc(unit(v.scope).name)} · ${v.state}</div>
       <div class="desc-sec"><div class="sh"><b>Linked SCTs (by RASIC)</b><span class="tag derived">from 7.2</span></div>
         <div class="rasic-links">${linkBlock}</div></div>
       <div class="desc-sec"><div class="sh"><b>Purpose</b><span class="tag human">editable</span></div>
@@ -683,116 +962,365 @@ function descView(kind){
       <div class="desc-sec"><div class="sh"><b>Interfaces &amp; collaboration</b><span class="tag human">editable</span></div>
         <textarea class="fld-i" data-act="descedit" data-f="interfaces" placeholder="Who does this ${kind} work with — internal &amp; external?">${esc(desc.interfaces||'')}</textarea></div>
       <div class="desc-sec"><div class="sh"><b>Meetings</b><span class="tag" style="background:var(--surface-soft);color:var(--muted)">optional</span></div>
-        <div class="guideq2">Add this ${kind} to one or more meetings / committees.</div>
         <div class="mchips">${meetChips}</div>${meetAdd}</div>
-      ${aspSec('kpis','KPIs & Metrics','How do we know this '+kind+' is on course?','e.g. response time (h)')}
+      ${aspSec('kpis','Metrics & KPIs','How do we know this '+kind+' is on course?','e.g. response time (h)')}
       ${aspSec('artifacts','Artifacts & Result Types','What does this '+kind+' keep or produce?','e.g. decision log')}
       ${aspSec('tools','Tools & Methods','Which tools or methods does this '+kind+' use?','e.g. weekly retro')}
+      ${kpiSuggestionList()}${artifactDatalist()}
     </div></div></div>`;
 }
 
-/* ============================ 7.5 MEETINGS ============================ */
-function viewMeetings(){
-  const meetings=VESSELS.filter(v=>v.type==='meeting');
-  const cards=meetings.map(m=>{
-    const links=CONTRIBS.filter(c=>rg(c.id,m.id));
-    const parts=VESSELS.filter(v=>v.type==='role'&&(links.some(c=>rg(c.id,v.id))||(MEMBERSHIP[v.id]||[]).includes(m.id)));
-    const cadence={'m-strat':'Quarterly','m-coord':'Weekly','m-res':'Monthly','m-alg':'On signal (always-on)','m-audit':'Sporadic','m-norm':'Twice a year'}[m.id]||'TBD';
-    return `<div class="charter">
-      <div class="ch-top"><div><div class="row"><b>${esc(m.name)}</b>${m.alg?'<span class="alg">▲ algedonic</span>':''}</div>
-        <div class="hint" style="margin-top:3px">${esc(m.purpose)} · ${m.state}</div></div><span class="chip">⟲ ${cadence}</span></div>
-      <div class="ch-body">
-        <div class="io"><label>Linked SCTs</label><ul>${links.map(c=>`<li>${esc(sct(c.sct).did)} ${esc(sct(c.sct).name)}</li>`).join('')||'<li class="muted">—</li>'}</ul></div>
-        <div class="io"><label>Participants / roles</label><ul>${parts.map(p=>`<li>${esc(p.name)}</li>`).join('')||'<li class="muted">assign in RASIC</li>'}</ul></div>
-        <div class="io"><label>Inputs</label><ul><li>${m.id==='m-strat'?'Environment scan, unit performance':'Channel evidence, prior decisions'}</li></ul></div>
-        <div class="io"><label>Outputs / decisions</label><ul><li>${m.id==='m-res'?'Resource grants ↔ accountability':'Steering decisions, escalations'}</li></ul></div>
-      </div>
-      <div class="ch-body" style="grid-template-columns:1fr;border-top:1px solid var(--line)">
-        <div class="flow"><span class="pill">inputs</span> → <span class="pill">decisions</span> → <span class="pill">outputs</span>
-        ${m.alg?'<span class="pill" style="color:var(--violet)">▲ algedonic trigger</span>':''}</div>
-      </div>
-    </div>`;
-  }).join('');
-  return `<div class="card pad" style="margin-bottom:14px"><b>Meeting charters</b> <span class="hint">— derived from assigned SCTs + Step VI channel evidence. Meetings are steering organs, not calendar entries.</span></div>
-    <div class="mgrid">${cards}</div>`;
+/* ============================ 7.6 MEETINGS — the Reuse Inspector (editable charter) ============================ */
+const ROLETYPES=['chair','decision owner','contributor','consulted','informed','escalation owner'];
+const RASIC2ROLE={A:'decision owner',R:'contributor',S:'contributor',C:'consulted',I:'informed'};
+const CADENCE_SEED={'m-strat':{f:'Quarterly',n:1,d:120},'m-coord':{f:'Weekly',n:1,d:45},'m-res':{f:'Monthly',n:1,d:90},'m-alg':{f:'On signal',n:1,d:0},'m-audit':{f:'Twice a year',n:1,d:60},'m-norm':{f:'Twice a year',n:1,d:90}};
+const MEETINGS={};                                   // authoring layer, keyed by meeting id → step7Model().meetings
+let _mtgVer=0;                                        // graph version — bumped when RASIC/ASPECTS/MEMBERSHIP/context change so cached charters re-derive
+const mq=(sel,root)=>(root||document).querySelector(sel);
+function mtgList(){ return VESSELS.filter(v=>v.type==='meeting'); }
+function metricDefPool(){ if(CTX_METRICDEFS.length)return CTX_METRICDEFS.map(d=>({ref:d.id,label:d.text,def:true,rc:d.reuseCount}));   // canonical D1 registry when the host sends it
+  const seen=new Set(),out=[]; Object.values(ASPECTS).forEach(a=>((a&&a.kpis)||[]).forEach(k=>{ const t=itxt(k).trim(),key=t.toLowerCase(); if(t&&!seen.has(key)){seen.add(key);out.push({ref:k.id||('k-'+key),label:t,def:true});} })); return out; }
+function artifactPool(){ if(CTX_ARTIFACTDEFS.length)return CTX_ARTIFACTDEFS.map(a=>({ref:a.id,label:a.text}));
+  const seen=new Set(),out=[]; const add=x=>{ const t=itxt(x).trim(); if(t&&x.id&&!seen.has(x.id)){seen.add(x.id);out.push({ref:x.id,label:t});} }; Object.values(ASPECTS).forEach(a=>((a&&a.artifacts)||[]).forEach(add)); Object.values(VASPECTS).forEach(a=>((a&&a.artifacts)||[]).forEach(add)); return out; }
+function toolPool(){ if(CTX_TOOLDEFS.length)return CTX_TOOLDEFS.map(t=>({ref:t.id,label:t.text}));
+  const seen=new Set(),out=[]; Object.values(ASPECTS).forEach(a=>((a&&a.tools)||[]).forEach(x=>{ if(x.id&&!seen.has(x.id)){seen.add(x.id);out.push({ref:x.id,label:itxt(x)});} })); return out; }
+function objLabel(ref){ let f=null; [CTX_ARTIFACTDEFS,CTX_TOOLDEFS,CTX_METRICDEFS,CTX_DECISIONDEFS].forEach(reg=>reg.forEach(o=>{ if(o.id===ref)f=o.text; }));   // canonical registries first
+  if(f==null)Object.values(ASPECTS).concat(Object.values(VASPECTS)).forEach(a=>['artifacts','tools','kpis'].forEach(k=>((a&&a[k])||[]).forEach(x=>{ if(x.id===ref)f=itxt(x); }))); return f; }
+function deriveMtg(mid){
+  const m=vessel(mid), steered=CONTRIBS.filter(c=>rg(c.id,mid));
+  const ch={agenda:'• '+(m.purpose||'Agenda'),cad:Object.assign({f:'TBD',n:1,d:60},CADENCE_SEED[mid]||{}),
+    steering:[],participants:[],inputs:[],outputs:[],tools:[],measures:[],rights:[],loops:[],escalation:[],_dblA:[]};
+  steered.forEach(c=>ch.steering.push({ref:c.id,label:sct(c.sct).did+' '+sct(c.sct).name,sys:c.sys,origin:'graph',sub:'steers '+sct(c.sct).did,ghost:false}));
+  const seen={};
+  steered.forEach(c=>VESSELS.forEach(v=>{ if(v.type==='meeting'||seen[v.id])return; const L=rg(c.id,v.id); if(L){ seen[v.id]=1; ch.participants.push({ref:v.id,label:v.name,sys:v.sys,origin:'graph',sub:'RASIC · '+L+' on '+sct(c.sct).did,roleType:RASIC2ROLE[L]||'contributor',ghost:true}); } }));
+  VESSELS.forEach(v=>{ if(v.type!=='meeting'&&!seen[v.id]&&(MEMBERSHIP[v.id]||[]).includes(mid)){ seen[v.id]=1; ch.participants.push({ref:v.id,label:v.name,sys:v.sys,origin:'graph',sub:'member',roleType:'contributor',ghost:true}); } });
+  const mseen=new Set();
+  steered.forEach(c=>{ const a=ASPECTS[c.sct]; if(a)a.kpis.forEach(k=>{ if(mseen.has(k.id))return; mseen.add(k.id); ch.measures.push({defRef:k.id,label:itxt(k),origin:'graph',sub:'from '+sct(c.sct).did,ghost:true,use:null}); }); });
+  const oseen=new Set();
+  steered.forEach(c=>{ const a=ASPECTS[c.sct]; if(a)a.artifacts.forEach(x=>{ if(oseen.has(x.id))return; oseen.add(x.id); ch.outputs.push({ref:x.id,label:itxt(x),kind:'artifact',origin:'graph',sub:'from '+sct(c.sct).did,ghost:true}); }); });
+  steered.forEach(c=>{ const as=VESSELS.filter(v=>rg(c.id,v.id)==='A'); as.forEach(v=>ch.rights.push({decision:'Approve '+sct(c.sct).name.toLowerCase(),owner:v.id,ownerLabel:v.name,affected:c.id,affectedLabel:sct(c.sct).did,origin:'graph',ghost:true})); if(as.length>1)ch._dblA.push(c.id); });
+  if(CTX_LOOPS.length){ const l=CTX_LOOPS.find(x=>x.system&&x.system===m.sys)||CTX_LOOPS.find(x=>String(x.id).includes(String(m.sys||'').toLowerCase().replace('*','')))||null; if(l)ch.loops.push({ref:l.id,label:l.label||l.id,sys:l.system,relation:'supports',origin:'graph',sub:'Step VI',ghost:true}); }
+  else { const lp=(m.prov||'').match(/\(([^)]+)\)/); if(lp)ch.loops.push({ref:'loop:'+mid,label:lp[1],relation:'supports',origin:'graph',sub:'from Step VI',ghost:true}); }
+  if(m.alg)ch.escalation.push({label:'Pain signal to S5',origin:'graph',sub:'algedonic',ghost:true});
+  ch._ver=_mtgVer;
+  return ch;
 }
-
-/* ============================ 7.6 ORG REPRESENTATION ============================ */
-function viewOrg(){
-  const r0=unit('u-sif');const r1=UNITS.filter(u=>u.level==='R-1');
-  const rolesAt=uid=>VESSELS.filter(v=>v.type==='role'&&v.scope===uid);
-  const fnAt=uid=>VESSELS.filter(v=>v.type==='function'&&v.scope===uid);
-  const nodeHtml=(v)=>`<button class="node ${v.type==='role'?'role':''} ${state.selNode===v.id?'on':''}" data-act="selnode" data-id="${v.id}"><b>${esc(v.name)}</b><small>${v.type} · ${v.state}</small></button>`;
-  const r0roles=rolesAt('u-sif').map(nodeHtml).join('');
-  const r0fns=fnAt('u-sif').map(nodeHtml).join('');
-  const units=r1.map(u=>{
-    const roles=rolesAt(u.id).map(nodeHtml).join('');
-    return `<div class="unitcol"><button class="node ${state.selNode===u.id?'on':''}" data-sys="S1" data-act="selnode" data-id="${u.id}"><b>${esc(u.name)}</b><small>S1 unit · R-1</small></button><div class="connector"></div>${roles||'<span class="hint">no role yet</span>'}</div>`;
-  }).join('');
-  const canvas=`<div class="org-canvas">
-    <p class="lvl">R+1 · ${esc(unit('u-grp').name)}</p>
-    <div class="tier"><button class="node ${state.selNode==='u-grp'?'on':''}" data-act="selnode" data-id="u-grp"><b>${esc(unit('u-grp').name)}</b><small>holding · R+1</small></button></div>
-    <div class="connector"></div>
-    <p class="lvl">R0 · System-in-Focus — metasystem</p>
-    <div class="tier"><button class="node ${state.selNode==='u-sif'?'on':''}" data-sys="S5" data-act="selnode" data-id="u-sif"><b>${esc(r0.name)}</b><small>SIF · R0</small></button></div>
-    <div class="row" style="margin:6px 0 2px"><span class="hint">metasystem roles &amp; functions</span></div>
-    <div class="tier">${r0roles}${r0fns}</div>
-    <div class="connector"></div>
-    <p class="lvl">R-1 · operational units (S1)</p>
-    <div class="subtier">${units}</div>
-  </div>`;
-  let inspector;
-  const selV=vessel(state.selNode), selU=unit(state.selNode);
-  if(selV.id){
-    const links=CONTRIBS.filter(c=>rg(c.id,selV.id)).map(c=>`<div class="assign-list"><div><span>${esc(sct(c.sct).did)} ${esc(sct(c.sct).name)}</span><b>${rg(c.id,selV.id)}</b></div></div>`).join('');
-    inspector=`<div class="card pad"><div class="row"><h3 style="margin:0">${esc(selV.name)}</h3></div>
-      <div class="kv"><label>Type / scope</label>${selV.type} · ${esc(unit(selV.scope).name)}</div>
-      <div class="kv"><label>SCTs & RASIC</label>${links||'<span class="muted">no assignments</span>'}</div>
-      <div class="hint">The chart is a representation — accountability lives in the SCT/RASIC model, not the boxes.</div></div>`;
-  } else if(selU.id){
-    const cs=CONTRIBS.filter(c=>c.unit===selU.id);
-    inspector=`<div class="card pad"><h3>${esc(selU.name)}</h3><div class="kv"><label>Recursion level</label>${selU.level}${selU.sif?' · System-in-Focus':''}</div>
-      <div class="kv"><label>SCT contributions here</label><ul style="font-size:12px;padding-left:16px">${cs.map(c=>`<li>${esc(sct(c.sct).did)} ${esc(sct(c.sct).name)}</li>`).join('')||'<li class="muted">none</li>'}</ul></div></div>`;
-  } else {
-    inspector=`<div class="card pad"><div class="empty"><b>Click a node</b>Reveal the SCTs and RASIC relationships behind any unit, function, or role.</div></div>`;
+/* Return the cached charter, re-deriving against the current graph if it changed since it was built.
+   Preserves the user's authored layer (solid chips, agenda, cadence) and only refreshes the graph-
+   derived ghosts + the recomputed double-accountability set. */
+function mtg(mid){ const c=MEETINGS[mid]; if(c&&c._ver===_mtgVer)return c; const fresh=deriveMtg(mid);
+  if(c){ state.useEdit=null;                          // a graph change closes any half-open use editor (indices may shift)
+    fresh.agenda=c.agenda; fresh.cad=c.cad;
+    const key=x=>x.ref||x.defRef||x.decision||x.label;
+    ['steering','participants','inputs','outputs','tools','measures','rights','loops','escalation'].forEach(b=>{
+      const solid=(c[b]||[]).filter(x=>!x.ghost), sk=new Set(solid.map(key));
+      fresh[b]=[...solid,...((fresh[b]||[]).filter(g=>!sk.has(key(g))))]; }); }
+  return (MEETINGS[mid]=fresh); }
+function mtgPrune(){ Object.keys(MEETINGS).forEach(id=>{ if(!VESSELS.some(v=>v.id===id&&v.type==='meeting'))delete MEETINGS[id]; }); }
+const MBANDS=[
+  {k:'steering',label:'Steering · SCT contributions',gly:'◆',hk:'s',verb:'contribution'},
+  {k:'participants',label:'Participants',gly:'◐',hk:'p',verb:'participant'},
+  {k:'agenda',label:'Agenda',gly:'≡',hk:'a',verb:'',special:'agenda'},
+  {k:'inputs',label:'Inputs',gly:'▽',hk:'i',verb:'input'},
+  {k:'outputs',label:'Outputs & decisions',gly:'△',hk:'o',verb:'output'},
+  {k:'tools',label:'Tools / methods',gly:'⚙',hk:'t',verb:'tool'},
+  {k:'measures',label:'Metrics & KPIs',gly:'◷',hk:'m',verb:'metric'},
+  {k:'rights',label:'Decision rights',gly:'⚖',hk:'d',verb:'decision right'},
+  {k:'loops',label:'Step VI loops',gly:'↺',hk:'l',verb:'loop'},
+  {k:'escalation',label:'Escalation / algedonic',gly:'▲',hk:'A',verb:'path'}
+];
+function mSysChip(s){ return s?`<span class="sys ${s}">${esc(s)}</span>`:''; }
+function mOrigin(o){ return o==='here'?'o-here':o==='auth'?'o-auth':'o-graph'; }
+function mtgBlend(c){ const all=[...c.participants,...c.inputs,...c.outputs,...c.tools,...c.measures,...c.rights,...c.loops]; if(!all.length)return''; const cnt={graph:0,here:0,auth:0}; all.forEach(x=>cnt[x.origin==='here'?'here':x.origin==='auth'?'auth':'graph']++); return 'mix-'+Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0]; }
+function mChip(bandKey,x,i){
+  const gh=x.ghost?'ghost':'';
+  const stripe=bandKey==='loops'?'o-loop':bandKey==='escalation'?'o-alg':mOrigin(x.origin);
+  let inner='';
+  if(x.sys)inner+=mSysChip(x.sys);
+  if(bandKey==='steering'&&x.ref)inner+=`<span class="src">${esc(sct(contrib(x.ref).sct).did||'')}</span>`;
+  if((bandKey==='inputs'||bandKey==='outputs')&&x.kind==='meeting')inner+=`<span class="src" title="a meeting — communication triggers communication">⟲ meeting</span>`;
+  inner+=`<span class="lbl" title="${esc(x.label)}">${esc(x.label)}</span>`;
+  if(bandKey==='measures'){
+    if(x.use&&x.use.target){ const s=x.use.source?(' · '+esc(objLabel(x.use.source)||x.use.source)):''; inner=`<span class="lbl">${esc(x.label)} · ${esc(x.use.target)} · ${esc(x.use.freq)}${s}</span><span class="tag cand">· target authored</span>`; }
+    else inner+=`<span class="defmark">def</span><span class="sub">set a local use →</span>`;   // no committed target yet → still a bare definition (avoids a phantom empty use)
   }
-  return `<div class="row" style="justify-content:space-between;margin-bottom:12px">
-      <div class="row"><span class="hint">Overlays:</span>
-        <div class="seg" id="ovSeg"><button data-ov="none" class="${document.body.dataset.overlay==='none'?'on':''}">Plain</button><button data-ov="vsm" class="${document.body.dataset.overlay==='vsm'?'on':''}">VSM colour</button></div>
-      </div>
-      <span class="hint">reporting/structural view · meetings available as an overlay (toggle in production)</span>
-    </div>
-    <div class="org-wrap">${canvas}<div>${inspector}</div></div>`;
+  if(bandKey==='participants'){ inner+=`<span class="sub">${esc(x.sub||'')}</span><span class="roletype" data-rt="${i}">${esc(x.roleType)} ▾</span>`; }
+  else if(bandKey==='rights'){ inner=`<span class="lbl" title="${esc(x.decision)}">${esc(x.decision)}</span><span class="sub">⇒ ${esc(x.ownerLabel)} · ${esc(x.affectedLabel)}</span>`; }
+  else if(bandKey==='loops'){ inner=`<span class="lbl">${esc(x.relation)} ${esc(x.label)}</span><span class="sub">${esc(x.sub||'')}</span>`; }
+  else if(x.sub&&bandKey!=='participants'&&bandKey!=='measures'){ inner+=`<span class="sub">${esc(x.sub)}</span>`; }
+  const rat=x.ghost?`<span class="ratify" data-ratify="${bandKey}:${i}" title="Ratify">↵</span>`:'';
+  const flip=(bandKey==='inputs'||bandKey==='outputs')?`<span class="rm" data-flip="${bandKey}:${i}" title="Move to ${bandKey==='inputs'?'outputs':'inputs'}">⇄</span>`:'';
+  const rm=`<span class="rm" data-rm="${bandKey}:${i}" title="Remove">✕</span>`;
+  const editable=['measures','rights','loops','inputs','outputs'].includes(bandKey)?'editable':'';
+  return `<span class="chip ${stripe} ${gh} ${editable}" data-chip="${bandKey}:${i}">${inner}${rat}${flip}${rm}</span>`;
+}
+function useEditorHTML(c,i){ const m=c.measures[i]; if(!m)return''; if(!m.use)m.use={target:'',freq:c.cad.f,source:'',owner:''};
+  return `<div class="use-ed">
+    <div class="f"><label>Target</label><input id="uT" placeholder="&lt; 10 days" value="${esc(m.use.target)}"></div>
+    <div class="f"><label>Frequency</label>${freqSelect(m.use.freq,'id="uF"')}</div>
+    <div class="f"><label>Source / description (free)</label><input id="uS" list="mArtDL" placeholder="artifact — or type freely" value="${esc(m.use.source||'')}"></div>
+    <div class="f"><label>Owner</label><select id="uO"><option value="">—</option>${c.participants.map(p=>`<option value="${p.ref}" ${p.ref===m.use.owner?'selected':''}>${esc(p.label)}</option>`).join('')}</select></div>
+    <button class="go" id="uGo">Set ↵</button></div>`;
+}
+function renderCharterSheet(mid){
+  const c=mtg(mid), m=vessel(mid);
+  if(!state.mtgOpen)state.mtgOpen={participants:true,agenda:true,measures:true};
+  let bands='';
+  MBANDS.forEach(b=>{
+    const open=state.mtgOpen[b.k]?'open':'';
+    if(b.special==='agenda'){ const n=(c.agenda||'').split('\n').filter(l=>l.trim()).length;
+      bands+=`<details class="band" ${open} data-band="agenda"><summary><span class="gly">≡</span>Agenda<span class="hk">a</span><span class="cnt">${n}</span></summary><div class="rail" style="display:block"><textarea id="mAgenda" class="agenda-ta" placeholder="• Type the agenda…">${esc(c.agenda||'')}</textarea></div></details>`; return; }
+    const items=c[b.k]||[];
+    let rail=items.map((x,i)=>{ let h=mChip(b.k,x,i); if(b.k==='measures'&&state.useEdit===i)h+=useEditorHTML(c,i); return h; }).join('');
+    rail+=`<span class="addpill" data-add="${b.k}">＋ ${esc(b.verb)} <span class="hk">${b.hk}</span></span>`;
+    let warn=''; if(b.k==='rights'&&c._dblA.length)warn=`<div class="warnbox">⚠ Two vessels are Accountable on ${c._dblA.map(x=>esc(sct(contrib(x).sct).did)).join(', ')} — resolve in 7.2 or ratify the exception.</div>`;
+    bands+=`<details class="band" ${open} data-band="${b.k}"><summary><span class="gly">${b.gly}</span>${esc(b.label)}<span class="hk">${b.hk}</span><span class="cnt">${items.length}</span></summary>${warn}<div class="rail" data-rail="${b.k}">${rail}</div></details>`;
+  });
+  return `<div class="rsheet">
+    <div class="rhead"><input class="ch-name" id="mName" value="${esc(m.name)}" spellcheck="false">
+      <div class="ch-meta"><span class="scopechip" title="Scope">⌖ R0 · SIF</span>
+        <span class="cad-ed">⟲ ${freqSelect(c.cad.f,'id="mCadF"')} every <input id="mCadN" type="number" min="1" value="${c.cad.n}" style="width:44px">· <input id="mCadD" type="number" min="0" value="${c.cad.d}" style="width:52px"> min</span>
+        <button class="algbtn ${m.alg?'on':''}" id="mAlg">▲ algedonic</button>
+        <span class="tag ${m.state==='accepted'?'acc':'cand'}">${esc(m.state)}</span></div>
+    </div>${bands}
+  </div><datalist id="mArtDL">${artifactPool().map(a=>`<option value="${esc(a.label)}">`).join('')}</datalist>`;
+}
+function viewMeetings(){
+  const meetings=mtgList();
+  if(!meetings.length)return `<div class="rins"><div class="card pad"><div class="empty"><b>No meetings yet</b>Accept a meeting vessel in 7.1.</div></div></div>`;
+  if(!state.selMtg||!meetings.some(m=>m.id===state.selMtg))state.selMtg=meetings[0].id;
+  const list=meetings.map(m=>{ const c=mtg(m.id),on=m.id===state.selMtg;
+    const ghostN=[...c.participants,...c.measures,...c.outputs,...c.rights,...c.loops].filter(x=>x.ghost).length;
+    return `<button class="lirow ${mtgBlend(c)} ${on?'on':''}" data-mtg="${m.id}"><b>${esc(m.name)}</b><span>⟲ ${esc(c.cad.f)}${m.alg?' · <span style="color:var(--magenta);font-weight:800">▲</span>':''} · ${ghostN?('◌ '+ghostN+' to confirm'):'ratified'}</span></button>`;
+  }).join('');
+  return `<div class="rins"><div class="split"><div><div class="sectitle">Meetings</div><div class="list">${list}</div></div><div>${renderCharterSheet(state.selMtg)}</div></div></div>`;
+}
+function mRender(){ render(); }
+
+/* ---- the one ranked reuse picker (anchored popover) ---- */
+let mPicker=null, mPk=null;
+const mUndo=[];
+function mPool(bandKey){
+  const c=mtg(state.selMtg), used=new Set((c[bandKey]||[]).map(x=>x.ref||x.defRef));
+  if(bandKey==='steering')return CONTRIBS.filter(cc=>!used.has(cc.id)).map(cc=>({ref:cc.id,label:sct(cc.sct).did+' '+sct(cc.sct).name,sys:cc.sys,origin:'graph',sub:sct(cc.sct).did,suggested:true}));
+  if(bandKey==='participants'){ const sugg=new Set(); c.steering.forEach(s=>VESSELS.forEach(v=>{ if(v.type!=='meeting'&&rg(s.ref,v.id))sugg.add(v.id); })); return VESSELS.filter(v=>v.type!=='meeting'&&!used.has(v.id)).map(v=>({ref:v.id,label:v.name,sys:v.sys,origin:'graph',sub:v.type,suggested:sugg.has(v.id)})); }
+  if(bandKey==='measures')return metricDefPool().filter(d=>!used.has(d.ref)).map(d=>Object.assign({},d,{origin:'graph',suggested:c.steering.some(s=>{ const a=ASPECTS[contrib(s.ref).sct]; return a&&a.kpis.some(k=>k.id===d.ref); })}));
+  if(bandKey==='inputs'||bandKey==='outputs'){
+    const sugg=new Set(); c.steering.forEach(s=>{ const a=ASPECTS[contrib(s.ref).sct]; if(a)a.artifacts.forEach(x=>sugg.add(x.id)); });
+    let cross={}; if(bandKey==='inputs')mtgList().forEach(mm=>{ if(mm.id===state.selMtg)return; (mtg(mm.id).outputs||[]).forEach(o=>{ if(o.ref&&o.kind!=='meeting')cross[o.ref]='output of '+mm.name; }); });
+    const artRows=artifactPool().filter(a=>!used.has(a.ref)).map(a=>({ref:a.ref,label:a.label,kind:'artifact',origin:sugg.has(a.ref)?'graph':'here',sub:cross[a.ref]||'',suggested:sugg.has(a.ref)||!!cross[a.ref]}));
+    const meetRows=mtgList().filter(mm=>mm.id!==state.selMtg&&!used.has(mm.id)).map(mm=>({ref:mm.id,label:mm.name,kind:'meeting',origin:'graph',sub:bandKey==='inputs'?'meeting triggers this':'this triggers a meeting',suggested:false}));
+    return [...artRows,...meetRows];
+  }
+  if(bandKey==='tools')return toolPool().filter(t=>!used.has(t.ref)).map(t=>({ref:t.ref,label:t.label,origin:'here',sub:'',suggested:false}));
+  if(bandKey==='loops')return CTX_LOOPS.filter(l=>!used.has(l.id)).map(l=>({ref:l.id,label:l.label||l.id,sys:l.system,origin:'graph',sub:l.system||'',suggested:c.steering.some(s=>contrib(s.ref).sys===l.system)}));
+  if(bandKey==='escalation')return [{ref:'esc-s5',label:'Pain signal to S5',origin:'graph',suggested:true}];
+  return [];
+}
+function mOpenPicker(bandKey,anchor){ mClosePicker(); mPk={bandKey,pool:mPool(bandKey),query:'',active:0,anchor}; mPicker=document.createElement('div'); mPicker.className='picker'; popHost().appendChild(mPicker); mDrawPicker(); mPosPicker(anchor); }
+function mPosPicker(anchor){ placePop(mPicker,anchor); }
+function mFuzzy(pool,q){ if(!q)return pool.slice(); const s=q.toLowerCase(); return pool.filter(x=>x.label.toLowerCase().includes(s)); }
+function mDupe(pool,q){ if(!q)return null; const s=q.toLowerCase().trim(),w=s.split(/\s+/).filter(x=>x.length>=4); return pool.find(x=>{ const l=x.label.toLowerCase(); return l===s||l.includes(s)||w.some(z=>l.includes(z)); })||null; }
+function mPickerRows(){ const {pool,query,bandKey}=mPk; const filt=mFuzzy(pool,query); const sug=filt.filter(x=>x.suggested),rest=filt.filter(x=>!x.suggested); const rows=[...sug,...rest].map(x=>({type:'pick',data:x})); const exact=filt.some(x=>x.label.toLowerCase()===query.toLowerCase().trim()); const canCreate=query.trim()&&bandKey!=='loops'&&bandKey!=='steering'&&bandKey!=='participants'&&!exact; if(canCreate)rows.push({type:'create',label:query.trim(),dupe:mDupe(pool,query)}); return {rows,sugCount:sug.length}; }
+function mDrawPicker(){ if(!mPicker||!mPk)return; const {bandKey,query}=mPk; const {rows,sugCount}=mPickerRows();
+  let html=`<input class="q" placeholder="Reuse or create…" value="${esc(query)}"><div class="pk-crumb"><span>Scope: R0 ▾</span></div>`; let idx=0;
+  const picks=rows.filter(r=>r.type==='pick');
+  if(picks.length){ html+=sugCount?`<div class="pk-lab">Suggested · from the graph</div>`:`<div class="pk-lab">Matches</div>`;
+    rows.forEach(r=>{ if(r.type!=='pick')return; if(idx===sugCount&&sugCount>0)html+=`<div class="pk-lab">Matches</div>`; const x=r.data,act=idx===mPk.active?'act':''; const oc=x.origin==='here'?'here':x.origin==='auth'?'auth':'graph';
+      html+=`<div class="pk-row ${act}" data-i="${idx}"><span class="dot ${oc}"></span><span class="rlbl">${esc(x.label)}${x.def?'<span class="defmark">def</span>':''}</span>${x.sub?`<span class="rc">${esc(x.sub)}</span>`:''}</div>`; idx++; }); }
+  else if(query.trim())html+=`<div class="pk-none">no existing match</div>`;
+  const cr=rows.find(r=>r.type==='create');
+  if(cr){ if(cr.dupe)html+=`<div class="dupewarn">≈ Looks like <b>${esc(cr.dupe.label)}</b> — reuse it? <span style="margin-left:auto;color:var(--muted)">↑ to pick</span></div>`; html+=`<hr class="pk-hr"><div class="pk-create ${idx===mPk.active?'act':''}" data-create="1">＋ Create new “${esc(cr.label)}” <span style="margin-left:auto;font-size:9px">authored</span></div>`; }
+  if(bandKey==='loops'&&!query)html+=`<div class="pk-none">loops come from Step VI — pick one to formalise</div>`;
+  mPicker.innerHTML=html;
+  const q=mq('.q',mPicker); q.focus(); q.value=query;
+  q.addEventListener('input',()=>{ mPk.query=q.value; mPk.active=0; mDrawPicker(); mPosPicker(mPk.anchor); });
+  q.addEventListener('keydown',mPickerKey);
+  mPicker.querySelectorAll('.pk-row').forEach(el=>el.addEventListener('mousedown',e=>{ e.preventDefault(); mPk.active=+el.dataset.i; mCommitPick(); }));
+  const crEl=mq('.pk-create',mPicker); if(crEl)crEl.addEventListener('mousedown',e=>{ e.preventDefault(); mCommitCreate(); }); }
+function mPickerKey(e){ const {rows}=mPickerRows(),n=rows.length;
+  if(e.key==='ArrowDown'){ e.preventDefault(); mPk.active=Math.min(n-1,mPk.active+1); mDrawPicker(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); mPk.active=Math.max(0,mPk.active-1); mDrawPicker(); }
+  else if(e.key==='Enter'){ e.preventDefault(); const r=rows[mPk.active]||rows[0]; if(!r)return; if(r.type==='create')mCommitCreate(); else mCommitPick(); }
+  else if(e.key==='Escape'){ e.preventDefault(); mClosePicker(); }
+  else if(e.key==='Tab'){ e.preventDefault(); const bk=mPk.bandKey,r=rows[mPk.active]||rows[0]; if(r&&r.type==='pick')mCommitPick(true); else mClosePicker(); mJumpNext(bk); } }
+function mJumpNext(bk){ const order=MBANDS.map(b=>b.k),i=order.indexOf(bk); for(let j=i+1;j<order.length;j++){ const nb=order[j]; if(nb==='steering'||nb==='agenda'||nb==='rights'||nb==='loops')continue; state.mtgOpen[nb]=true; render(); const pill=mq(`[data-add="${nb}"]`); if(pill){ mOpenPicker(nb,pill); return; } } }
+function mCommitPick(quiet){ const {rows}=mPickerRows(),bandKey=mPk.bandKey,r=rows[mPk.active]||rows[0]; if(!r||r.type!=='pick')return; const x=r.data; mAddChip(bandKey,x); mClosePicker(); render(); if(!quiet)mFlash('Reused “'+x.label+'”'); }
+function mCommitCreate(){ const {rows}=mPickerRows(),bandKey=mPk.bandKey,cr=rows.find(r=>r.type==='create'); if(!cr)return; mAddChip(bandKey,{ref:'local:'+bandKey+'-'+(++_aiSeq),label:cr.label,origin:'auth'},true); mClosePicker(); render(); mFlash('Created “'+cr.label+'” (authored)'); }
+function mAddChip(bandKey,x,authored){ const c=mtg(state.selMtg),origin=authored?'auth':x.origin||'here';
+  if(bandKey==='participants'){ c.participants.push({ref:x.ref,label:x.label,sys:x.sys,origin,sub:authored?'typed here':(x.sub||''),roleType:'contributor',ghost:false}); emit('participation',{meetingId:state.selMtg,vesselRef:x.ref,roleType:'contributor',op:'add'}); }
+  else if(bandKey==='measures'){ const def=aspItemById(x.ref)||{}; c.measures.push({defRef:x.ref,label:x.label,origin:origin==='auth'?'auth':'graph',sub:x.sub||'',ghost:false,use:{target:def.target||'',freq:def.frequency||c.cad.f,source:objLabel(def.source)||def.source||'',owner:def.owner||''}}); mOpenUseEditor(c.measures.length-1); }   // prefill the local use from the 7.3 metric definition's defaults
+  else if(bandKey==='steering'){ c.steering.push({ref:x.ref,label:x.label,sys:x.sys,origin:'graph',sub:'steers '+sct(contrib(x.ref).sct).did,ghost:false}); emit('meeting',{meetingId:state.selMtg,op:'steerContrib',contribRef:x.ref,add:true}); }
+  else if(bandKey==='loops'){ c.loops.push({ref:x.ref,label:x.label,sys:x.sys,relation:'supports',origin:'graph',sub:'linked',ghost:false}); emit('loopLink',{meetingId:state.selMtg,loopRef:x.ref,relation:'supports'}); }
+  else if(bandKey==='escalation'){ c.escalation.push({label:x.label,origin:'graph',sub:'algedonic',ghost:false}); emit('escalationPath',{meetingId:state.selMtg,kind:'algedonic',op:'add'}); }
+  else { c[bandKey].push({ref:x.ref,label:x.label,kind:x.kind,origin,sub:authored?'':(x.sub||''),ghost:false}); if(bandKey==='inputs'||bandKey==='outputs')emit('ioLink',{meetingId:state.selMtg,direction:bandKey==='inputs'?'input':'output',ref:{kind:x.kind||'artifact',id:x.ref}}); else if(bandKey==='tools')emit('toolLink',{meetingId:state.selMtg,ref:x.ref}); }
+  mUndo.push({bandKey,mid:state.selMtg}); emitChange(); }
+function mClosePicker(){ if(mPicker){ mPicker.remove(); mPicker=null; mPk=null; } }
+
+/* ---- KPI use editor (inline) · decision-rights composer · roletype · toggles ---- */
+function mOpenUseEditor(i){ const c=mtg(state.selMtg),m=c.measures[i]; if(m&&!m.use){ const def=aspItemById(m.defRef)||{}; m.use={target:def.target||'',freq:def.frequency||c.cad.f,source:objLabel(def.source)||def.source||'',owner:def.owner||''}; }  /* ghost measure → seed its first use from the 7.3 definition */
+  state.useEdit=i; render(); setTimeout(()=>{ const el=mq('#uT'); if(el){ el.focus(); el.select(); } },0); }
+function mCommitUse(){ const c=mtg(state.selMtg),m=c.measures[state.useEdit]; if(!m)return; m.use.target=mq('#uT').value||'target TBD'; m.use.freq=resolveFreq(mq('#uF').value,m.use.freq); m.use.source=mq('#uS').value; m.use.owner=mq('#uO').value; m.ghost=false; const idx=state.useEdit; state.useEdit=null; render(); emit('measureUse',{meetingId:state.selMtg,definitionRef:m.defRef,use:m.use}); emitChange(); mFlash('Measure set'); }
+let mRc=null;
+function mEditRight(i,anchor){ mOpenRight(anchor,i); }
+function mOpenRight(anchor,editIdx){ mClosePicker(); mCloseRc(); const c=mtg(state.selMtg); const cur=editIdx!=null?c.rights[editIdx]:null;
+  const ownerDefault=cur?cur.owner:((c.participants.find(p=>p.roleType==='decision owner')||c.participants.find(p=>p.roleType==='chair')||c.participants[0]||{}).ref||'');
+  const affDefault=cur?cur.affected:((c.steering[0]||{}).ref);
+  mRc=document.createElement('div'); mRc.className='picker'; mRc.innerHTML=`<div class="pk-lab">${cur?'Edit':'New'} decision right</div>
+    <input class="q" id="rDec" placeholder="Decision — e.g. Approve budget reallocation" value="${cur?esc(cur.decision):''}">
+    <div class="pk-crumb"><span class="st on">decision</span>›<span class="st">owner</span>›<span class="st">affected</span></div>
+    <div style="display:flex;flex-direction:column;gap:5px;padding:2px 4px 4px">
+      <label style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Owner · reuse a participant</label>
+      <select id="rOwner" style="border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);padding:5px 6px;font-size:12px">${c.participants.length?c.participants.map(p=>`<option value="${p.ref}" ${p.ref===ownerDefault?'selected':''}>${esc(p.label)} · ${esc(p.roleType)}</option>`).join(''):'<option value="">— add a participant first —</option>'}</select>
+      <label style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Affected · a steered contribution</label>
+      <select id="rAff" style="border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);padding:5px 6px;font-size:12px">${c.steering.map(s=>`<option value="${s.ref}" ${s.ref===affDefault?'selected':''}>${esc(s.label)}</option>`).join('')}</select>
+    </div><hr class="pk-hr"><div class="pk-create act" id="rAdd">${cur?'✓ Save':'＋ Add'} decision right <span style="margin-left:auto;font-size:9px">↵</span></div>`;
+  popHost().appendChild(mRc); placePop(mRc,anchor);
+  const dec=mq('#rDec',mRc); dec.focus(); dec.select();
+  const commit=()=>{ const c2=mtg(state.selMtg),ow=mq('#rOwner',mRc).value,af=mq('#rAff',mRc).value; const rec={decision:dec.value.trim()||'Decide',owner:ow,ownerLabel:ow?vessel(ow).name:'—',affected:af,affectedLabel:af?sct(contrib(af).sct).did:'—',origin:cur?cur.origin:'auth',ghost:false}; if(cur)c2.rights[editIdx]=rec; else { c2.rights.push(rec); mUndo.push({bandKey:'rights',mid:state.selMtg}); } emit('decisionRight',{meetingId:state.selMtg,decision:rec.decision,ownerVesselId:ow,affectedRef:af,op:cur?'edit':'add'}); mCloseRc(); render(); emitChange(); mFlash(cur?'Decision right updated':'Decision right added'); };
+  mq('#rAdd',mRc).addEventListener('mousedown',e=>{ e.preventDefault(); commit(); });
+  dec.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); commit(); } else if(e.key==='Escape'){ e.preventDefault(); mCloseRc(); } }); }
+function mCloseRc(){ if(mRc){ mRc.remove(); mRc=null; } }
+function mToggleLoop(i){ const c=mtg(state.selMtg),l=c.loops[i]; if(!l)return; l.relation=l.relation==='supports'?'closes':'supports'; l.ghost=false; render(); emit('loopLink',{meetingId:state.selMtg,loopRef:l.ref,relation:l.relation}); emitChange(); mFlash('Loop: '+l.relation+' '+l.label); }
+function mFlip(band,i){ const c=mtg(state.selMtg),arr=c[band],x=arr&&arr[i]; if(!x)return; const to=band==='inputs'?'outputs':'inputs'; arr.splice(i,1); x.ghost=false; c[to].push(x); render(); emit('ioLink',{meetingId:state.selMtg,direction:to==='inputs'?'input':'output',ref:{kind:x.kind||'artifact',id:x.ref}}); emitChange(); mFlash('Moved to '+to); }
+let mRt=null;
+function mOpenRoleType(i,anchor){ mCloseRt(); const c=mtg(state.selMtg); mRt=document.createElement('div'); mRt.className='picker'; mRt.style.width='170px'; mRt.innerHTML=`<div class="pk-lab">Role in meeting</div>`+ROLETYPES.map(rt=>`<div class="pk-row ${c.participants[i].roleType===rt?'act':''}" data-rtv="${rt}"><span class="rlbl">${esc(rt)}</span></div>`).join(''); popHost().appendChild(mRt); placePop(mRt,anchor); mRt.querySelectorAll('[data-rtv]').forEach(el=>el.addEventListener('mousedown',e=>{ e.preventDefault(); const c2=mtg(state.selMtg); c2.participants[i].roleType=el.dataset.rtv; c2.participants[i].ghost=false; emit('participation',{meetingId:state.selMtg,vesselRef:c2.participants[i].ref,roleType:el.dataset.rtv,op:'setRole'}); mCloseRt(); render(); emitChange(); })); }
+function mCloseRt(){ if(mRt){ mRt.remove(); mRt=null; } }
+function mRatify(bandKey,i){ const c=mtg(state.selMtg),x=c[bandKey][i]; if(x){ x.ghost=false; render(); emitChange(); mFlash('Ratified “'+(x.label||x.decision)+'”'); } }
+function mRemove(bandKey,i){ const c=mtg(state.selMtg),x=c[bandKey][i]; if(!x)return; if(bandKey==='participants'&&x.origin==='graph'&&x.sub&&x.sub.indexOf('RASIC')>=0){ if(!confirm('“'+x.label+'” is a RASIC fact from 7.2. Remove from this meeting only? The 7.2 assignment stays.'))return; } c[bandKey].splice(i,1); render(); emitChange(); }
+function mUndoLast(){ const u=mUndo.pop(); if(!u){ mFlash('Nothing to undo'); return; } const c=MEETINGS[u.mid]; if(c&&c[u.bandKey]&&c[u.bandKey].length){ const x=c[u.bandKey].pop(); render(); emitChange(); mFlash('Removed “'+(x.label||x.decision||'chip')+'”'); } }
+let mToastT=null;
+function mFlash(msg){ let el=document.getElementById('rtoast'); if(!el){ el=document.createElement('div'); el.className='rtoast'; el.id='rtoast'; } if(el.parentNode!==popHost())popHost().appendChild(el); el.innerHTML=esc(msg)+' <button data-undo="1">Undo</button>'; el.classList.add('show'); clearTimeout(mToastT); mToastT=setTimeout(()=>el.classList.remove('show'),2600); el.querySelector('[data-undo]').onclick=()=>{ mUndoLast(); el.classList.remove('show'); }; }
+function mFlashAction(msg,label,fn){ let el=document.getElementById('rtoast'); if(!el){ el=document.createElement('div'); el.className='rtoast'; el.id='rtoast'; } if(el.parentNode!==popHost())popHost().appendChild(el); el.innerHTML=esc(msg)+` <button data-a2="1">${esc(label)}</button>`; el.classList.add('show'); clearTimeout(mToastT); mToastT=setTimeout(()=>el.classList.remove('show'),4200); el.querySelector('[data-a2]').onclick=()=>{ fn(); el.classList.remove('show'); }; }
+
+/* ---- charter events (only active on 7.6; charter uses data-add/data-chip/… not data-act, so it never collides with the main handler) ---- */
+document.addEventListener('click',e=>{
+  if(state.step!=='7.6')return;
+  const mrow=e.target.closest('[data-mtg]'); if(mrow){ state.selMtg=mrow.dataset.mtg; state.useEdit=null; render(); return; }
+  const add=e.target.closest('[data-add]'); if(add){ if(add.dataset.add==='rights')mOpenRight(add); else mOpenPicker(add.dataset.add,add); return; }
+  const rat=e.target.closest('[data-ratify]'); if(rat){ const p=rat.dataset.ratify.split(':'); mRatify(p[0],+p[1]); return; }
+  const flip=e.target.closest('[data-flip]'); if(flip){ const p=flip.dataset.flip.split(':'); mFlip(p[0],+p[1]); return; }
+  const rm=e.target.closest('[data-rm]'); if(rm){ const p=rm.dataset.rm.split(':'); mRemove(p[0],+p[1]); return; }
+  const rtp=e.target.closest('[data-rt]'); if(rtp&&rtp.classList.contains('roletype')){ mOpenRoleType(+rtp.dataset.rt,rtp); return; }
+  const chip=e.target.closest('.chip'); if(chip&&chip.dataset.chip&&!e.target.closest('[data-ratify],[data-rm],[data-rt],[data-flip]')){ const p=chip.dataset.chip.split(':'),b=p[0],i=+p[1]; if(b==='measures'){ mOpenUseEditor(i); return; } if(b==='rights'){ mEditRight(i,chip); return; } if(b==='loops'){ mToggleLoop(i); return; } if(chip.classList.contains('ghost')){ mRatify(b,i); return; } return; }
+  if(e.target.id==='mAlg'){ const m=vessel(state.selMtg); m.alg=!m.alg; render(); emit('vessel',{op:'edited',vessel:m}); emitChange(); return; }
+  if(e.target.id==='uGo'){ mCommitUse(); return; }
+});
+document.addEventListener('mousedown',e=>{ if(mPicker&&!mPicker.contains(e.target)&&!e.target.closest('[data-add]'))mClosePicker(); if(mRt&&!mRt.contains(e.target)&&!e.target.closest('[data-rt]'))mCloseRt(); if(mRc&&!mRc.contains(e.target)&&!e.target.closest('[data-add="rights"]'))mCloseRc(); });
+document.addEventListener('input',e=>{ if(state.step!=='7.6')return;
+  if(e.target.id==='mName'){ vessel(state.selMtg).name=e.target.value; const row=mq(`[data-mtg="${state.selMtg}"] b`); if(row)row.textContent=e.target.value; emitChange(); }
+  else if(e.target.id==='mCadF'){ const c=mtg(state.selMtg); c.cad.f=resolveFreq(e.target.value,c.cad.f); emit('meeting',{meetingId:state.selMtg,op:'setCadence',cadence:c.cad}); emitChange(); if(e.target.value==='Custom')render(); }
+  else if(e.target.id==='mCadN'){ mtg(state.selMtg).cad.n=e.target.value; emitChange(); }
+  else if(e.target.id==='mCadD'){ mtg(state.selMtg).cad.d=e.target.value; emitChange(); }
+  else if(e.target.id==='mAgenda'){ mtg(state.selMtg).agenda=e.target.value; emit('meeting',{meetingId:state.selMtg,op:'setAgenda',agenda:e.target.value}); emitChange(); } });
+document.addEventListener('keydown',e=>{ if(e.target.id==='mAgenda'&&e.key==='Enter'){ e.preventDefault(); const ta=e.target,s=ta.selectionStart,v=ta.value; ta.value=v.slice(0,s)+'\n• '+v.slice(ta.selectionEnd); ta.selectionStart=ta.selectionEnd=s+3; mtg(state.selMtg).agenda=ta.value; emit('meeting',{meetingId:state.selMtg,op:'setAgenda',agenda:ta.value}); emitChange(); }
+  else if(e.target.id==='uT'&&e.key==='Enter'){ e.preventDefault(); mCommitUse(); } });
+document.addEventListener('keydown',e=>{ if(state.step!=='7.6'||mPicker||mRt||mRc)return; const t=e.target; if(/^(input|textarea|select)$/i.test(t.tagName)||t.isContentEditable)return;
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){ e.preventDefault(); mUndoLast(); return; }
+  if(e.metaKey||e.ctrlKey||e.altKey)return; if(!state.selMtg)return;
+  if(e.shiftKey&&e.key==='A'){ e.preventDefault(); mOpenAdd('escalation'); return; }
+  if(e.key==='a'){ e.preventDefault(); state.mtgOpen.agenda=true; render(); setTimeout(()=>{ const el=mq('#mAgenda'); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } },0); return; }
+  const map={p:'participants',m:'measures',i:'inputs',o:'outputs',t:'tools',d:'rights',l:'loops',s:'steering'}; const k=e.key.toLowerCase(); if(map[k]){ e.preventDefault(); mOpenAdd(map[k]); } });
+function mOpenAdd(bandKey){ state.mtgOpen[bandKey]=true; render(); setTimeout(()=>{ const pill=mq(`[data-add="${bandKey}"]`); if(pill){ if(bandKey==='rights')mOpenRight(pill); else mOpenPicker(bandKey,pill); } },0); }
+document.addEventListener('toggle',e=>{ if(e.target.matches&&e.target.matches('.rins .band')&&e.target.dataset.band){ if(!state.mtgOpen)state.mtgOpen={}; state.mtgOpen[e.target.dataset.band]=e.target.open; } },true);
+/* 7.2 RASIC column-header tooltip: fixed-position (unclipped by the matrix scroller), shown on hover of a vessel header */
+let _vhtip=null;
+document.addEventListener('mouseover',e=>{ const th=e.target.closest&&e.target.closest('table.rasic thead th[data-full]'); if(!th)return; if(!_vhtip){_vhtip=document.createElement('div');_vhtip.className='vhtip';} if(_vhtip.parentNode!==popHost())popHost().appendChild(_vhtip); _vhtip.textContent=th.getAttribute('data-full'); const r=th.getBoundingClientRect(); _vhtip.style.left=Math.round(r.left+r.width/2)+'px'; _vhtip.style.top=Math.round(r.bottom+4)+'px'; _vhtip.style.display='block'; });
+document.addEventListener('mouseout',e=>{ const th=e.target.closest&&e.target.closest('table.rasic thead th[data-full]'); if(th&&_vhtip)_vhtip.style.display='none'; });
+/* anchored-popover placement: below the anchor, flip above only if it fits, else clamp inside the viewport (fixes tall pickers overshooting to the top) */
+function placePop(el,anchor){ if(!el||!anchor)return; const fixed=popHost()!==document.body;   // inside the tile-fullscreen host: fixed = viewport coords, no page scroll offsets
+  el.style.position=fixed?'fixed':'absolute'; el.style.top='0px'; el.style.left='0px';
+  const pr=el.getBoundingClientRect(), r=anchor.getBoundingClientRect(), sx=fixed?0:window.scrollX, sy=fixed?0:window.scrollY, vw=window.innerWidth, vh=window.innerHeight;
+  let left=r.left+sx; if(left+pr.width>sx+vw-8)left=sx+vw-pr.width-8; if(left<sx+8)left=sx+8;
+  let top=r.bottom+sy+6; if(top+pr.height>sy+vh-8){ const above=r.top+sy-pr.height-6; top=above>=sy+8?above:Math.max(sy+8,sy+vh-pr.height-8); }
+  el.style.left=left+'px'; el.style.top=top+'px'; }
+function mtgModel(){ return JSON.parse(JSON.stringify(MEETINGS)); }
+
+/* ============================ EXPORT — a self-contained report of ALL Step VII substeps (7.1–7.7) ============================ */
+function sysBadge(s){ const col={S1:'#34404c',S2:'#efbd45',S3:'#df6353','S3*':'#b85045',S4:'#63b16c',S5:'#9dbed2'}[s]||'#8a97a3'; const ink=(s==='S2'||s==='S5')?'#1c2a33':'#fff'; return s?`<b style="display:inline-block;background:${col};color:${ink};border-radius:4px;padding:0 5px;font-size:10px">${esc(s)}</b>`:''; }
+function buildStep7Report(){
+  const dtParts=new Date().toString();
+  const RCOL={A:'#f4cfc8',R:'#fbecbb',S:'#d2e6f5',I:'#edf0f2',C:'#aab6c0'};
+  const roles=VESSELS.filter(v=>v.type==='role'),funcs=VESSELS.filter(v=>v.type==='function'),meets=VESSELS.filter(v=>v.type==='meeting');
+  // 7.1 registers
+  const vRows=g=>g.map(v=>`<tr><td><b>${esc(v.name)}</b></td><td>${sysBadge(v.sys)}</td><td><span class="st ${v.state==='accepted'?'accepted':'candidate'}">${esc(v.state)}</span>${v.alg?' <span style="color:#c0399f">▲</span>':''}</td><td class="mut">${esc(v.prov||'')}</td><td>${esc(v.purpose||'')}</td></tr>`).join('');
+  // 7.2 RASIC matrix
+  const cols=VESSELS;
+  const head=`<tr><th class="idc">SCT · Contribution</th>${cols.map(v=>`<th class="vh"><div>${esc(v.name)}</div></th>`).join('')}</tr>`;
+  const body=CONTRIBS.map(c=>{ const w=warnings(c.id);
+    const cells=cols.map(v=>{ const l=rg(c.id,v.id); return `<td style="${l?`background:${RCOL[l]}`:''}">${l||''}</td>`; }).join('');
+    return `<tr><td class="idc">${sysBadge(c.sys)} <b>${esc(sct(c.sct).did)}</b> ${esc(sct(c.sct).name)}<div class="mut">${esc(unit(c.unit).name)} · ${esc(c.text)}</div>${w.length?`<div class="wf">${w.map(x=>`<span class="${x.red?'r':'a'}">⚠ ${esc(x.t)}</span>`).join('')}</div>`:''}</td>${cells}</tr>`;
+  }).join('');
+  const gaps=CONTRIBS.filter(c=>needsAttention(c.id)).length;
+  // 7.3 aspects per SCT
+  const aspDetailTxt=x=>{ if(!x||typeof x!=='object')return ''; const d=[]; if(x.target)d.push(esc(x.target)); if(x.frequency)d.push(esc(x.frequency)); if(x.source)d.push('src: '+esc(objLabel(x.source)||x.source)); if(x.owner)d.push('owner: '+esc(ownerName(x.owner))); return d.length?` <span class="mut">· ${d.join(' · ')}</span>`:''; };
+  const asp=SCTS.filter(s=>ASPECTS[s.id]&&aspectCount(s.id)).map(s=>{ const a=ASPECTS[s.id]; const li=(arr)=>arr.length?arr.map(x=>`<li>${esc(itxt(x))}${aspDetailTxt(x)}</li>`).join(''):'<li class="mut">—</li>';
+    return `<div class="cardlet"><h4>${sysBadge(s.sys)} ${esc(s.did)} ${esc(s.name)}</h4><div class="g3"><div><label>Metrics &amp; KPIs</label><ul>${li(a.kpis)}</ul></div><div><label>Artifacts</label><ul>${li(a.artifacts)}</ul></div><div><label>Tools / methods</label><ul>${li(a.tools)}</ul></div></div></div>`; }).join('')||'<p class="mut">No aspects authored yet.</p>';
+  // 7.4/7.5 descriptions
+  const descBlock=(kind)=>VESSELS.filter(v=>v.type===kind).map(v=>{ const g=linkedByRASIC(v.id),h=HUMAN[v.id]||{},inh=inheritedAspects(v.id),va=VASPECTS[v.id]||{kpis:[],artifacts:[],tools:[]},mem=(MEMBERSHIP[v.id]||[]);
+    const links=['A','R','S','C','I'].filter(L=>g[L].length).map(L=>`<div><b>${RLABEL[L]}</b>: ${g[L].map(c=>esc(sct(c.sct).did)).join(', ')}</div>`).join('')||'<span class="mut">no RASIC links</span>';
+    const asL=(arr)=>arr.map(x=>esc(itxt(x.v||x))).join(', ')||'—';
+    return `<div class="cardlet"><h4>${sysBadge(v.sys)} ${esc(v.name)}</h4>
+      ${h.purpose?`<p><label>Purpose</label> ${esc(h.purpose)}</p>`:''}${h.interfaces?`<p><label>Interfaces</label> ${esc(h.interfaces)}</p>`:''}
+      <div class="mut" style="font-size:11px">${links}</div>
+      <p><label>Metrics &amp; KPIs</label> ${asL(inh.kpis)}${va.kpis.length?' · '+va.kpis.map(x=>esc(itxt(x))).join(', '):''}</p>
+      <p><label>Artifacts</label> ${asL(inh.artifacts)}${va.artifacts.length?' · '+va.artifacts.map(x=>esc(itxt(x))).join(', '):''}</p>
+      <p><label>Tools</label> ${asL(inh.tools)}${va.tools.length?' · '+va.tools.map(x=>esc(itxt(x))).join(', '):''}</p>
+      ${mem.length?`<p><label>Meetings</label> ${mem.map(id=>esc(vessel(id).name)).join(', ')}</p>`:''}</div>`; }).join('');
+  // 7.6 meeting charters
+  const chBlock=meets.map(m=>{ const c=mtg(m.id); const chips=arr=>arr.length?arr.map(x=>`<span class="ck">${esc(x.label||x.decision||'')}${x.roleType?` <i>(${esc(x.roleType)})</i>`:''}${x.kind==='meeting'?' ⟲':''}${x.use?` <i>${esc(x.use.target)} · ${esc(x.use.freq)}</i>`:''}</span>`).join(' '):'<span class="mut">—</span>';
+    const ag=(c.agenda||'').split('\n').filter(l=>l.trim());
+    return `<div class="cardlet"><h4>${esc(m.name)} ${m.alg?'<span style="color:#c0399f">▲</span>':''} <span class="mut" style="font-weight:400">· ⟲ ${esc(c.cad.f)} · ${esc(m.state)}</span></h4>
+      <p><label>Steers</label> ${chips(c.steering)}</p>
+      <p><label>Participants</label> ${chips(c.participants)}</p>
+      ${ag.length?`<p><label>Agenda</label></p><ul>${ag.map(l=>`<li>${esc(l.replace(/^•\s*/,''))}</li>`).join('')}</ul>`:''}
+      <p><label>Inputs</label> ${chips(c.inputs)}</p>
+      <p><label>Outputs & decisions</label> ${chips(c.outputs)}</p>
+      <p><label>Tools</label> ${chips(c.tools)}</p>
+      <p><label>Metrics &amp; KPIs</label> ${chips(c.measures)}</p>
+      <p><label>Decision rights</label> ${chips(c.rights)}</p>
+      <p><label>Step VI loops</label> ${c.loops.map(l=>esc(l.relation+' '+l.label)).join(', ')||'<span class="mut">—</span>'}</p></div>`; }).join('');
+  // 7.7 org representation summary
+  const byLevel=['R+1','R0','R-1'].map(lv=>{ const us=UNITS.filter(u=>normalizeLevel(u.level)===lv); return us.length?`<div><b>${lv}</b>: ${us.map(u=>esc(u.name)).join(', ')}</div>`:''; }).join('');
+  const gapList=CONTRIBS.filter(c=>needsAttention(c.id)).map(c=>`<li>${esc(sct(c.sct).did)} — ${warnings(c.id).map(w=>esc(w.t)).join('; ')}</li>`).join('');
+
+  const CSS=`*{box-sizing:border-box}html,body{background:#fff}body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#1f2935;margin:0;padding:28px;line-height:1.45;font-size:13px;color-scheme:light}h1{font-size:22px;margin:0 0 2px}h2{font-size:16px;margin:26px 0 8px;padding-bottom:5px;border-bottom:2px solid #cfdad5}h4{margin:0 0 6px;font-size:13px}.meta{color:#667482;font-size:12px;margin-bottom:6px}.mut{color:#8a97a3}table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #dfe6e2;padding:4px 6px;text-align:left;vertical-align:top}.st{border-radius:5px;padding:1px 6px;font-size:10px;font-weight:800;text-transform:uppercase}.st.accepted{background:#e8f5e9;color:#3c7a44}.st.candidate{background:#fff5d8;color:#9a6a06}.rasic-wrap{overflow-x:auto;border:1px solid #dfe6e2;border-radius:8px}table.rasic td,table.rasic th{text-align:center;min-width:26px;font-weight:700}table.rasic td.idc,table.rasic th.idc{text-align:left;min-width:280px;max-width:280px;position:sticky;left:0;background:#fff}table.rasic th.vh{height:150px}table.rasic th.vh div{writing-mode:vertical-rl;white-space:nowrap;font-size:10px;font-weight:700;margin:0 auto}.wf{margin-top:3px}.wf span{display:block;font-size:10px}.wf .r{color:#a8392b}.wf .a{color:#8a5b04}.cardlet{border:1px solid #dfe6e2;border-radius:8px;padding:11px 13px;margin:8px 0;break-inside:avoid}.cardlet p{margin:3px 0}.cardlet label{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#667482}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.g3 ul,.cardlet ul{margin:3px 0;padding-left:16px}.ck{display:inline-block;background:#eef3f2;border:1px solid #dfe6e2;border-radius:6px;padding:1px 7px;font-size:11px;margin:1px}.summary{background:#f7fafb;border:1px solid #dfe6e2;border-radius:8px;padding:10px 13px}@media print{body{padding:0}h2{break-after:avoid}}`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Step VII — Organizational Representation</title><style>${CSS}</style></head><body>
+    <h1>Step VII — Organizational Representation</h1>
+    <div class="meta">${CTX_META.orgName?('Organization: '+esc(CTX_META.orgName)+' · '):''}${CTX_META.project?('Project: '+esc(CTX_META.project)+' · '):''}System-in-Focus: ${esc(CTX_META.sifName||'')} · Generated ${esc(dtParts)}</div>
+    <div class="summary"><b>Accountability:</b> ${gaps===0?'✓ every contribution in scope has a clear owner':`⚑ ${gaps} contribution${gaps>1?'s':''} need a decision`} · ${VESSELS.length} vessels (${roles.length} roles · ${funcs.length} functions · ${meets.length} meetings) · ${CONTRIBS.length} SCT contributions.</div>
+
+    <h2>7.1 · Organizational Vessels</h2>
+    <h4>Roles</h4><table><tr><th>Name</th><th>System</th><th>State</th><th>Provenance</th><th>Purpose</th></tr>${vRows(roles)}</table>
+    <h4 style="margin-top:10px">Functions</h4><table><tr><th>Name</th><th>System</th><th>State</th><th>Provenance</th><th>Purpose</th></tr>${vRows(funcs)}</table>
+    <h4 style="margin-top:10px">Meetings</h4><table><tr><th>Name</th><th>System</th><th>State</th><th>Provenance</th><th>Purpose</th></tr>${vRows(meets)}</table>
+
+    <h2>7.2 · RASIC Accountability</h2>
+    <p class="mut">One assignment per SCT contribution × vessel. A=accountable · R=responsible · S=support · I=informed · C=consulted. Warnings invite a decision, never block.</p>
+    <div class="rasic-wrap"><table class="rasic">${head}${body}</table></div>
+
+    <h2>7.3 · Metrics, Artifacts &amp; Tools</h2>${asp}
+
+    <h2>7.4 · Role Descriptions</h2>${descBlock('role')}
+    <h2>7.5 · Function Descriptions</h2>${descBlock('function')}
+
+    <h2>7.6 · Meetings &amp; Agendas</h2>${chBlock}
+
+    <h2>7.7 · Organizational Representation</h2>
+    <div class="cardlet"><p class="mut">The org chart is a view over the SCT/RASIC model (interactive in the app). Recursion structure:</p>${byLevel}
+    <p style="margin-top:8px"><label>Open accountability gaps (${gaps})</label></p>${gapList?`<ul>${gapList}</ul>`:'<p class="mut">none</p>'}</div>
+  </body></html>`;
+}
+function exportStep7(o){ try{ const html=buildStep7Report(); const blob=new Blob([html],{type:'text/html'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='Step-VII-Representation.html'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },600); emit('exportReady',{requestId:(o&&o.requestId)||null,format:'html',scope:'step7'}); }catch(err){ emit('exportError',{requestId:(o&&o.requestId)||null,message:String(err&&err.message||err)}); } }
+
+/* ============================ 7.7 ORG REPRESENTATION — embeds the live org-chart.html asset ============================ */
+function orgSrc(){ const q=new URLSearchParams(location.search); const v=q.get('v'); return q.get('org') || ('org-chart.html'+(v?'?v='+encodeURIComponent(v):'')); }   // sibling in design-previews/; forwards the host cache label so a host bump also busts the embedded chart's cache
+function viewOrg(){
+  /* no extra export button here — the org-chart's OWN toolbar ⬇ requests the shared panel via requestExportPanel (UX streamline S3: one chart, one ⬇) */
+  return `<iframe id="orgFrame" title="Organizational representation" src="${orgSrc()}" style="width:100%;height:78vh;border:1px solid var(--line);border-radius:12px;background:var(--surface);display:block" allow="fullscreen"></iframe>`;
 }
 
 /* ============================ FOCUS MODE ============================ */
-const FOCUS={
-  '7.1':{title:'Give the design a body',lead:'Translate Step VI evidence into the vessels that will carry the work: roles, functions, and meetings.',outcome:'A reviewed register where every vessel is explicitly accepted, edited, merged, or rejected by the group.',prompts:['Which loop.role suggestions are real roles vs. just hats people wear?','Which meetings already exist and which must be created?','Where are two suggested vessels actually one?']},
-  '7.2':{title:'Who is accountable, who is involved?',lead:'Allocate RASIC per SCT contribution. Keep the Step IV accountable unit as the anchor and let warnings prompt a human decision.',outcome:'Every critical contribution has clear, in-scope accountability — or a conscious, recorded gap.',prompts:['Where is accountability missing, doubled, or out of scope?','Who is responsible without anyone accountable?','Does the accountable vessel actually have the authority and support?']},
-  '7.3':{title:'Make each SCT operable',lead:'Per SCT, capture how you’ll know you’re on course (KPIs), what you produce and track (artifacts), and how the work is done (tools & methods). All optional.',outcome:'Each critical SCT carries just enough operating detail to act on — nothing forced.',prompts:['How will we know this SCT is on course?','What artifact holds the work — and who keeps it?','Which method or tool produces that artifact?']},
-  '7.4':{title:'Make roles legible',lead:'Draft each role from its RASIC links, then sharpen the language by hand.',outcome:'Role one-pagers that match the accountability model and read clearly out loud.',prompts:['Does the derived purpose survive a read-aloud test?','Are escalation and algedonic rights explicit?','What did we add by hand that derivation cannot know?']},
-  '7.5':{title:'Functions as capability containers',lead:'Describe what each function provides, to whom, and across which interfaces.',outcome:'Functions that hold real services and outputs.',prompts:['What is the service, and who consumes it?','Which interfaces are internal vs. external?','Does this function map cleanly to one contribution cluster?']},
-  '7.6':{title:'Meetings as steering organs',lead:'Charter each meeting from its SCTs and channel evidence — purpose, inputs, decisions, outputs.',outcome:'A meeting landscape that steers, with explicit decision and escalation rights.',prompts:['What decision does this organ actually own?','What are its inputs and outputs?','Where does an algedonic signal enter?']},
-  '7.7':{title:'Represent, don’t reinvent',lead:'Show the structure as a view over the canonical model — click through to the SCTs and RASIC behind it.',outcome:'A shared organizational picture the group trusts, anchored in accountability not boxes.',prompts:['Does the chart match where accountability really sits?','Which overlays help the conversation — VSM colour, meetings?','What does the structure hide that the RASIC core reveals?']}
-};
-function renderFocus(){
-  const steps=$('#focusSteps');steps.innerHTML=STEPS.map(s=>`<button data-fstep="${s.id}" class="${s.id===state.focusStep?'on':''}">${s.n}</button>`).join('');
-  const f=FOCUS[state.focusStep];const st=STEPS.find(s=>s.id===state.focusStep);
-  $('#focusTiles').innerHTML=`
-    <div class="ftile"><h2>${st.n} · ${esc(st.t)}</h2><p class="lead">${esc(f.lead)}</p>
-      <div class="outcome"><b>Outcome:</b> ${esc(f.outcome)}</div>
-      <ol class="prompts">${f.prompts.map(p=>`<li>${esc(p)}</li>`).join('')}</ol>
-      <div class="coach">Coach note: warnings invite a decision; the group decides when the step is done — VSM7 shows no completeness score.</div></div>
-    <div class="ftile"><h2>Live state</h2><p class="lead">A quick read of the current model behind ${st.n}.</p>
-      ${focusStats(state.focusStep)}</div>`;
-}
-function focusStats(id){
-  if(id==='7.2'){const attn=CONTRIBS.filter(c=>needsAttention(c.id)).length;
-    return `<div class="outcome" style="background:var(--amber-soft);color:#8a5b04"><b>${attn}</b> of ${CONTRIBS.length} contributions need a decision.</div>
-      <ul class="prompts">${CONTRIBS.filter(c=>needsAttention(c.id)).slice(0,5).map(c=>`<li>${esc(sct(c.sct).did)} — ${esc(warnings(c.id)[0].t)}</li>`).join('')}</ul>`;}
-  if(id==='7.1'){const cand=VESSELS.filter(v=>v.state==='candidate').length;return `<div class="outcome"><b>${cand}</b> candidate vessels awaiting a human decision · ${VESSELS.length-cand} accepted.</div>`;}
-  const c=VESSELS.filter(v=>v.alg).length;return `<div class="outcome"><b>${c}</b> vessels carry an algedonic / escalation right.</div>`;
-}
 
 /* ============================ ADD-VESSEL DIALOG ============================ */
 const TLABEL={role:'role',function:'function / department',meeting:'meeting / committee'};
@@ -804,7 +1332,7 @@ function vesselDupes(name){
 }
 function openVesselDialog(type){
   const typeBtns=[['role','Role'],['function','Function'],['meeting','Meeting']].map(([t,l])=>`<button data-act="dtype" data-t="${t}" class="${t===type?'on':''}">${l}</button>`).join('');
-  const scopeOpts=UNITS.map(u=>`<option value="${u.id}" ${u.id==='u-sif'?'selected':''}>${esc(u.name)} · ${u.level}</option>`).join('');
+  const scopeOpts=scopeOptions(defaultScopeUnitId());
   const m=document.getElementById('modal');
   m.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-label="Add organizational vessel">
     <div class="m-head"><b>Add organizational vessel</b><button class="btn ghost" data-act="dclose" aria-label="Close">✕</button></div>
@@ -814,18 +1342,30 @@ function openVesselDialog(type){
         <div id="dupeHint" style="margin-top:7px"></div></div>
       <div><span class="fld-l">Purpose</span><textarea class="fld-i" id="dpurpose" placeholder="What does this vessel carry? One or two sentences."></textarea></div>
       <div><span class="fld-l">Organizational / recursion scope</span><select class="fld-i" id="dscope">${scopeOpts}</select>
-        <div class="hint" style="margin-top:5px">A vessel carries no fixed VSM system — the system comes from the SCT it is mapped to (it may act across systems by context).</div></div>
+</div>
       <div class="grid2">
         <div><span class="fld-l">Initial state</span><div class="seg2" id="dstate"><button data-act="dstate" data-s="candidate" class="on">Candidate</button><button data-act="dstate" data-s="accepted">Accepted</button></div></div>
         <div><span class="fld-l">Escalation</span><label class="chkrow"><input type="checkbox" id="dalg"> Algedonic / escalation right</label></div>
       </div>
-      <div class="hint">Provenance for a hand-created vessel is recorded as “added by hand”. Likely duplicates are flagged as you type — prefer editing/merging an existing vessel over creating a near-twin.</div>
+      <div class="hint">Likely duplicates are flagged as you type.</div>
     </div>
     <div class="m-foot"><span class="hint">Preview only — created vessels live until reload.</span>
       <div class="row"><button class="btn" data-act="dclose">Cancel</button><button class="btn primary" data-act="dcreate">Create vessel</button></div></div>
   </div>`;
   m.classList.add('on');
   const n=document.getElementById('dname'); if(n) n.focus();
+}
+function defaultScopeUnitId(){
+  return ((UNITS.find(u=>u&&u.id===CTX_META.sif)||{}).id)
+    || (UNITS.find(u=>u&&u.sif===true)||{}).id
+    || (UNITS.find(u=>String(u&&u.level||'').trim().toUpperCase()==='R0')||{}).id
+    || (UNITS.find(u=>/\bR\s*0\b/i.test(String(u&&u.level||'')))||{}).id
+    || (UNITS[0]&&UNITS[0].id)
+    || '';
+}
+function scopeOptions(selectedId){
+  const selected=(UNITS.some(u=>u&&u.id===selectedId)?selectedId:defaultScopeUnitId());
+  return UNITS.map(u=>`<option value="${u.id}" ${u.id===selected?'selected':''}>${esc(u.name)} · ${u.level}</option>`).join('');
 }
 function updateDupeHint(){
   const i=document.getElementById('dname'); if(!i) return;
@@ -848,34 +1388,83 @@ function createVessel(){
 }
 function closeModal(){const m=document.getElementById('modal'); m.classList.remove('on'); m.innerHTML='';}
 
+function step7Skin(){return document.body.dataset.skin==='deck'?'deck':'workshop';}
+function sendSkinToEmbeddedFrame(frame,skin=step7Skin()){
+  if(!frame||!frame.contentWindow)return;
+  try{frame.contentWindow.postMessage({cmd:'setSkin',skin},'*');}catch(_){}
+  try{frame.contentWindow.postMessage({cmd:'skin',skin},'*');}catch(_){}
+}
+function syncEmbeddedSkins(){
+  document.querySelectorAll('iframe').forEach(frame=>sendSkinToEmbeddedFrame(frame));
+}
+function armEmbeddedSkinBridge(){
+  document.querySelectorAll('iframe').forEach(frame=>{
+    if(frame.dataset.skinBridge==='1')return;
+    frame.dataset.skinBridge='1';
+    frame.addEventListener('load',()=>sendSkinToEmbeddedFrame(frame));
+  });
+  syncEmbeddedSkins();
+}
+function setStep7Skin(s){
+  if(s!=='workshop'&&s!=='deck')return;
+  document.body.dataset.skin=s;
+  document.querySelectorAll('#skinSeg button').forEach(b=>b.classList.toggle('on',b.dataset.skin===s));
+  syncEmbeddedSkins();
+}
+function captureScrollState(){
+  const main=$('#view'), matrix=$('.matrix-scroll'), root=document.scrollingElement||document.documentElement;
+  return {
+    mainTop:main?main.scrollTop:0, mainLeft:main?main.scrollLeft:0,
+    matrixTop:matrix?matrix.scrollTop:0, matrixLeft:matrix?matrix.scrollLeft:0,
+    pageTop:root?root.scrollTop:0, pageLeft:root?root.scrollLeft:0,
+    tileTop:(function(){const t=document.getElementById('tileFsHost');return t?t.scrollTop:0;})()
+  };
+}
+function applyScrollState(pos){
+  if(!pos)return;
+  const main=$('#view'), matrix=$('.matrix-scroll'), root=document.scrollingElement||document.documentElement;
+  if(main){main.scrollTop=pos.mainTop;main.scrollLeft=pos.mainLeft;}
+  if(matrix){matrix.scrollTop=pos.matrixTop;matrix.scrollLeft=pos.matrixLeft;}
+  const th=document.getElementById('tileFsHost'); if(th&&pos.tileTop!=null)th.scrollTop=pos.tileTop;
+  if(root){root.scrollTop=pos.pageTop;root.scrollLeft=pos.pageLeft;}
+}
+function renderPreservingScroll(){
+  const pos=captureScrollState();
+  render();
+  applyScrollState(pos);
+  requestAnimationFrame(()=>applyScrollState(pos));
+}
+
 /* ============================ EVENTS ============================ */
 document.addEventListener('click',e=>{
   if(e.target.id==='modal'){closeModal();return;}   // click the dimmed backdrop to dismiss
-  const skinBtn=e.target.closest('#skinSeg button'); if(skinBtn){document.body.dataset.skin=skinBtn.dataset.skin;[...skinBtn.parentNode.children].forEach(b=>b.classList.toggle('on',b===skinBtn));return;}
   const ov=e.target.closest('#ovSeg button'); if(ov){document.body.dataset.overlay=ov.dataset.ov;render();return;}
-  if(e.target.closest('#fsBtn')){toggleFs();return;}
-  if(e.target.closest('#focusBtn')){document.body.classList.add('focus');state.focusStep=state.step;renderFocus();return;}
-  if(e.target.closest('#focusExit')){document.body.classList.remove('focus');return;}
-  const fstep=e.target.closest('[data-fstep]'); if(fstep){state.focusStep=fstep.dataset.fstep;renderFocus();return;}
-  const nav=e.target.closest('.navb'); if(nav){state.step=nav.dataset.step;render();emit('goto',{substep:nav.dataset.step});return;}
+  if(e.target.closest('[data-act="headexport"]')){openStep7Export();return;}   // head ⬇ → SHARED export panel (host generates docx/pdf); window.STEP7.export() keeps the legacy Blob fallback; F key still calls toggleFs
+  const nav=e.target.closest('.substep-button'); if(nav){mClosePicker();mCloseRt();mCloseRc();state.useEdit=null;if(state.tileFs)exitTileFs();state.step=nav.dataset.step;render();emit('goto',{substep:nav.dataset.step});return;}
+  if(e.target.closest('[data-act="tilefs"]')){enterTileFs();return;}
+  if(e.target.closest('[data-act="tilefsexit"]')){exitTileFs();return;}
   const a=e.target.closest('[data-act]'); if(!a)return; const act=a.dataset.act;
-  if(act==='cycle'){const k=a.dataset.c+'|'+a.dataset.v;const cur=RASIC[k]||'';const seq=['','R','A','S','I','C'];RASIC[k]=seq[(seq.indexOf(cur)+1)%seq.length];if(!RASIC[k])delete RASIC[k];state.selContrib=a.dataset.c;render();emit('rasic',{contribId:a.dataset.c,vesselId:a.dataset.v,letter:RASIC[k]||null,prev:cur||null});emitChange();}
-  else if(act==='selcontrib'){state.selContrib=a.dataset.c;render();emit('select',{ref:{kind:'contrib',id:a.dataset.c}});}
+  if(['aspadd','asprm','rmmeeting','vaspadd','vasprm','vstate','vreject'].includes(act))_mtgVer++;   // graph inputs a charter derives from changed → invalidate cached charters
+  if(act==='cycle'){const k=a.dataset.c+'|'+a.dataset.v;const cur=RASIC[k]||'';const seq=['','R','A','S','I','C'];RASIC[k]=seq[(seq.indexOf(cur)+1)%seq.length];if(!RASIC[k])delete RASIC[k];state.selContrib=a.dataset.c;_mtgVer++;renderPreservingScroll();emit('rasic',{contribId:a.dataset.c,vesselId:a.dataset.v,letter:RASIC[k]||null,prev:cur||null});emitChange();}
+  else if(act==='selcontrib'){state.selContrib=a.dataset.c;renderPreservingScroll();emit('select',{ref:{kind:'contrib',id:a.dataset.c}});}
   else if(act==='togglegroup'){state.collapsed[a.dataset.grp]=!state.collapsed[a.dataset.grp];render();}
-  else if(act==='filter'){state.filter[a.dataset.key]=a.value;render();}
-  else if(act==='attn'){state.filter.attn=a.checked;render();}
+  else if(act==='filter'){/* select filters are committed on change */}
+  else if(act==='attn'){/* checkbox filter is committed on change */}
   else if(act==='search'){/* handled on input */}
-  else if(act==='clearf'){state.filter={sys:'',prio:'',unit:'',vtype:'',attn:false,q:''};render();}
+  else if(act==='clearf'){state.filter=defaultFilters();render();}
   else if(act==='vstate'){const v=vessel(a.dataset.vid);v.state=v.state==='accepted'?'candidate':'accepted';render();emit('vessel',{op:v.state==='accepted'?'accepted':'edited',vessel:v});emitChange();}
   else if(act==='vreject'){const v=vessel(a.dataset.vid);if(confirm('Reject vessel “'+v.name+'”? It returns to the suggestion pool; this preview does not persist.')){emit('vessel',{op:'rejected',vessel:{id:a.dataset.vid}});}}
   else if(act==='selrole'){state.selRole=a.dataset.id;state.rolePreview=false;render();}
   else if(act==='selfn'){state.selFn=a.dataset.id;state.rolePreview=false;render();}
   else if(act==='rmmeeting'){const M=ensureMembership(curDescV());const i=M.indexOf(a.dataset.mid);if(i>=0)M.splice(i,1);render();emit('membership',{vesselId:curDescV(),meetingId:a.dataset.mid,op:'remove'});emitChange();}
-  else if(act==='vaspadd'){const A=ensureVAspects(curDescV());A[a.dataset.kind].push('');render();const ins=[...document.querySelectorAll(`[data-act="vaspedit"][data-kind="${a.dataset.kind}"]`)];if(ins.length)ins[ins.length-1].focus();emitChange();}
-  else if(act==='vasprm'){const A=ensureVAspects(curDescV());A[a.dataset.kind].splice(+a.dataset.i,1);render();emitChange();}
+  else if(act==='vaspadd'){const A=ensureVAspects(curDescV());A[a.dataset.kind].push({id:aspItemId(),text:''});render();const ins=[...document.querySelectorAll(`[data-act="vaspedit"][data-kind="${a.dataset.kind}"]`)];if(ins.length)ins[ins.length-1].focus();emitChange();}
+  else if(act==='vasprm'){const A=ensureVAspects(curDescV());A[a.dataset.kind].splice(+a.dataset.i,1);_mtgVer++;render();emitChange();}
+  else if(act==='inhasprm'){const d=a.dataset,inp=a.parentNode.querySelector('input'),hit=inhAspItem(d.sct,d.kind,d.id,inp);
+    if(hit){const it=hit.A[d.kind][hit.idx];
+      if(confirm('Remove “'+itxt(it)+'” from '+(sct(d.sct).did||'this SCT')+'? It disappears everywhere this SCT is inherited — 7.3 and every role/function.')){hit.A[d.kind].splice(hit.idx,1);_mtgVer++;render();emit('aspect',{sctId:d.sct,kind:d.kind,op:'remove'});emitChange();}}}
   else if(act==='selnode'){state.selNode=a.dataset.id;render();emit('select',{ref:{kind:'node',id:a.dataset.id}});}
   else if(act==='selaspect'){state.selAspect=a.dataset.id;render();emit('select',{ref:{kind:'sct',id:a.dataset.id}});}
-  else if(act==='aspadd'){const A=ensureAspects(state.selAspect);A[a.dataset.kind].push('');render();const ins=[...document.querySelectorAll(`[data-act="aspedit"][data-kind="${a.dataset.kind}"]`)];if(ins.length)ins[ins.length-1].focus();emitChange();}
+  else if(act==='aspadd'){const A=ensureAspects(state.selAspect);A[a.dataset.kind].push({id:aspItemId(),text:''});render();const ins=[...document.querySelectorAll(`[data-act="aspedit"][data-kind="${a.dataset.kind}"]`)];if(ins.length)ins[ins.length-1].focus();emitChange();}
   else if(act==='asprm'){const A=ensureAspects(state.selAspect);A[a.dataset.kind].splice(+a.dataset.i,1);render();emit('aspect',{sctId:state.selAspect,kind:a.dataset.kind,op:'remove'});emitChange();}
   else if(act==='newvessel'){openVesselDialog(a.dataset.t);}
   else if(act==='dtype'){[...a.parentNode.children].forEach(b=>b.classList.toggle('on',b===a));}
@@ -885,52 +1474,70 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{
   if(e.target.id==='dname'){updateDupeHint();return;}
-  if(e.target.dataset && e.target.dataset.act==='aspedit'){const A=ensureAspects(state.selAspect),k=e.target.dataset.kind,i=+e.target.dataset.i;if(A[k]&&i<A[k].length){A[k][i]=e.target.value;emitChange();}return;}
+  if(e.target.dataset && e.target.dataset.act==='aspedit'){const A=ensureAspects(state.selAspect),k=e.target.dataset.kind,i=+e.target.dataset.i;if(A[k]&&i<A[k].length){setItemText(A[k],i,e.target.value);_mtgVer++;emitChange();}return;}
   if(e.target.dataset && e.target.dataset.act==='descedit'){ensureDesc(curDescV())[e.target.dataset.f]=e.target.value;emitChange();return;}
-  if(e.target.dataset && e.target.dataset.act==='vaspedit'){const A=ensureVAspects(curDescV()),k=e.target.dataset.kind,i=+e.target.dataset.i;if(A[k]&&i<A[k].length){A[k][i]=e.target.value;emitChange();}return;}
+  if(e.target.dataset && e.target.dataset.act==='vaspedit'){const A=ensureVAspects(curDescV()),k=e.target.dataset.kind,i=+e.target.dataset.i;if(A[k]&&i<A[k].length){setItemText(A[k],i,e.target.value);_mtgVer++;emitChange();}return;}
+  if(e.target.dataset && e.target.dataset.act==='inhaspedit'){const d=e.target.dataset,hit=inhAspItem(d.sct,d.kind,d.id,e.target);
+    if(hit){setItemText(hit.A[d.kind],hit.idx,e.target.value);const it=hit.A[d.kind][hit.idx];if(it&&it.id)e.target.dataset.id=it.id;e.target.defaultValue=e.target.value;_mtgVer++;emitChange();}return;}
+  if(e.target.dataset && (e.target.dataset.act==='aspdetail'||e.target.dataset.act==='inhaspdetail')){ applyAspDetail(e.target); return; }
   const a=e.target.closest('[data-act="search"]');if(a){state.filter.q=a.value;const pos=a.selectionStart;render();const ni=$('[data-act="search"]');if(ni){ni.focus();ni.setSelectionRange(pos,pos);}}});
-document.addEventListener('change',e=>{ const a=e.target.closest('[data-act="addmeeting"]'); if(a&&a.value){ const M=ensureMembership(curDescV()); if(!M.includes(a.value))M.push(a.value); render(); emit('membership',{vesselId:curDescV(),meetingId:a.value,op:'add'}); emitChange(); } });
+document.addEventListener('change',e=>{
+  const f=e.target.closest('[data-act="filter"]'); if(f){state.filter[f.dataset.key]=f.value;render();return;}
+  const attn=e.target.closest('[data-act="attn"]'); if(attn){state.filter.attn=attn.checked;render();return;}
+  const a=e.target.closest('[data-act="addmeeting"]'); if(a&&a.value){ const M=ensureMembership(curDescV()); if(!M.includes(a.value))M.push(a.value); _mtgVer++; render(); emit('membership',{vesselId:curDescV(),meetingId:a.value,op:'add'}); emitChange(); }
+  /* optional owner per aspect item — a picked vessel id, written onto the canonical {id,text,owner?} item */
+  const ao=e.target.closest('[data-act="aspowner"]'); if(ao){ const A=ensureAspects(state.selAspect),k=ao.dataset.kind,i=+ao.dataset.i;
+    if(A[k]&&i<A[k].length){ setItemOwner(A[k],i,ao.value); ao.classList.toggle('set',!!ao.value); _mtgVer++; emitChange(); } return; }
+  const io=e.target.closest('[data-act="inhaspowner"]'); if(io){ const hit=inhAspItem(io.dataset.sct,io.dataset.kind,io.dataset.id,io.parentNode.querySelector('input'));
+    if(hit){ setItemOwner(hit.A[io.dataset.kind],hit.idx,io.value); const it=hit.A[io.dataset.kind][hit.idx]; if(it&&it.id)io.dataset.id=it.id; io.classList.toggle('set',!!io.value); _mtgVer++; emitChange(); } return; }
+  const dt=e.target.closest('[data-act="aspdetail"],[data-act="inhaspdetail"]'); if(dt){ applyAspDetail(dt); return; }   // frequency select + source datalist commit
+});
 document.addEventListener('keydown',e=>{
-  const modalOpen=document.getElementById('modal').classList.contains('on');
+  const _mo=document.getElementById('modal'); const modalOpen=!!(_mo&&_mo.classList.contains('on'));
   if(e.key==='Escape'&&modalOpen){closeModal();return;}
-  if(e.key==='Escape'&&document.body.classList.contains('focus')){document.body.classList.remove('focus');return;}
+  if(e.key==='Escape'&&state.tileFs){exitTileFs();return;}   // overlay-fallback exit (native fullscreen Esc arrives via fullscreenchange)
   if((e.key==='f'||e.key==='F')&&!modalOpen&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!/^(input|textarea|select)$/i.test(e.target.tagName)){e.preventDefault();toggleFs();}
 });
 /* real browser full screen — works on every substep (maximizes the working surface) */
 function isFs(){return !!(document.fullscreenElement||document.webkitFullscreenElement);}
 function toggleFs(){ try{ let p; if(isFs()){const fn=document.exitFullscreen||document.webkitExitFullscreen; p=fn&&fn.call(document);} else {const el=document.documentElement, fn=el.requestFullscreen||el.webkitRequestFullscreen; p=fn&&fn.call(el);} if(p&&p.catch)p.catch(()=>{}); }catch(_){} }
 function updFsBtn(){const b=document.getElementById('fsBtn'); if(b)b.textContent=isFs()?'⛶ Exit full screen':'⛶ Full screen';}
-['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{updFsBtn();emit('fullscreenchange',{fullscreen:isFs()});}));
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{updFsBtn();if(!isFs()&&state.tileFs)exitTileFs();emit('fullscreenchange',{fullscreen:isFs(),tile:state.tileFs});}));
 
 /* ============================ BRIDGE · window.STEP7 (DRAFT — house pattern, see STEP7-REPRESENTATION-BRIEFING §bridge) ============================ */
 const inFrame=!!(window.parent&&window.parent!==window);
+if(inFrame)document.body.classList.add('embed');   // host provides brand/org/project/SIF chrome — collapse ours (see .topbar embed CSS)
 let _rid=0, _emitT=null;
-function step7Ctx(){ return JSON.parse(JSON.stringify({ units:UNITS, scts:SCTS, contribs:CONTRIBS, meta:{ sif:'u-sif', sifName:'EU AI Solutions SE' } })); }
-function step7Model(){ return JSON.parse(JSON.stringify({ vessels:VESSELS, rasic:RASIC, aspects:ASPECTS, descriptions:HUMAN, membership:MEMBERSHIP, vesselAspects:VASPECTS, meetings:{} })); }
+function step7Ctx(){ return JSON.parse(JSON.stringify({ units:UNITS, scts:SCTS, contribs:CONTRIBS, meta:CTX_META })); }
+function step7Model(){ return JSON.parse(JSON.stringify({ vessels:VESSELS, rasic:RASIC, aspects:ASPECTS, descriptions:HUMAN, membership:MEMBERSHIP, vesselAspects:VASPECTS, meetings:mtgModel(), orgHierarchy:ORGHIER })); }
 function step7State(){ return { ctx:step7Ctx(), model:step7Model(), ui:{ step:state.step, selContrib:state.selContrib, selVessel:state.selVessel, selNode:state.selNode, filter:state.filter, skin:document.body.dataset.skin } }; }
 function postToHost(msg){ try{ if(inFrame) window.parent.postMessage(msg,'*'); }catch(_){ } try{ if(window.STEP7&&typeof window.STEP7.onEmit==='function') window.STEP7.onEmit(msg); }catch(_){ } }
 function emit(evt,extra){ postToHost(Object.assign({evt},extra||{})); }
 function emitChange(){ clearTimeout(_emitT); _emitT=setTimeout(()=>emit('change',{model:step7Model()}),120); }   // authoritative, debounced; fired only on genuine user edits
 const _replArr=(a,x)=>{ a.length=0; (Array.isArray(x)?x:[]).forEach(i=>a.push(i)); };
 const _replObj=(o,x)=>{ Object.keys(o).forEach(k=>delete o[k]); if(x&&typeof x==='object') Object.assign(o,x); };
-function step7Export(o){ emit('exportError',{requestId:(o&&o.requestId)||null,format:(o&&o.format)||'png',message:'Concept preview — export is host-orchestrated; PNG/SVG rendering lands with the production asset (Codex brief: no real exports yet).'}); }
+function step7Export(o){ exportStep7(o||{}); }   // all-substep report; front-end download (Blob). Host may still orchestrate its own export via the bridge.
 window.STEP7={
-  setContext:c=>{ if(!c||typeof c!=='object')return; if(Array.isArray(c.units))_replArr(UNITS,c.units); if(Array.isArray(c.scts))_replArr(SCTS,c.scts); if(Array.isArray(c.contribs))_replArr(CONTRIBS,c.contribs); if(Array.isArray(c.vessels))_replArr(VESSELS,c.vessels); render(); },   // SILENT (host truth in)
-  loadModel:m=>{ if(!m||typeof m!=='object')return; if(Array.isArray(m.vessels))_replArr(VESSELS,m.vessels); if(m.rasic)_replObj(RASIC,m.rasic); if(m.aspects)_replObj(ASPECTS,m.aspects); if(m.descriptions)_replObj(HUMAN,m.descriptions); if(m.membership)_replObj(MEMBERSHIP,m.membership); if(m.vesselAspects)_replObj(VASPECTS,m.vesselAspects); state.selContrib=null; render(); },   // SILENT
+  setContext:c=>{ if(!c||typeof c!=='object')return; if(c.meta&&typeof c.meta==='object')_replObj(CTX_META,c.meta); if(Array.isArray(c.units))_replArr(UNITS,c.units); if(Array.isArray(c.scts))_replArr(SCTS,c.scts); if(Array.isArray(c.contribs))_replArr(CONTRIBS,c.contribs); if(Array.isArray(c.vessels))_replArr(VESSELS,c.vessels);
+    if(Array.isArray(c.metricDefs))_replArr(CTX_METRICDEFS,c.metricDefs); if(Array.isArray(c.artifactDefs))_replArr(CTX_ARTIFACTDEFS,c.artifactDefs); if(Array.isArray(c.toolDefs))_replArr(CTX_TOOLDEFS,c.toolDefs); if(Array.isArray(c.decisionDefs))_replArr(CTX_DECISIONDEFS,c.decisionDefs); if(Array.isArray(c.loops))_replArr(CTX_LOOPS,c.loops);
+    _mtgVer++; mtgPrune(); render(); },   // SILENT (host truth in)
+  loadModel:m=>{ if(!m||typeof m!=='object')return; if(Array.isArray(m.vessels))_replArr(VESSELS,m.vessels); if(m.rasic)_replObj(RASIC,m.rasic); if(m.aspects)_replObj(ASPECTS,m.aspects); if(m.descriptions)_replObj(HUMAN,m.descriptions); if(m.membership)_replObj(MEMBERSHIP,m.membership); if(m.vesselAspects)_replObj(VASPECTS,m.vesselAspects); if(m.meetings&&typeof m.meetings==='object')_replObj(MEETINGS,m.meetings); if(m.orgHierarchy&&typeof m.orgHierarchy==='object')ORGHIER=JSON.parse(JSON.stringify(m.orgHierarchy)); _mtgVer++; mtgPrune(); state.selContrib=null; render(); },   // SILENT; orgHierarchy = the host echoing back the persisted 7.7 layout (Codex slice)
   setVessels:v=>{ if(Array.isArray(v))_replArr(VESSELS,v); render(); },
   setRasic:r=>{ if(r&&typeof r==='object')_replObj(RASIC,r); render(); },
-  goto:s=>{ const map={vessels:'7.1',rasic:'7.2',aspects:'7.3',roles:'7.4',functions:'7.5',meetings:'7.6',org:'7.7'}; const id=map[s]||s; if(STEPS.some(x=>x.id===id)){state.step=id;render();} },
+  goto:s=>{ const map={vessels:'7.1',rasic:'7.2',aspects:'7.3',roles:'7.4',functions:'7.5',meetings:'7.6',org:'7.7'}; const id=map[s]||s; if(STEPS.some(x=>x.id===id)){mClosePicker();mCloseRt();mCloseRc();state.useEdit=null;if(state.tileFs)exitTileFs();state.step=id;render();} },
   select:ref=>{ if(ref&&ref.kind==='contrib')state.selContrib=ref.id||ref.contribId; else if(ref&&ref.kind==='node')state.selNode=ref.id; else if(ref==null){state.selContrib=null;state.selNode=null;} render(); },
-  filter:spec=>{ state.filter=Object.assign({sys:'',prio:'',unit:'',vtype:'',attn:false,q:''},spec||{}); render(); },
+  filter:spec=>{ state.filter=Object.assign(defaultFilters(),spec||{}); render(); },
   fullscreen:on=>{ if(on===false){const fn=document.exitFullscreen||document.webkitExitFullscreen;fn&&fn.call(document);} else if(on===true){const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;fn&&fn.call(el);} else toggleFs(); },
   isFullscreen:()=>isFs(),
-  setSkin:s=>{ if(s==='workshop'||s==='deck'){document.body.dataset.skin=s; document.querySelectorAll('#skinSeg button').forEach(b=>b.classList.toggle('on',b.dataset.skin===s));} },
-  export:o=>step7Export(o||{}),
+  setSkin:setStep7Skin,
+  export:o=>step7Export(o||{}),                 // legacy: front-end Blob report (kept until Codex's VII generator lands)
+  openExport:vm=>openStep7Export(vm||null),     // open the SHARED app-wide export panel inside Step VII (B6)
   onEmit:null,
   getState:()=>step7State()
 };
 window.addEventListener('message',e=>{ const m=e.data; if(!m||typeof m!=='object'||!m.cmd)return;   // HOST -> frame
   const S=window.STEP7;
+  if(relayExportDown(m))return;   // B6: shell-driven Step VII export-panel relay (setViewModel/open/…) — handled before STEP7 cmds
   if(m.cmd==='setContext')S.setContext(m);
   else if(m.cmd==='loadModel')S.loadModel(m.model);
   else if(m.cmd==='setVessels')S.setVessels(m.vessels);
@@ -943,8 +1550,98 @@ window.addEventListener('message',e=>{ const m=e.data; if(!m||typeof m!=='object
   else if(m.cmd==='export')step7Export(m);
 });
 
+/* ---- step7-ux is HOST to the embedded org-chart.html (substep 7.7): feed it the canonical model, and
+   apply its propose-only requestFix intents to the RASIC store so the accountability loop visibly closes ---- */
+let ORGHIER={};   // canonical 7.7 org hierarchy (nodeId → {parent,order,slot}) — mirrored from org-chart's change events, fed back on remount, and shipped to the host inside step7Model() as `orgHierarchy`
+function orgSend(msg){ const f=document.getElementById('orgFrame'); if(f&&f.contentWindow) f.contentWindow.postMessage(msg,'*'); }
+function orgSendSkin(){ sendSkinToEmbeddedFrame(document.getElementById('orgFrame')); }
+function orgFeed(){ orgSend({cmd:'setContext',units:UNITS,vessels:VESSELS,contribs:CONTRIBS,scts:SCTS,rasic:RASIC,sifName:(unit('u-sif').name||'System-in-Focus')}); orgSend({cmd:'loadModel',model:{units:UNITS,vessels:VESSELS,contribs:CONTRIBS,rasic:RASIC,scts:SCTS,hierarchy:ORGHIER}}); orgSendSkin(); }   // hierarchy: {} is ignored by org's loadModel guard, so pre-first-edit feeds leave its own seeding/localStorage untouched
+window.addEventListener('message',e=>{ const m=e.data; if(!m||typeof m!=='object'||!m.evt)return;   // org-chart iframe -> step7-ux (this host)
+  const f=document.getElementById('orgFrame'); if(!f||e.source!==f.contentWindow)return;
+  if(m.evt==='ready'){ orgFeed(); }
+  else if(m.evt==='change'&&m.model&&typeof m.model==='object'){   // org structural edit (created/moved/removed 7.7 boxes) → adopt vessels + hierarchy, then ride the EXISTING host change pipeline so it persists in the workspace
+    if(Array.isArray(m.model.vessels)) _replArr(VESSELS,m.model.vessels);
+    if(m.model.hierarchy&&typeof m.model.hierarchy==='object') ORGHIER=m.model.hierarchy;
+    emitChange(); }
+  else if(m.evt==='requestExportPanel'){ openStep7Export(orgChartExportVm()); }   // org-chart's own toolbar ⬇ (embedded) → open the SHARED panel for step7/org-chart (UX streamline S3)
+  else if(m.evt==='exportRender'&&_orgExp[m.requestId]){   // org returned bytes → forward the held export intent UP, enriched with the artifact (host downloads + exportReady)
+    const intent=_orgExp[m.requestId]; delete _orgExp[m.requestId];
+    // forward the USER's chosen format (intent.format), NOT the rendered one: for pptx the org frame renders a PNG (m.format==='png') and the HOST wraps that PNG into the deck. For svg/png the two already match.
+    postToHost(Object.assign({},intent,{format:intent.format,artifact:{mimeType:m.mimeType,dataUrl:m.dataUrl,suggestedName:m.suggestedName||null}})); }
+  else if(m.evt==='exportError'&&_orgExp[m.requestId]){   // org failed to render → tell the nested panel (the intent never reached the host)
+    delete _orgExp[m.requestId]; expPost({cmd:'exportError',requestId:m.requestId,message:m.message||'Org chart render failed'}); }
+  else if(m.evt==='requestFix'&&m.contribId&&m.vesselId){ RASIC[m.contribId+'|'+m.vesselId]=m.letter||'A'; _mtgVer++; orgFeed(); emit('rasic',{contribId:m.contribId,vesselId:m.vesselId,letter:m.letter||'A',via:'org-chart'}); emitChange(); }
+  else if(m.evt==='acknowledgeException'){ emit('warningAction',{action:'acknowledge',contribId:m.contribId,note:m.note||'',via:'org-chart'}); }
+});
+
+/* ---- B6 · Step VII embeds the SHARED app-wide export panel (export-panel.html) as a nested overlay and
+   RELAYS it to the shell, so the app's ONE export surface works inside Step VII without step7-ux owning any
+   file generation. Protocol (proposed for Codex — handoff §J):
+     DOWN (shell → this frame): panel commands relayed to the nested panel by name — setViewModel · open ·
+       setBundle · exportReady · exportError · closeExport, plus openExport (= open with step7-ux's own
+       substeps view-model). setSkin fans out to it like every embedded frame.
+     UP (this frame → shell): the panel's api:1 export / needViewModel / cancel events are forwarded
+       VERBATIM (per B6 the shell routes them by e.source === the Step VII frame).
+   Additive & host-overridable: the legacy #exportBtn Blob report stays live until Codex's Step VII
+   generator lands (then the button repoints to openStep7Export). ---- */
+function expSrc(){ const q=new URLSearchParams(location.search); const v=q.get('v'); return q.get('exportpanel') || ('export-panel.html'+(v?'?v='+encodeURIComponent(v):'')); }   // sibling in design-previews/; forwards the host cache label
+let _expFrame=null, _expReady=false; const _expQueue=[];
+function ensureExportFrame(){
+  if(_expFrame&&document.body.contains(_expFrame))return _expFrame;
+  const f=document.createElement('iframe');
+  f.id='exportFrame'; f.title='Export'; f.src=expSrc(); f.setAttribute('allow','fullscreen');
+  /* NEVER display:none — release Safari leaves a hidden iframe's internal FrameView stale and re-shows it
+     laid out against the OLD viewport (drawer mid-window + dead-white backing store = the Safari "flip").
+     visibility:hidden keeps layout live but un-hit-testable; the off-screen transform guards Safari's
+     non-spec wheel routing into covered iframes (the earlier Step-7 scroll-swallow bug). */
+  f.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:0;z-index:80;background:transparent;visibility:hidden;pointer-events:none;transform:translateX(-200%)';   // % not vw/vh (replaced element: inset alone = 300×150); expShow() pins live px on open
+  f.addEventListener('load',()=>sendSkinToEmbeddedFrame(f));
+  document.body.appendChild(f); _expFrame=f; return f;
+}
+function expPost(msg){ const f=ensureExportFrame(); if(_expReady&&f.contentWindow){ try{f.contentWindow.postMessage(msg,'*');}catch(_){ } } else _expQueue.push(msg); }
+function expFlush(){ const f=_expFrame; if(!f||!f.contentWindow)return; while(_expQueue.length){ try{f.contentWindow.postMessage(_expQueue.shift(),'*');}catch(_){ break; } } }
+function expShow(on){ const f=ensureExportFrame();
+  if(on){ const r=document.documentElement;   // Safari heal: pin to the LIVE viewport in px — a real size change forces WebKit to resize the child FrameView
+    f.style.width=r.clientWidth+'px'; f.style.height=r.clientHeight+'px'; }
+  else { f.style.width=''; f.style.height=''; }
+  f.style.visibility=on?'visible':'hidden'; f.style.pointerEvents=on?'auto':'none'; f.style.transform=on?'none':'translateX(-200%)';
+  void f.getBoundingClientRect(); }
+function step7ExportVm(){ return {
+  stepId:'step7', tileId:'all', title:'Step VII · Representation', kind:'substeps', count:STEPS.length,
+  unitNoun:'substeps', monolithic:true, defaultPreset:'doc', availableFormats:['docx'],   // Word only (2026-07-24 Stage 2): real OOXML via Codex's buildSimpleDocx. The flat-text PDF was dropped — MUST stay in lockstep with exportViewModels.js getStep7RepresentationExportViewModel (asset-test 'Step VII export formats stay in lockstep' enforces it)
+  availableScopes:[{kind:'step',label:'All substeps',count:STEPS.length}],
+  availableIncludes:['notes','owners','gaps','warnings'],
+  substeps:STEPS.map(s=>({id:s.id,title:s.t})), project:{name:CTX_META.sifName||'VSM7',date:''} }; }
+/* 7.7 org-chart export: png/svg client-rendered here; pptx = the host wraps our PNG into a real single-slide 16:9 deck (Stage 2) */
+function orgChartExportVm(){ return {
+  stepId:'step7', tileId:'org-chart', title:'Org Chart (7.7)', kind:'canvas', count:1,
+  unitNoun:'chart', monolithic:true, defaultPreset:'exec', availableFormats:['png','svg','pptx'],
+  availableScopes:[{kind:'tile',label:'This chart',count:1}], availableIncludes:[],
+  project:{name:CTX_META.sifName||'VSM7',date:''} }; }
+const _orgExp={};   // pending org-chart export intents by requestId (awaiting bytes from the org frame)
+function openStep7Export(vm){ const model=vm||step7ExportVm(); expShow(true);
+  expPost({cmd:'setViewModel',stepId:model.stepId,tileId:model.tileId,vm:model});
+  expPost({cmd:'open',stepId:model.stepId,tileId:model.tileId,origin:'step'}); }
+const _EXP_CMDS={setViewModel:1,open:1,setBundle:1,exportReady:1,exportError:1};
+function relayExportDown(m){   // returns true when it consumes the message
+  if(m.cmd==='openExport'){ openStep7Export(m.vm||null); return true; }
+  if(m.cmd==='closeExport'){ if(_expFrame){ expPost({cmd:'close'}); expShow(false); } return true; }
+  if(_EXP_CMDS[m.cmd]){ if((m.cmd==='exportReady'||m.cmd==='exportError')&&!_expFrame)return true;
+    if(m.cmd==='open')expShow(true); expPost(m); if(m.cmd==='exportReady')expShow(false); return true; }
+  return false;
+}
+window.addEventListener('message',e=>{ const m=e.data; if(!m||typeof m!=='object'||!m.evt)return;   // export panel iframe -> step7-ux
+  const f=_expFrame; if(!f||e.source!==f.contentWindow)return;
+  if(m.evt==='ready'){ _expReady=true; expFlush(); return; }
+  if(m.evt==='resize')return;                        // full-viewport overlay; sizing is CSS
+  if(m.evt==='cancel')expShow(false);
+  if(m.evt==='export'&&m.stepId==='step7'&&m.tileId==='org-chart'){   // 7.7: hold the intent, fetch bytes from the org-chart frame, forward ENRICHED (see org handler)
+    _orgExp[m.requestId]=m; orgSend({cmd:'renderExport',format:m.format,requestId:m.requestId}); return; }
+  if(m.evt==='export'||m.evt==='needViewModel'||m.evt==='cancel') postToHost(m);   // forward VERBATIM (shell keys on e.source)
+});
+
 render();
-emit('ready',{api:1});   // fire-once handshake, after first render
+emit('ready',{api:2});   // fire-once handshake; api:2 = front-end consumes the additive reuse contract (metricDefs/artifactDefs/toolDefs/decisionDefs/loops in + meetings round-trip)
 </script>
 </body>
 </html>

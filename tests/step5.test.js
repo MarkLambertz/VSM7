@@ -11,7 +11,7 @@ import {
   syncAllocations,
   toggleStep5ContributionAssignment
 } from "../src/domain/vsm.js";
-import { renderStep5 } from "../src/presentation/steps/step5.js";
+import { renderStep5, renderStep5FullscreenTile } from "../src/presentation/steps/step5.js";
 
 function workspaceWithContributions() {
   const workspace = createWorkspace();
@@ -98,8 +98,11 @@ test("Step V renders the shared VSM iframe without invented candidates", () => {
 
   assert.match(html, /class="vsm-host-frame"/);
   assert.match(html, /data-vsm-context="step5"/);
-  assert.match(html, /src="\.\/vsm\.html"/);
+  assert.match(html, /src="\.\/vsm\.html\?v=20260724-pptxgenjs"/);
   assert.match(html, /data-action="toggle-step5-assignment"/);
+  assert.match(html, /data-action="open-export-panel"/);
+  assert.match(html, /data-export-step="step5"/);
+  assert.match(html, /data-export-tile="step5-mapping"/);
   assert.match(html, /R0\/SIF contributions/);
   assert.match(html, /Mapped to S3 · Control/);
   assert.match(html, /Map to S3 · Control/);
@@ -113,6 +116,19 @@ test("Step V renders the shared VSM iframe without invented candidates", () => {
   assert.doesNotMatch(html, /Double-check with Step II/);
   assert.doesNotMatch(html, /Eligible SCTs|eligible SCTs/);
   assert.doesNotMatch(html, /<img/);
+});
+
+test("Step V mapping exposes tile-level export in embedded and fullscreen views", () => {
+  const { workspace } = workspaceWithContributions();
+  const embeddedHtml = renderStep5(workspace, { activeStep5System: "3" });
+  const fullscreenHtml = renderStep5FullscreenTile(workspace, { activeStep5System: "3" }, "step5-mapping");
+
+  assert.match(embeddedHtml, /data-action="open-export-panel"/);
+  assert.match(embeddedHtml, /data-export-step="step5"/);
+  assert.match(embeddedHtml, /data-export-tile="step5-mapping"/);
+  assert.match(fullscreenHtml, /data-action="open-export-panel"/);
+  assert.match(fullscreenHtml, /data-export-step="step5"/);
+  assert.match(fullscreenHtml, /data-export-tile="step5-mapping"/);
 });
 
 test("Step V renders the VSM pane toggle from host state", () => {

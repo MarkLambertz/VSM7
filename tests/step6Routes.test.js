@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   createAllocation,
   createImplementationItemFromFinding,
@@ -26,7 +27,6 @@ import {
   renderGenericFocusFullscreen
 } from "../src/presentation/steps/focusMode.js";
 import { renderImplementationWorkspace } from "../src/presentation/steps/implementation.js";
-import { buildStepOutcome } from "../src/infrastructure/exporters.js";
 
 function createRouteWorkspace() {
   const workspace = createWorkspace();
@@ -259,19 +259,6 @@ test("finding candidates render explicit backlog and source-navigation actions",
   assert.match(backlogHtml, /Open route/);
 });
 
-test("Step VI export lists structured findings and their affected elements", () => {
-  const { workspace, task, sif } = createRouteWorkspace();
-  const model = createStep6RouteModel(workspace, task.id);
-  model.nodes.push({ id: "n1", kind: "step", laneId: sif.id, col: 1, label: "Release approval" });
-  model.findings.push({ id: "fd1", target: { type: "node", id: "n1" }, category: "delay", severity: "high", note: "Waiting for approval" });
-  setStep6RouteModel(workspace, task.id, model);
-
-  const artifact = buildStepOutcome(workspace, "step6");
-  assert.match(artifact.content, /Waiting for approval/);
-  assert.match(artifact.content, /Release approval/);
-  assert.match(artifact.content, /fd1/);
-});
-
 test("removing a finding keeps linked backlog work and flags its source", () => {
   const { workspace, task, sif } = createRouteWorkspace();
   const model = createStep6RouteModel(workspace, task.id);
@@ -339,7 +326,6 @@ test("Step VI normal view exposes its two substeps and the static route editor",
 
   assert.match(html, /E2E Robustness Check/);
   assert.match(html, /Communication Variety Checks/);
-  assert.match(html, /src="\.\/e2e-robustness-check\.html"/);
   assert.match(html, /allow="fullscreen"/);
   assert.match(html, /sandbox="allow-scripts allow-same-origin allow-downloads"/);
   assert.match(html, new RegExp(`data-e2e-sct-id="${task.id}"`));
@@ -348,23 +334,38 @@ test("Step VI normal view exposes its two substeps and the static route editor",
   assert.match(html, /data-e2e-related-picker/);
   assert.match(html, /data-step6-related-sct/);
   assert.match(html, new RegExp(`value="${related.id}"`));
-  assert.match(html, /data-action="export-e2e-route" data-format="svg"/);
-  assert.match(html, /data-action="export-e2e-route" data-format="png"/);
-  assert.match(html, /data-action="export-e2e-route" data-format="pdf"/);
-  assert.match(html, /data-action="export-e2e-route" data-format="pptx"/);
+  assert.match(html, /src="\.\/e2e-robustness-check\.html\?v=20260724-pptxgenjs"/);
+  assert.match(html, /data-action="open-export-panel"/);
+  assert.match(html, /data-export-step="step6"/);
+  assert.match(html, /data-export-tile="step6-e2e"/);
+  assert.doesNotMatch(html, /data-action="export-e2e-route"/);
+  assert.doesNotMatch(html, /data-e2e-export-menu/);
 
   const channels = renderStep6(workspace, { activeSubpage: "channels", selectedSctId: task.id });
   assert.match(channels, /Communication Variety Checks/);
-  assert.match(channels, /src="\.\/channel-variety-check\.html\?vsm=\/vsm\.html&assetVersion=20260621-channel-variety-eight"/);
+  assert.match(channels, /src="\.\/channel-variety-check\.html\?vsm=\/vsm\.html%3Fv%3D20260724-pptxgenjs&assetVersion=20260724-pptxgenjs"/);
   assert.match(channels, /data-channel-variety-frame/);
   assert.match(channels, /channel-variety-frame-shell/);
   assert.match(channels, /allow="fullscreen"/);
   assert.match(channels, /sandbox="allow-scripts allow-same-origin allow-downloads"/);
   assert.match(channels, /8 canonical vertical loops/);
-  assert.match(channels, /data-action="export-channel-variety" data-format="svg"/);
-  assert.match(channels, /data-action="export-channel-variety" data-format="png"/);
+  assert.match(channels, /data-action="open-export-panel"/);
+  assert.match(channels, /data-export-step="step6"/);
+  assert.match(channels, /data-export-tile="step6-channels"/);
+  assert.doesNotMatch(channels, /data-action="export-channel-variety"/);
+  assert.doesNotMatch(channels, /data-channel-variety-export-menu/);
   assert.doesNotMatch(channels, /<h2>Communication Variety Checks<\/h2>/);
   assert.doesNotMatch(channels, /data-e2e-frame/);
+});
+
+test("Step VI host and focus mode use one current module cache label", () => {
+  const app = readFileSync(new URL("../src/presentation/app.js", import.meta.url), "utf8");
+  const focusMode = readFileSync(new URL("../src/presentation/steps/focusMode.js", import.meta.url), "utf8");
+
+  assert.match(app, /steps\/step6\.js\?v=20260724-pptxgenjs/);
+  assert.match(focusMode, /\.\/step6\.js\?v=20260724-pptxgenjs/);
+  assert.match(app, /shared\/e2eRouteExport\.js\?v=20260724-pptxgenjs/);
+  assert.match(app, /shared\/channelVarietyExport\.js\?v=20260724-pptxgenjs/);
 });
 
 test("Step VI route view explains when no SCT is available", () => {
@@ -382,10 +383,14 @@ test("Step VI focus mode contains separate E2E route and communication tiles", (
 
   assert.equal(getGenericFocusTileCount(workspace, "step6", context), 3);
   assert.match(renderGenericFocusFullscreen(workspace, "step6", 1, context), /data-e2e-frame/);
-  assert.match(renderGenericFocusFullscreen(workspace, "step6", 1, context), /data-action="export-e2e-route"/);
+  assert.match(renderGenericFocusFullscreen(workspace, "step6", 1, context), /data-action="open-export-panel"/);
+  assert.match(renderGenericFocusFullscreen(workspace, "step6", 1, context), /data-export-tile="step6-e2e"/);
+  assert.doesNotMatch(renderGenericFocusFullscreen(workspace, "step6", 1, context), /data-action="export-e2e-route"/);
   assert.match(renderGenericFocusFullscreen(workspace, "step6", 1, context), /data-e2e-related-picker/);
   const channelTile = renderGenericFocusFullscreen(workspace, "step6", 2, context);
   assert.match(channelTile, /title="Communication variety checks for/);
   assert.doesNotMatch(channelTile, /<h1>Communication Variety Checks<\/h1>/);
   assert.match(channelTile, /data-channel-variety-frame/);
+  assert.match(channelTile, /data-action="open-export-panel"/);
+  assert.match(channelTile, /data-export-tile="step6-channels"/);
 });

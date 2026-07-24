@@ -57,8 +57,8 @@ The app must not feel like a naked data collector or generic SAP/Bootstrap templ
 - Use two typography modes:
   - Capture mode: denser tables/forms for data entry.
   - Facilitation mode: presentation-grade fullscreen tiles.
-- Fullscreen/focus mode should let users move across tiles and across steps without pressing Escape.
-- Escape must exit fullscreen/focus mode.
+- The old global/topbar fullscreen deck is obsolete. Fullscreen belongs to specific view elements or tiles that need focused facilitation, such as a matrix, map, chart, or embedded design surface.
+- Tile-level fullscreen should use the same canonical data as the embedded view, with a rendering suited to the larger surface. Escape must exit fullscreen.
 - In normal view, in-place actions such as opening, editing, adding, splitting, merging, or closing an SCT must preserve the user's viewport and relevant internal scroll positions. Do not make facilitators find their place again after a local action.
 - Fullscreen explanation tiles should generally contain:
   - big title,
@@ -132,6 +132,8 @@ Important modeling boundaries:
   - the organizational unit represented by that entry,
   - a free-text contribution description,
   - and later enrichments such as VSM system number, channels, roles, RASIC, meetings, and processes.
+- Default workshop focus is always R0, the System-in-Focus. When a screen, dialog, filter, matrix, or selector spans multiple recursion levels, preselect the R0/SIF unit or R0/SIF contributions first. R-1 and R+1 data must remain available, but through explicit "all levels" or level-specific controls, not by accidental default.
+- Keep recursion levels visibly distinct in every multi-level surface. Do not flatten R-1, R0, and R+1 rows into an undifferentiated list. If repeated SCT rows become noisy, group/collapse them by SCT and default to the R0/SIF rows rather than deleting lower/higher-level contribution data.
 - Step IV must reuse the actual recursion structure and organizational units defined in Step I. Do not show only generic `R-1`, `R0`, and `R+1` columns.
 - Each SCT/organizational-unit intersection needs a free-text field to describe that unit's contribution. An empty field means no contribution has been identified yet.
 - Allocate the VSM system number in Step V per R0 SCT contribution, not only once for the entire SCT.

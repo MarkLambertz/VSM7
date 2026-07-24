@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   createNumberedSuccessCriticalTask,
   createRecursionLevel,
@@ -7,7 +8,7 @@ import {
   getRecursionOrganizations,
   syncAllocations
 } from "../src/domain/vsm.js";
-import { renderStep4, renderStep4ContributionMatrix } from "../src/presentation/steps/step4.js";
+import { renderStep4, renderStep4ContributionMatrix, renderStep4FullscreenTile } from "../src/presentation/steps/step4.js";
 
 test("Step IV renders actual recursion organizations from lowest to highest level", () => {
   const workspace = createWorkspace();
@@ -57,6 +58,33 @@ test("Step IV focus matrix avoids a repeated nested headline", () => {
   assert.doesNotMatch(html, /<h2>SCT Contribution Matrix<\/h2>/);
   assert.match(html, /Describe what each organizational unit must contribute/);
   assert.match(html, /fullscreen-matrix-section/);
+});
+
+test("Step IV contribution matrix opens as a host-owned tile fullscreen surface", () => {
+  const workspace = createWorkspace();
+  const task = createNumberedSuccessCriticalTask(workspace);
+  task.title = "Manage customer promise";
+  workspace.step3.successCriticalTasks = [task];
+  syncAllocations(workspace);
+  const embeddedHtml = renderStep4(workspace);
+  const tileHtml = renderStep4FullscreenTile(workspace);
+  const appSource = readFileSync(new URL("../src/presentation/app.js", import.meta.url), "utf8");
+
+  assert.match(embeddedHtml, /data-action="host-tile-fullscreen-open"/);
+  assert.match(embeddedHtml, /data-tile="contribution-matrix"/);
+  assert.match(embeddedHtml, /data-action="open-export-panel"/);
+  assert.match(embeddedHtml, /data-export-step="step4"/);
+  assert.match(embeddedHtml, /data-export-tile="contribution-matrix"/);
+  assert.match(tileHtml, /step4-fullscreen-shell/);
+  assert.match(tileHtml, /step4-fullscreen-tile/);
+  assert.match(tileHtml, /SCT Contribution Matrix/);
+  assert.match(tileHtml, /fullscreen-matrix-section/);
+  assert.match(tileHtml, /data-allocation-contribution/);
+  assert.match(tileHtml, /data-action="open-export-panel"/);
+  assert.doesNotMatch(tileHtml, /step1-fullscreen-progress/);
+  assert.match(appSource, /step4\.js\?v=20260724-pptxgenjs/);
+  assert.match(appSource, /host-tile-fullscreen-open/);
+  assert.match(appSource, /renderHostTileFullscreenLayer/);
 });
 
 test("Step IV keeps contribution guidance as an unsaved placeholder", () => {

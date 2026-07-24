@@ -180,7 +180,7 @@ details.sctg.related[open]>summary::before{content:'▾'}
   <button id="bRedo" title="Redo (⌘⇧Z)">↷</button>
   <button id="bDel" title="Delete (⌫)">🗑</button>
   <span id="exportWrap">
-    <button id="bExport" title="Export the route (PNG / SVG)">⤓ Export</button>
+    <button id="bExport" title="Export the route (PNG / SVG)">⬇ Export</button>
     <div id="exportMenu" class="exmenu" hidden>
       <button type="button" data-export="png">PNG <span class="k">image</span></button>
       <button type="button" data-export="svg">SVG <span class="k">vector</span></button>
@@ -950,6 +950,7 @@ function dedupeIds(){ const seen=new Set(), pfx={nodes:'s',links:'k',callouts:'c
   Object.keys(pfx).forEach(coll=>{ (model[coll]||[]).forEach(it=>{ if(it&&it.id!=null){ if(seen.has(it.id)) it.id=uid(pfx[coll]); seen.add(it.id); } }); }); }
 const BRIDGE = (()=>{
   const inFrame=!!(window.parent && window.parent!==window), TARGET='*';
+  if(inFrame){ ['bExport','btnFs'].forEach(id=>{ const b=document.getElementById(id); if(b) b.style.display='none'; }); }   // embedded → the HOST tile carries the one ⬇/⛶ pair (UX streamline S2); standalone keeps our own
   function postToHost(msg){ try{ if(inFrame) window.parent.postMessage(msg,TARGET);}catch(_){}
     try{ if(window.E2E && typeof window.E2E.onEmit==='function') window.E2E.onEmit(msg);}catch(_){} }
   function loadModel(m){ if(!m||typeof m!=='object'||!Array.isArray(m.lanes)) return; _silent=true;

@@ -1,4 +1,4 @@
-import { ensureWorkspaceShape, syncAllocations } from "../domain/vsm.js";
+import { ensureWorkspaceShape, syncAllocations } from "../domain/vsm.js?v=20260724-pptxgenjs";
 
 export function loadWorkspace(repository) {
   return ensureWorkspaceShape(repository.load());

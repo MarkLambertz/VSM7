@@ -1,22 +1,25 @@
-import { formatSctNumber, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js";
 import {
-  cellInput,
-  cellSelect,
+  formatSctNumber,
+  getManageabilityLeverSignals,
+  getStep7EditorContext,
+  getStep7EditorModel,
+  getStep7SctContributions,
+  getWeakSegmentationSignals
+} from "../../domain/vsm.js?v=20260724-pptxgenjs";
+import {
   emptyState,
   escapeAttr,
   escapeHtml,
-  removeButton,
-  tableHeader,
-  taskMultiSelect,
+  stepExportButton,
   textarea
-} from "../shared/renderHelpers.js";
-import { renderMethodVisual } from "../shared/methodVisuals.js";
-import { renderStep2Assessment, renderStep2Remedies } from "./step2.js";
-import { renderStep3Register } from "./step3.js";
-import { renderStep4ContributionMatrix, renderStep4DecisionGuide } from "./step4.js";
-import { renderStep5Mapping } from "./step5.js?v=20260618-step5-copy-remove";
-import { renderStep6Channels, renderStep6E2ECheck } from "./step6.js?v=20260620-channel-loop-detail-fields";
-import { renderImplementationWorkspace } from "./implementation.js?v=20260619-e2e-findings";
+} from "../shared/renderHelpers.js?v=20260724-pptxgenjs";
+import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260724-pptxgenjs";
+import { renderStep2Assessment, renderStep2Remedies } from "./step2.js?v=20260724-pptxgenjs";
+import { renderStep3Register } from "./step3.js?v=20260724-pptxgenjs";
+import { renderStep4ContributionMatrix, renderStep4DecisionGuide } from "./step4.js?v=20260724-pptxgenjs";
+import { renderStep5Mapping } from "./step5.js?v=20260724-pptxgenjs";
+import { renderStep6Channels, renderStep6E2ECheck } from "./step6.js?v=20260724-pptxgenjs";
+import { renderImplementationWorkspace } from "./implementation.js?v=20260724-pptxgenjs";
 
 const focusStepMetadata = {
   step2: {
@@ -78,13 +81,13 @@ const focusStepMetadata = {
   step7: {
     token: "Step VII",
     title: "Representation",
-    description: "Represent roles, entities, reporting, and accountability based on the SCT spine.",
-    artifact: "Roles, representation, and one-pager input.",
+    description: "Represent the target organization through vessels, RASIC accountability, meeting links, and reusable SCT evidence.",
+    artifact: "Representation spine, reuse graph, and one-pager input.",
     visual: "Role constellation",
     visualKind: "roles",
     visualItems: ["Roles", "Entities", "Meetings", "SCTs", "RASIC"],
-    coachNote: "Representation is more than an org chart. Use the SCT spine and RASIC logic to define roles, entities, reporting lines, and decision authority.",
-    prompts: ["Which roles or entities represent the system?", "How are SCTs embodied in roles and functions?", "What belongs in the target organization one-pager?"]
+    coachNote: "Representation is more than an org chart. Use the SCT contribution spine, RASIC logic, meetings, and reusable metrics/artifacts/tools to define what the organization must embody.",
+    prompts: ["Which vessels carry the R0/SIF accountability?", "Which SCT contributions still lack clear accountability?", "Where can meetings, KPIs, artifacts, and tools be reused instead of duplicated?"]
   },
   implementation: {
     token: "Implementation",
@@ -153,6 +156,7 @@ export function renderGenericFocusFullscreen(workspace, viewId, activeTileIndex,
 }
 
 function renderFullscreenTileHeader(tile, safeIndex, tileCount) {
+  const actions = renderFocusStepExportActions(tile.viewId);
   return `
     <div class="fullscreen-tile-header">
       <div>
@@ -160,9 +164,18 @@ function renderFullscreenTileHeader(tile, safeIndex, tileCount) {
         <h1>${escapeHtml(tile.title)}</h1>
         <p>${escapeHtml(tile.description)}</p>
       </div>
-      <span class="fullscreen-tile-counter">${safeIndex + 1} / ${tileCount}</span>
+      <div class="fullscreen-tile-header-side">
+        ${actions ? `<div class="fullscreen-tile-actions">${actions}</div>` : ""}
+        <span class="fullscreen-tile-counter">${safeIndex + 1} / ${tileCount}</span>
+      </div>
     </div>
   `;
+}
+
+function renderFocusStepExportActions() {
+  // Export is tile-level only (PO decision 2026-07-22): no step-level ⬇ in Focus Mode.
+  // Tile-level export affordances inside the focus surfaces remain the export path.
+  return "";
 }
 
 export function getGenericFocusStepTitle(viewId) {
@@ -225,7 +238,8 @@ function getGenericFocusTiles(workspace, viewId, context) {
       createTile("Channels", "Communication Variety Checks", "Evaluate communication-loop robustness across capacity, clarity, synchronicity, and feedback.", renderStep6Channels(workspace, { fullscreen: true }), "is-embedded-tool", "Channels", metadata.title)
     ],
     step7: () => [
-      createTile("Roles", "Roles, Functions, and Organizational Entities", "Represent the target organization through roles, entities, and linked SCTs.", renderStep7Roles(workspace), "is-matrix", "Roles", metadata.title),
+      createTile("Spine", "Step VII Representation Spine", "Read the current organizational vessels and RASIC coverage from the Step VII editor model.", renderStep7RepresentationSpine(workspace), "is-matrix", "Spine", metadata.title),
+      createTile("Reuse", "Meetings, KPIs, Artifacts, and Tools", "Check how reusable workshop evidence is connected to roles, functions, meetings, and SCTs.", renderStep7ReuseGraph(workspace), "is-matrix", "Reuse", metadata.title),
       createTile("Notes", "Representation Notes", "Capture org chart notes and role one-pager input.", renderStep7Notes(workspace), "is-form", "Notes", metadata.title)
     ],
     implementation: () => [
@@ -233,7 +247,7 @@ function getGenericFocusTiles(workspace, viewId, context) {
     ]
   };
 
-  return [briefTile, ...(workTiles[viewId]?.() || [])];
+  return [briefTile, ...(workTiles[viewId]?.() || [])].map((tile) => ({ ...tile, viewId }));
 }
 
 function createTile(kicker, title, description, content, variant, shortLabel, stepTitle) {
@@ -279,7 +293,7 @@ function renderManagementAttentionHints(workspace) {
       </div>
       <p class="section-note">Use weak segmentation scores and selected Step II manageability levers as source material for success-critical tasks.</p>
       <div class="nested-work-section">
-        <h3>From selected segmentation</h3>
+        <h3>From selected segmentation of Operative Units</h3>
         ${selectedOption
           ? `<p class="section-note">Weak scores for ${escapeHtml(selectedOption.name || "the selected segmentation")} indicate fields that may need top-level management attention.</p>`
           : ""}
@@ -314,7 +328,6 @@ function renderStep3Drivers(workspace) {
     <section class="work-section">
       <div class="section-heading">
         <h2>Complexity Drivers</h2>
-        <button class="ghost-button" data-action="export-step" data-step="step3">Download Outcome</button>
       </div>
       <div class="field-grid two">
         ${driverTextarea("environmentOperation", workspace.step3.complexityDrivers.environmentOperation)}
@@ -342,28 +355,330 @@ function driverTextarea(key, value) {
   `;
 }
 
-function renderStep7Roles(workspace) {
+function renderStep7RepresentationSpine(workspace) {
+  const summary = getStep7FocusSummary(workspace);
+  const attentionCount = summary.contributionsWithoutAccountable.length + summary.contributionsWithDoubleAccountable.length;
+
   return `
-    <section class="work-section fullscreen-matrix-section">
-      ${tableHeader("Roles, Functions, and Organizational Entities", "add-role")}
-      <div class="table-wrap wide evaluation-wrap">
-        <table>
-          <thead><tr><th>Name</th><th>Type</th><th>Purpose</th><th>Reports to</th><th>Decision authority</th><th>Linked SCTs</th><th></th></tr></thead>
-          <tbody>${workspace.step7.roles.map((role) => `
-            <tr>
-              <td>${cellInput("step7.roles", role.id, "name", role.name)}</td>
-              <td>${cellSelect("step7.roles", role.id, "type", role.type, ["Leadership role", "Support function", "Operative unit", "Committee", "Meeting", "Process"])}</td>
-              <td>${cellInput("step7.roles", role.id, "purpose", role.purpose)}</td>
-              <td>${cellInput("step7.roles", role.id, "reportsTo", role.reportsTo)}</td>
-              <td>${cellInput("step7.roles", role.id, "decisionAuthority", role.decisionAuthority)}</td>
-              <td>${taskMultiSelect(workspace, "step7.roles", role.id, role.linkedTaskIds)}</td>
-              <td>${removeButton("step7.roles", role.id)}</td>
-            </tr>
-          `).join("")}</tbody>
-        </table>
+    <section class="work-section fullscreen-matrix-section step7-focus-section">
+      <div class="step7-focus-dashboard">
+        <div class="step7-focus-stat-grid">
+          ${step7FocusStat("SCT contributions", summary.contributions.length, `${summary.r0Contributions.length} R0 / SIF`, "blue")}
+          ${step7FocusStat("Organizational vessels", summary.vessels.length, `${summary.roles.length} roles · ${summary.functions.length} functions · ${summary.meetings.length} meetings`, "teal")}
+          ${step7FocusStat("RASIC assignments", summary.assignments.length, `${summary.accountableContributionIds.size}/${summary.contributions.length} with A`, "amber")}
+          ${step7FocusStat("Needs attention", attentionCount, `${summary.contributionsWithoutAccountable.length} without A · ${summary.contributionsWithDoubleAccountable.length} double A`, attentionCount ? "red" : "teal")}
+        </div>
+        <div class="step7-focus-columns">
+          <div class="step7-focus-panel">
+            <h2>Organizational Vessels</h2>
+            ${renderStep7VesselGroups(summary)}
+          </div>
+          <div class="step7-focus-panel">
+            <h2>Accountability Coverage</h2>
+            ${renderStep7AccountabilityCoverage(summary)}
+          </div>
+        </div>
       </div>
     </section>
   `;
+}
+
+function renderStep7ReuseGraph(workspace) {
+  const summary = getStep7FocusSummary(workspace);
+  const artifactToolCount = summary.artifacts.length + summary.tools.length;
+
+  return `
+    <section class="work-section fullscreen-matrix-section step7-focus-section">
+      <div class="step7-focus-dashboard">
+        <div class="step7-focus-stat-grid">
+          ${step7FocusStat("Meetings", summary.meetings.length, `${summary.acceptedMeetings.length} accepted`, "blue")}
+          ${step7FocusStat("Participation links", summary.membershipLinks, "role/function to meeting", "teal")}
+          ${step7FocusStat("KPI / metric reuse", summary.kpis.length, "shared wording available", "amber")}
+          ${step7FocusStat("Artifacts & tools", artifactToolCount, `${summary.artifacts.length} artifacts · ${summary.tools.length} tools`, "teal")}
+        </div>
+        <div class="step7-focus-columns">
+          <div class="step7-focus-panel">
+            <h2>Meetings and Participants</h2>
+            ${renderStep7MeetingLinks(summary)}
+          </div>
+          <div class="step7-focus-panel">
+            <h2>Reusable Workshop Evidence</h2>
+            ${renderStep7ReuseChips("KPIs & metrics", summary.kpis)}
+            ${renderStep7ReuseChips("Artifacts & result types", summary.artifacts)}
+            ${renderStep7ReuseChips("Tools & methods", summary.tools)}
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function getStep7FocusSummary(workspace) {
+  const contributions = getStep7SctContributions(workspace);
+  const context = getStep7EditorContext(workspace);
+  const unitById = new Map((Array.isArray(context.units) ? context.units : []).map((unit) => [String(unit.id), unit]));
+  const model = getStep7EditorModel(workspace);
+  const vessels = Array.isArray(model.vessels)
+    ? model.vessels
+      .filter((vessel) => String(vessel?.name || "").trim())
+      .map((vessel) => ({
+        ...vessel,
+        displayScope: formatStep7FocusScope(vessel.scope, unitById)
+      }))
+    : [];
+  const vesselsById = new Map(vessels.map((vessel) => [String(vessel.id), vessel]));
+  const contributionsById = new Map(contributions.map((contribution) => [String(contribution.id), contribution]));
+  const assignments = Object.entries(model.rasic || {})
+    .map(([key, value]) => {
+      const parsed = parseStep7FocusRasicKey(key);
+      if (!parsed || !contributionsById.has(parsed.contributionId) || !vesselsById.has(parsed.vesselId)) {
+        return null;
+      }
+
+      return {
+        contributionId: parsed.contributionId,
+        vesselId: parsed.vesselId,
+        value: String(value || "").trim().toUpperCase()
+      };
+    })
+    .filter(Boolean);
+  const accountableCounts = new Map();
+  const accountableContributionIds = new Set();
+  const assignedContributionIds = new Set();
+  const assignmentCountByVesselId = new Map();
+
+  for (const assignment of assignments) {
+    assignedContributionIds.add(assignment.contributionId);
+    assignmentCountByVesselId.set(
+      assignment.vesselId,
+      (assignmentCountByVesselId.get(assignment.vesselId) || 0) + 1
+    );
+    if (assignment.value === "A") {
+      accountableContributionIds.add(assignment.contributionId);
+      accountableCounts.set(assignment.contributionId, (accountableCounts.get(assignment.contributionId) || 0) + 1);
+    }
+  }
+
+  const roles = vessels.filter((vessel) => vessel.type === "role");
+  const functions = vessels.filter((vessel) => vessel.type === "function");
+  const meetings = vessels.filter((vessel) => vessel.type === "meeting");
+  const membership = isObjectRecord(model.membership) ? model.membership : {};
+  const membershipLinks = Object.values(membership).reduce((total, meetingIds) => (
+    total + (Array.isArray(meetingIds) ? meetingIds.filter(Boolean).length : 0)
+  ), 0);
+  const connectedVessels = vessels
+    .map((vessel) => ({
+      ...vessel,
+      assignmentCount: assignmentCountByVesselId.get(String(vessel.id)) || 0,
+      meetingCount: Array.isArray(membership[vessel.id]) ? membership[vessel.id].length : 0
+    }))
+    .sort((left, right) => (
+      right.assignmentCount - left.assignmentCount
+      || right.meetingCount - left.meetingCount
+      || String(left.name).localeCompare(String(right.name))
+    ));
+
+  return {
+    contributions,
+    r0Contributions: contributions.filter((contribution) => contribution.recursionLevel === "R0"),
+    vessels,
+    roles,
+    functions,
+    meetings,
+    acceptedMeetings: meetings.filter((meeting) => meeting.state === "accepted"),
+    assignments,
+    assignedContributionIds,
+    accountableContributionIds,
+    contributionsWithoutAccountable: contributions.filter((contribution) => !(accountableCounts.get(contribution.id) > 0)),
+    contributionsWithDoubleAccountable: contributions.filter((contribution) => (accountableCounts.get(contribution.id) || 0) > 1),
+    membership,
+    membershipLinks,
+    connectedVessels,
+    kpis: collectStep7AspectTexts([model.aspects, model.vesselAspects], "kpis"),
+    artifacts: collectStep7AspectTexts([model.aspects, model.vesselAspects], "artifacts"),
+    tools: collectStep7AspectTexts([model.aspects, model.vesselAspects], "tools")
+  };
+}
+
+function parseStep7FocusRasicKey(key) {
+  const parts = String(key || "").split("|");
+  if (parts.length < 3) {
+    return null;
+  }
+
+  const vesselId = parts.pop();
+  const contributionId = parts.join("|");
+  return contributionId && vesselId ? { contributionId, vesselId } : null;
+}
+
+function collectStep7AspectTexts(collections, kind) {
+  const seen = new Set();
+  const values = [];
+  for (const collection of collections) {
+    if (!isObjectRecord(collection)) {
+      continue;
+    }
+
+    for (const bundle of Object.values(collection)) {
+      const items = Array.isArray(bundle?.[kind]) ? bundle[kind] : [];
+      for (const item of items) {
+        const text = String(item?.text ?? item ?? "").trim();
+        const key = text.toLowerCase();
+        if (text && !seen.has(key)) {
+          seen.add(key);
+          values.push(text);
+        }
+      }
+    }
+  }
+
+  return values.sort((left, right) => left.localeCompare(right));
+}
+
+function isObjectRecord(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function formatStep7FocusScope(scope, unitById) {
+  const value = String(scope || "").trim();
+  if (!value) {
+    return "";
+  }
+
+  const unit = unitById.get(value);
+  return unit ? `${unit.name} · ${unit.level}` : value;
+}
+
+function step7FocusStat(label, value, detail, tone = "blue") {
+  return `
+    <div class="step7-focus-stat is-${escapeAttr(tone)}">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(String(value))}</strong>
+      <small>${escapeHtml(detail)}</small>
+    </div>
+  `;
+}
+
+function renderStep7VesselGroups(summary) {
+  const groups = [
+    ["Roles", summary.roles],
+    ["Functions", summary.functions],
+    ["Meetings", summary.meetings]
+  ];
+
+  if (!summary.vessels.length) {
+    return emptyState("No Step VII vessels yet.");
+  }
+
+  return groups.map(([label, vessels]) => `
+    <div class="step7-focus-type-group">
+      <h3>${escapeHtml(label)} <span>${escapeHtml(String(vessels.length))}</span></h3>
+      ${vessels.length
+        ? `<ul class="step7-focus-list">${vessels.slice(0, 8).map(renderStep7VesselItem).join("")}</ul>`
+        : `<p class="step7-focus-muted">None yet.</p>`}
+      ${vessels.length > 8 ? `<p class="step7-focus-muted">+ ${escapeHtml(String(vessels.length - 8))} more</p>` : ""}
+    </div>
+  `).join("");
+}
+
+function renderStep7VesselItem(vessel) {
+  const detail = [
+    vessel.state === "accepted" ? "accepted" : "candidate",
+    vessel.sys ? vessel.sys : "",
+    vessel.displayScope ? vessel.displayScope : ""
+  ].filter(Boolean).join(" · ");
+
+  return `
+    <li>
+      <strong>${escapeHtml(vessel.name || "Unnamed vessel")}</strong>
+      <span>${escapeHtml(detail || "workshop vessel")}</span>
+    </li>
+  `;
+}
+
+function renderStep7AccountabilityCoverage(summary) {
+  if (!summary.contributions.length) {
+    return emptyState("No SCT contributions are available for Step VII yet.");
+  }
+
+  const riskRows = [
+    ...summary.contributionsWithoutAccountable.map((contribution) => ({ contribution, label: "No accountable vessel" })),
+    ...summary.contributionsWithDoubleAccountable.map((contribution) => ({ contribution, label: "Double accountability" }))
+  ];
+
+  return `
+    <div class="step7-focus-coverage">
+      ${riskRows.length
+        ? `<ul class="step7-focus-risk-list">${riskRows.slice(0, 10).map(renderStep7RiskItem).join("")}</ul>`
+        : `<div class="step7-focus-good">Every visible contribution has one accountable vessel.</div>`}
+      ${riskRows.length > 10 ? `<p class="step7-focus-muted">+ ${escapeHtml(String(riskRows.length - 10))} more accountability signals</p>` : ""}
+      <div class="step7-focus-subpanel">
+        <h3>Most connected vessels</h3>
+        ${summary.connectedVessels.some((vessel) => vessel.assignmentCount || vessel.meetingCount)
+          ? `<ul class="step7-focus-list compact">${summary.connectedVessels.slice(0, 8).map(renderStep7ConnectedVessel).join("")}</ul>`
+          : `<p class="step7-focus-muted">No RASIC or meeting links yet.</p>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderStep7RiskItem({ contribution, label }) {
+  return `
+    <li>
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(`${contribution.sctNumber} · ${contribution.organizationName}`)}</strong>
+      <small>${escapeHtml(truncateText(contribution.contribution || contribution.title, 120))}</small>
+    </li>
+  `;
+}
+
+function renderStep7ConnectedVessel(vessel) {
+  return `
+    <li>
+      <strong>${escapeHtml(vessel.name || "Unnamed vessel")}</strong>
+      <span>${escapeHtml(`${vessel.assignmentCount} RASIC · ${vessel.meetingCount} meetings`)}</span>
+    </li>
+  `;
+}
+
+function renderStep7MeetingLinks(summary) {
+  if (!summary.meetings.length) {
+    return emptyState("No meetings have been accepted yet.");
+  }
+
+  return `
+    <ul class="step7-focus-list">
+      ${summary.meetings.slice(0, 10).map((meeting) => {
+        const participantCount = Object.values(summary.membership).filter((meetingIds) => (
+          Array.isArray(meetingIds) && meetingIds.includes(meeting.id)
+        )).length;
+        return `
+          <li>
+            <strong>${escapeHtml(meeting.name || "Unnamed meeting")}</strong>
+            <span>${escapeHtml(`${participantCount} participants · ${meeting.state === "accepted" ? "accepted" : "candidate"}`)}</span>
+          </li>
+        `;
+      }).join("")}
+    </ul>
+    ${summary.meetings.length > 10 ? `<p class="step7-focus-muted">+ ${escapeHtml(String(summary.meetings.length - 10))} more meetings</p>` : ""}
+  `;
+}
+
+function renderStep7ReuseChips(label, values) {
+  return `
+    <div class="step7-focus-reuse-block">
+      <h3>${escapeHtml(label)}</h3>
+      ${values.length
+        ? `<div class="step7-focus-chip-row">${values.slice(0, 18).map((value) => `<span class="step7-focus-chip">${escapeHtml(value)}</span>`).join("")}</div>`
+        : `<p class="step7-focus-muted">No reusable entries yet.</p>`}
+      ${values.length > 18 ? `<p class="step7-focus-muted">+ ${escapeHtml(String(values.length - 18))} more</p>` : ""}
+    </div>
+  `;
+}
+
+function truncateText(value, maxLength) {
+  const text = String(value || "").trim();
+  return text.length > maxLength ? `${text.slice(0, Math.max(0, maxLength - 1)).trim()}...` : text;
 }
 
 function renderStep7Notes(workspace) {
@@ -371,7 +686,6 @@ function renderStep7Notes(workspace) {
     <section class="work-section">
       <div class="section-heading">
         <h2>Representation Notes</h2>
-        <button class="ghost-button" data-action="export-step" data-step="step7">Download Outcome</button>
       </div>
       <div class="field-grid two">
         ${textarea("Org chart notes", "step7.orgChartNotes", workspace.step7.orgChartNotes)}

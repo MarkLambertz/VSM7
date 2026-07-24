@@ -250,7 +250,7 @@ test("Step II 20 rendered assessment exposes all nine sliders and computed gauge
   const html = renderStep2Assessment(workspace);
 
   assert.equal((html.match(/type="range"/g) || []).length, 9);
-  assert.equal((html.match(/data-action="reset-variety-slider"/g) || []).length, 9);
+  assert.equal((html.match(/data-action="reset-variety-slider"/g) || []).length, 0);
   assert.match(html, /data-action="reset-step2-sliders"/);
   assert.match(html, /Reset sliders/);
   assert.equal((html.match(/data-variety-driver="horizontal"/g) || []).length, 3);
@@ -267,6 +267,24 @@ test("Step II normal hero stays focused without context chips", () => {
   assert.doesNotMatch(html, /stage-context-strip/);
   assert.doesNotMatch(html, /Workshop capture/);
   assert.doesNotMatch(html, /Structured VSM artifact/);
+});
+
+test("Step II renders two focused substeps", () => {
+  const workspace = createWorkspace();
+  const assessmentHtml = renderStep2(workspace);
+
+  assert.match(assessmentHtml, /Step II substeps/);
+  assert.match(assessmentHtml, /data-action="step2-subpage"/);
+  assert.match(assessmentHtml, /data-subpage="assessment"/);
+  assert.match(assessmentHtml, /data-subpage="challenges"/);
+  assert.match(assessmentHtml, /Variety Assessment for Steerability/);
+  assert.doesNotMatch(assessmentHtml, /How to master steering challenges<\/h2>/);
+
+  const challengesHtml = renderStep2(workspace, "challenges");
+
+  assert.match(challengesHtml, /How to master steering challenges/);
+  assert.match(challengesHtml, /data-action="add-manageability-option"/);
+  assert.doesNotMatch(challengesHtml, /Variety Assessment for Steerability<\/h2>/);
 });
 
 test("Step II 21 reset all sliders returns assessment to neutral middle position", () => {

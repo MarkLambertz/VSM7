@@ -12,7 +12,7 @@ import {
   markAllStep2SlidersAssessed,
   sixPackOfControl,
   syncAllocations
-} from "../domain/vsm.js";
+} from "../domain/vsm.js?v=20260724-pptxgenjs";
 
 export function createSampleWorkspace() {
   const sample = createWorkspace();

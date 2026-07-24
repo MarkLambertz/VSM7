@@ -1,8 +1,9 @@
-import { getStep5MappingDiagnostics, stepDefinitions } from "../../domain/vsm.js";
-import { escapeHtml, field, metric, textarea } from "../shared/renderHelpers.js";
+import { getStep5MappingDiagnostics } from "../../domain/vsm.js?v=20260724-pptxgenjs";
+import { field, fullscreenTile, metric, textarea, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260724-pptxgenjs";
 
 export function renderOverview(workspace) {
   const step5Diagnostics = getStep5MappingDiagnostics(workspace);
+  const roleCount = getStep7RoleCount(workspace);
   return `
     <section class="view-header">
       <div>
@@ -18,38 +19,56 @@ export function renderOverview(workspace) {
     <section class="summary-strip">
       ${metric("SCTs", workspace.step3.successCriticalTasks.length, "Success-critical tasks")}
       ${metric("VSM mappings", step5Diagnostics.assignmentCount, "SCT contribution assignments")}
-      ${metric("Roles", workspace.step7.roles.length, "Representation entities")}
+      ${metric("Roles", roleCount, "Representation entities")}
     </section>
     <section class="work-section">
       <div class="section-heading">
         <h2>Project Frame</h2>
-        <button class="ghost-button" data-action="export-project-report">Download Report</button>
+        <div class="section-actions">
+          ${tileExportButton("overview", "overview-project-frame", "Export project frame")}
+          ${tileFullscreenButton("overview-project-frame", "Open project frame fullscreen")}
+        </div>
       </div>
-      <div class="field-grid three">
-        ${field("Project status", "project.status", workspace.project.status)}
-        ${field("Recursion level", "sif.recursionLevel", workspace.sif.recursionLevel)}
-        ${field("Parent level", "sif.parentLevel", workspace.sif.parentLevel)}
-      </div>
-      <div class="field-grid two">
-        ${textarea("System purpose", "sif.purpose", workspace.sif.purpose)}
-        ${textarea("Customers and stakeholders", "sif.customers", workspace.sif.customers)}
-      </div>
+      ${renderProjectFrameFields(workspace)}
     </section>
-    <section class="work-section">
-      <div class="section-heading">
-        <h2>Step Outcomes</h2>
-      </div>
-      <div class="outcome-grid">
-        ${stepDefinitions.filter((step) => step.id !== "overview").map((step) => `
-          <div class="outcome-row">
-            <div>
-              <strong>${escapeHtml(step.label)}</strong>
-              <span>${escapeHtml(step.output)}</span>
-            </div>
-            <button class="ghost-button" data-action="export-step" data-step="${step.id}">Download</button>
-          </div>
-        `).join("")}
-      </div>
-    </section>
+  `;
+}
+
+function getStep7RoleCount(workspace) {
+  const vessels = Array.isArray(workspace?.step7?.vessels) ? workspace.step7.vessels : [];
+  const roleVessels = vessels.filter((vessel) => vessel?.type === "role" && String(vessel.name || "").trim());
+  if (roleVessels.length) {
+    return roleVessels.length;
+  }
+
+  return Array.isArray(workspace?.step7?.roles)
+    ? workspace.step7.roles.filter((role) => String(role?.name || "").trim()).length
+    : 0;
+}
+
+export function renderOverviewFullscreenTile(workspace, tileId = "overview-project-frame") {
+  return fullscreenTile({
+    kicker: "Overview",
+    title: "Project Frame",
+    description: "Keep project status, recursion framing, purpose, and stakeholder context visible.",
+    counter: "Frame",
+    variant: "is-form",
+    tileClass: "overview-fullscreen-tile",
+    actions: tileExportButton("overview", "overview-project-frame", "Export project frame"),
+    content: `<section class="work-section fullscreen-matrix-section">${renderProjectFrameFields(workspace)}</section>`
+  });
+}
+
+function renderProjectFrameFields(workspace) {
+  return `
+    <div class="field-grid three">
+      ${field("Project status", "project.status", workspace.project.status)}
+      ${field("Recursion level", "sif.recursionLevel", workspace.sif.recursionLevel)}
+      ${field("Parent level", "sif.parentLevel", workspace.sif.parentLevel)}
+    </div>
+    <div class="field-grid two">
+      ${textarea("System purpose", "sif.purpose", workspace.sif.purpose)}
+      ${textarea("Customers and stakeholders", "sif.customers", workspace.sif.customers)}
+    </div>
   `;
 }

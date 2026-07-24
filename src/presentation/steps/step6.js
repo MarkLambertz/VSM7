@@ -2,13 +2,16 @@ import {
   formatSctNumber,
   getStep6ChannelVarietyContext,
   getStep6RouteContext
-} from "../../domain/vsm.js";
+} from "../../domain/vsm.js?v=20260724-pptxgenjs";
 import {
   emptyState,
   escapeAttr,
   escapeHtml,
-  stepHeader
-} from "../shared/renderHelpers.js";
+  fullscreenTile,
+  stepHeader,
+  tileExportButton,
+  tileFullscreenButton
+} from "../shared/renderHelpers.js?v=20260724-pptxgenjs";
 
 export const step6Subpages = [
   { id: "e2e", label: "E2E Robustness Check" },
@@ -84,6 +87,8 @@ export function renderStep6E2ECheck(workspace, options = {}) {
           <p class="section-note">The SCT defines what must be done. Build the route to inspect how work and information cross recursion levels from trigger to result.</p>
         </div>
         <div class="e2e-route-controls">
+          ${tileExportButton("step6", "step6-e2e", "Export E2E route")}
+          ${options.fullscreen ? "" : tileFullscreenButton("step6-e2e", "Open E2E route fullscreen")}
           <label class="field e2e-sct-picker">
             <span>Primary Success-Critical Task</span>
             <select data-step6-sct-select>
@@ -120,16 +125,6 @@ export function renderStep6E2ECheck(workspace, options = {}) {
                 : `<span class="e2e-related-sct-empty">No other SCTs are available.</span>`}
             </div>
           </details>
-          <details class="e2e-export-menu" data-e2e-export-menu>
-            <summary class="ghost-button">Export route</summary>
-            <div class="e2e-export-options" role="menu" aria-label="Route export formats">
-              <button type="button" data-action="export-e2e-route" data-format="svg" role="menuitem">SVG</button>
-              <button type="button" data-action="export-e2e-route" data-format="png" role="menuitem">PNG</button>
-              <button type="button" data-action="export-e2e-route" data-format="pdf" role="menuitem">PDF</button>
-              <button type="button" data-action="export-e2e-route" data-format="pptx" role="menuitem">PowerPoint (.pptx)</button>
-            </div>
-          </details>
-          <span class="e2e-export-status" data-e2e-export-status role="status" aria-live="polite"></span>
         </div>
       </div>
       <div class="e2e-route-context" aria-label="Selected SCT route context">
@@ -143,7 +138,7 @@ export function renderStep6E2ECheck(workspace, options = {}) {
       </div>
       <iframe
         class="e2e-robustness-frame"
-        src="./e2e-robustness-check.html"
+        src="./e2e-robustness-check.html?v=20260724-pptxgenjs"
         title="E2E robustness route editor for ${escapeAttr(`${context.primarySct.displayId} · ${context.primarySct.name}`)}"
         allow="fullscreen"
         sandbox="allow-scripts allow-same-origin allow-downloads"
@@ -165,20 +160,14 @@ export function renderStep6Channels(workspace, options = {}) {
           <span>Ratings: weak · caution · pass</span>
         </div>
         <div class="channel-variety-controls">
-          <details class="e2e-export-menu" data-channel-variety-export-menu>
-            <summary class="ghost-button">Export check</summary>
-            <div class="e2e-export-options" role="menu" aria-label="Communication variety export formats">
-              <button type="button" data-action="export-channel-variety" data-format="svg" role="menuitem">SVG</button>
-              <button type="button" data-action="export-channel-variety" data-format="png" role="menuitem">PNG</button>
-            </div>
-          </details>
-          <span class="e2e-export-status" data-channel-variety-export-status role="status" aria-live="polite"></span>
+          ${tileExportButton("step6", "step6-channels", "Export communication checks")}
+          ${options.fullscreen ? "" : tileFullscreenButton("step6-channels", "Open communication checks fullscreen")}
         </div>
       </div>
       <div class="channel-variety-frame-shell">
         <iframe
           class="channel-variety-frame"
-          src="./channel-variety-check.html?vsm=/vsm.html&assetVersion=20260621-channel-variety-eight"
+          src="./channel-variety-check.html?vsm=/vsm.html%3Fv%3D20260724-pptxgenjs&assetVersion=20260724-pptxgenjs"
           title="Communication variety checks for ${escapeAttr(context.meta.sifName)}"
           allow="fullscreen"
           sandbox="allow-scripts allow-same-origin allow-downloads"
@@ -187,4 +176,31 @@ export function renderStep6Channels(workspace, options = {}) {
       </div>
     </section>
   `;
+}
+
+export function renderStep6FullscreenTile(workspace, options = {}, tileId = "step6-e2e") {
+  if (tileId === "step6-channels") {
+    return fullscreenTile({
+      kicker: "Step VI · Channels",
+      title: "Communication Variety Checks",
+      description: "Use the larger surface to assess canonical vertical loops and export the check when needed.",
+      counter: "Channels",
+      variant: "is-embedded-tool",
+      tileClass: "step6-fullscreen-tile",
+      content: renderStep6Channels(workspace, { fullscreen: true })
+    });
+  }
+
+  return fullscreenTile({
+    kicker: "Step VI · Flows",
+    title: "E2E Process Robustness Check",
+    description: "Author and inspect the route for the selected SCT with maximum working space.",
+    counter: "E2E",
+    variant: "is-embedded-tool",
+    tileClass: "step6-fullscreen-tile",
+    content: renderStep6E2ECheck(workspace, {
+      selectedSctId: options.selectedSctId,
+      fullscreen: true
+    })
+  });
 }
