@@ -611,6 +611,14 @@ test('Step I operative units are chart citizens by DEFAULT: seeded as root boxes
   expect(hier['op-sovereign']?.parent).toBe('root'); // level:'S1' recognized
   // they render as unit boxes on the canvas
   expect(await page.evaluate(() => !!document.querySelector('g[data-nid="op-copilot"]'))).toBe(true);
+  // HONEST kind labels (PO 2026-07-25): operative units say "operating unit"; the R-1 recursion org says "R-1 · organization"
+  const subs = await page.evaluate(() => ({
+    op: document.querySelector('g[data-nid="op-copilot"]').textContent,
+    r1: document.querySelector('g[data-nid="u-prod"]').textContent,
+  }));
+  expect(subs.op).toContain('operating unit');
+  expect(subs.r1).toContain('R-1 · organization');
+  expect(subs.r1).not.toContain('operating unit');
 
   // (b) AUTO-PLACE path: an EXISTING hierarchy that lacks the operative units gains them at root on feed
   await page.evaluate((units) => window.ORG.loadModel({

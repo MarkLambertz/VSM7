@@ -854,7 +854,9 @@ function edBoxSvg(id,p,isRoot){
   const cand=state.overlays.state&&v.state==='candidate';
   const leads=hLeaders(id), lead=leads[0], mem=hMembers(id), kids=hBoxKids(id), coll=!!state.collapsed[id];
   const name=isRoot?focusUnit().name:nodeName(id);
-  const sub=isRoot?labelFor('org'):(u.id?(state.lang==='vsm'?'S1 · unit':'operating unit'):(state.lang==='vsm'?sysLabel(sys)+' · function':'function'));
+  /* units carry HONEST kinds: a Step I operative unit is an "operating unit"; a recursion organization is a
+     nested viable system one level down ("R-1 · organization"), never an operative unit (PO 2026-07-25) */
+  const sub=isRoot?labelFor('org'):(u.id?(isOperativeUnit(u)?(state.lang==='vsm'?'S1 · unit':'operating unit'):((u.level||'R-1')+' · organization')):(state.lang==='vsm'?sysLabel(sys)+' · function':'function'));
   const ink='var(--ink)';
   const fill=isRoot?'var(--surface)':nodeFill(sys,on);
   /* Gaps = a SPOTLIGHT: boxes that carry an open accountability warning (own, leader's or a member's) stay bright; clean boxes recede */
@@ -1108,7 +1110,7 @@ function inspectVessel(v){
 }
 function inspectUnit(u){
   const isSif=u.level==='R0';
-  const kind=u.level==='R+1'?labelFor('parent'):isSif?labelFor('org'):labelFor('units');
+  const kind=u.level==='R+1'?labelFor('parent'):isSif?labelFor('org'):(isOperativeUnit(u)?'Operating unit (S1)':(u.level||'R-1')+' organization — a nested viable system, not an operative unit');
   const md=u.level==='R-1'?VESSELS.find(v=>v.scope===u.id&&v.type==='role'):null;
   const contribsHere=CONTRIBS.filter(c=>c.accUnit===u.id);
   const gaps=contribsHere.filter(c=>needsAttention(c.id));
