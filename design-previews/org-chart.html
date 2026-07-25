@@ -470,11 +470,14 @@ function trayVessels(){ return VESSELS.filter(v=>(v.type==='function'||v.type===
 
 /* SEED — once, only when HIER is empty AND was never authored ("suggest, never assert").
    A deliberately emptied tree (hierTouched) is an authored state and is never overwritten. */
+/* Step I operative units (the real S1s: kind 'operative' / level 'S1') are chart citizens like R-1 orgs — shown by DEFAULT (PO 2026-07-24) */
+function isOperativeUnit(u){ return !!u && (u.kind==='operative' || u.level==='S1'); }
 function seedHierarchy(){
   if(Object.keys(HIER).length||state.hierTouched)return;
   const sif=sifUnit(); if(!sif.id)return;
   let ord=0;
   UNITS.filter(u=>u.level==='R-1').forEach(u=>{ HIER[u.id]={parent:'root',order:ord++}; });
+  UNITS.filter(isOperativeUnit).forEach(u=>{ HIER[u.id]={parent:'root',order:ord++}; });   // ALL operative units from Step I are boxes by default
   VESSELS.filter(v=>v.type==='function').forEach(f=>{
     HIER[f.id]={parent:(f.scope&&f.scope!==sif.id&&HIER[f.scope])?f.scope:'root',order:ord++};
   });
@@ -500,6 +503,15 @@ function seedHierarchy(){
   });
 }
 
+/* DEFAULT VISIBILITY: an ACTIVE chart always shows every fed operative unit. Any operative unit missing from a
+   non-empty hierarchy is appended as a root box on feed (empty charts stay with seedHierarchy / the user's intent).
+   Direct HIER writes on purpose: no undo spam, one persist + one authoritative change when something was added. */
+function ensureOperativeUnitsPlaced(){
+  if(!Object.keys(HIER).length)return;
+  let base=hChildren('root').length, added=0;
+  UNITS.filter(isOperativeUnit).forEach(u=>{ if(!HIER[u.id]){ HIER[u.id]={parent:'root',order:base+added}; added++; } });
+  if(added){ persist(); emitChange(); }
+}
 /* ONE move() command behind every input path (drag, menu, picker, keyboard); stores its inverse for undo */
 function hierMove(nodeId,newParent,newIndex,newSlot,opts){
   opts=opts||{};
@@ -696,7 +708,8 @@ const VSM_SRC=(()=>{ const u=(new URLSearchParams(location.search).get('vsm')||'
 let vsmReady=false, _cabTree='';
 function vsmFrame(){ return $('#vsmframe'); }
 /* the current focus unit + its operating units, shaped for vsm.html loadTree({id,name,children}) */
-function cabinetTree(){ const fu=focusUnit(); const kids=childUnits(fu).map(u=>({id:u.id,name:u.name})); return { id:fu.id||'sif', name:fu.name||'System in focus', children:kids }; }
+function cabinetTree(){ const fu=focusUnit(); const ops=fu.id===sifUnit().id?UNITS.filter(isOperativeUnit):[];   // the SIF's S1 children include the Step I operative units
+  const kids=childUnits(fu).concat(ops).map(u=>({id:u.id,name:u.name})); return { id:fu.id||'sif', name:fu.name||'System in focus', children:kids }; }
 function pushCabinetTree(force){ const f=vsmFrame(); if(!vsmReady||!f||!f.contentWindow)return;
   const t=cabinetTree(), sig=JSON.stringify(t); if(!force && sig===_cabTree)return; _cabTree=sig;   // skip redundant reloads so an in-frame drill isn't yanked on unrelated re-renders
   f.contentWindow.postMessage({cmd:'loadTree', tree:t}, '*');
@@ -1558,8 +1571,8 @@ const _contribsFrom=x=>(Array.isArray(x)?x:[]).map(normContrib);
    parity predicate — so a not-yet-computed warnings:{} can never render a falsely-clean (dishonest) chart */
 function _adoptWarnings(w){ if(w===undefined)return; HOSTWARN=(w&&typeof w==='object'&&Object.keys(w).length)?w:null; }
 window.ORG={
-  setContext:c=>{if(!c||typeof c!=='object')return;if(Array.isArray(c.units))_rA(UNITS,c.units);if(Array.isArray(c.vessels))_rA(VESSELS,c.vessels);if(Array.isArray(c.contribs)||Array.isArray(c.contributions))_rA(CONTRIBS,_contribsFrom(c.contribs||c.contributions));if(Array.isArray(c.scts))_rA(SCTS,c.scts);if(c.rasic)_rO(RASIC,c.rasic);_adoptWarnings(c.warnings);if(c.hierarchy&&typeof c.hierarchy==='object'&&Object.keys(c.hierarchy).length){_rO(HIER,c.hierarchy);state.hierTouched=true;}UNDO.length=0;REDO.length=0;if(c.sifName)$('#ctxSif').textContent=c.sifName+' · R0';reconcileNav();seedHierarchy();render();},
-  loadModel:m=>{if(!m||typeof m!=='object')return;if(Array.isArray(m.units))_rA(UNITS,m.units);if(Array.isArray(m.vessels))_rA(VESSELS,m.vessels);if(Array.isArray(m.contribs)||Array.isArray(m.contributions))_rA(CONTRIBS,_contribsFrom(m.contribs||m.contributions));if(Array.isArray(m.scts))_rA(SCTS,m.scts);if(m.rasic)_rO(RASIC,m.rasic);_adoptWarnings(m.warnings);if(m.hierarchy&&typeof m.hierarchy==='object'&&Object.keys(m.hierarchy).length){_rO(HIER,m.hierarchy);state.hierTouched=true;}UNDO.length=0;REDO.length=0;reconcileNav();seedHierarchy();render();},
+  setContext:c=>{if(!c||typeof c!=='object')return;if(Array.isArray(c.units))_rA(UNITS,c.units);if(Array.isArray(c.vessels))_rA(VESSELS,c.vessels);if(Array.isArray(c.contribs)||Array.isArray(c.contributions))_rA(CONTRIBS,_contribsFrom(c.contribs||c.contributions));if(Array.isArray(c.scts))_rA(SCTS,c.scts);if(c.rasic)_rO(RASIC,c.rasic);_adoptWarnings(c.warnings);if(c.hierarchy&&typeof c.hierarchy==='object'&&Object.keys(c.hierarchy).length){_rO(HIER,c.hierarchy);state.hierTouched=true;}UNDO.length=0;REDO.length=0;if(c.sifName)$('#ctxSif').textContent=c.sifName+' · R0';reconcileNav();seedHierarchy();ensureOperativeUnitsPlaced();render();},
+  loadModel:m=>{if(!m||typeof m!=='object')return;if(Array.isArray(m.units))_rA(UNITS,m.units);if(Array.isArray(m.vessels))_rA(VESSELS,m.vessels);if(Array.isArray(m.contribs)||Array.isArray(m.contributions))_rA(CONTRIBS,_contribsFrom(m.contribs||m.contributions));if(Array.isArray(m.scts))_rA(SCTS,m.scts);if(m.rasic)_rO(RASIC,m.rasic);_adoptWarnings(m.warnings);if(m.hierarchy&&typeof m.hierarchy==='object'&&Object.keys(m.hierarchy).length){_rO(HIER,m.hierarchy);state.hierTouched=true;}UNDO.length=0;REDO.length=0;reconcileNav();seedHierarchy();ensureOperativeUnitsPlaced();render();},
   select:id=>{state.sel=id||null;render();},
   setMode:mode=>{mode=MODE_ALIAS[mode]||mode;/* legacy ids (levels/cabinet/nested) map forward */ if(mode==='orgchart'||mode==='vsm'){state.mode=mode;syncModeSeg();render();}},
   setOverlay:(id,on)=>{if(id in state.overlays){state.overlays[id]=on!==false;render();}},

@@ -590,3 +590,40 @@ test('zoom bar: text "Fit" fits the WHOLE chart on screen; the auto fill-height 
   const fill = await page.evaluate(() => { const sc = document.getElementById('edScroll'), ez = document.getElementById('edZoom'); return { vh: sc.clientHeight, ch: parseFloat(ez.style.height) || 0 }; });
   expect(fill.ch / fill.vh).toBeGreaterThan(0.9);
 });
+
+test('Step I operative units are chart citizens by DEFAULT: seeded as root boxes, and auto-placed into an existing hierarchy on feed', async ({ page }) => {
+  await page.goto('/design-previews/org-chart.html');
+  await page.waitForFunction(() => !!(window.ORG && window.ORG.getState));
+  await page.evaluate(() => { window.__up = []; window.ORG.onEmit = (m) => { if (m.evt === 'change') window.__up.push(m.model); }; });
+
+  const UNITS_FED = [
+    { id: 'u-sif', name: 'EU AI Solutions SE', level: 'R0', sif: true },
+    { id: 'u-prod', name: 'AI Products', level: 'R-1', parent: 'u-sif' },
+    { id: 'op-copilot', name: 'Industrial AI Copilot', kind: 'operative', parent: 'u-sif' },
+    { id: 'op-sovereign', name: 'Sovereign AI Assistant Platform', level: 'S1', parent: 'u-sif' },
+  ];
+
+  // (a) SEED path: empty hierarchy → R-1 org AND both operative units become root boxes
+  await page.evaluate((units) => window.ORG.loadModel({ units, vessels: [], contribs: [], rasic: {}, scts: [], hierarchy: {} }), UNITS_FED);
+  let hier = await page.evaluate(() => window.ORG.getState().model.hierarchy);
+  expect(hier['u-prod']?.parent).toBe('root');
+  expect(hier['op-copilot']?.parent).toBe('root');   // kind:'operative' recognized
+  expect(hier['op-sovereign']?.parent).toBe('root'); // level:'S1' recognized
+  // they render as unit boxes on the canvas
+  expect(await page.evaluate(() => !!document.querySelector('g[data-nid="op-copilot"]'))).toBe(true);
+
+  // (b) AUTO-PLACE path: an EXISTING hierarchy that lacks the operative units gains them at root on feed
+  await page.evaluate((units) => window.ORG.loadModel({
+    units, vessels: [], contribs: [], rasic: {}, scts: [],
+    hierarchy: { 'u-prod': { parent: 'root', order: 0 } }, // saved chart from before the feature
+  }), UNITS_FED);
+  hier = await page.evaluate(() => window.ORG.getState().model.hierarchy);
+  expect(hier['op-copilot']?.parent).toBe('root');
+  expect(hier['op-sovereign']?.parent).toBe('root');
+  expect(hier['u-prod']?.parent).toBe('root'); // untouched
+
+  // the auto-place emitted ONE authoritative change so the placement persists through the host pipeline
+  await page.waitForFunction(() => window.__up.length > 0);
+  const last = await page.evaluate(() => window.__up[window.__up.length - 1]);
+  expect(Object.keys(last.hierarchy)).toEqual(expect.arrayContaining(['op-copilot', 'op-sovereign']));
+});
