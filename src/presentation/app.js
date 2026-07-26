@@ -32,6 +32,7 @@ import {
   setStep6ChannelVarietyModel,
   setStep6RelatedSctIds,
   setStep6RouteModel,
+  setSuccessCriticalTaskOptionalDetail,
   setStep7EditorModel,
   setStep7RasicAssignment,
   splitSuccessCriticalTask,
@@ -41,7 +42,7 @@ import {
   toggleStep5ContributionAssignment,
   vsmSystems,
   workflowStepOrder
-} from "../domain/vsm.js?v=20260724-pptxgenjs";
+} from "../domain/vsm.js?v=20260725-step3-aspects-org-units";
 import {
   deleteOrganization,
   deleteWorkspace,
@@ -52,37 +53,37 @@ import {
   renameWorkspace,
   replaceWorkspace,
   saveWorkspace
-} from "../application/workspaceService.js?v=20260724-pptxgenjs";
-import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?v=20260724-pptxgenjs";
-import { getExportViewModel } from "../application/exportViewModels.js?v=20260724-pptxgenjs";
+} from "../application/workspaceService.js?v=20260725-step3-aspects-org-units";
+import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?v=20260725-step3-aspects-org-units";
+import { getExportViewModel } from "../application/exportViewModels.js?v=20260725-step3-aspects-org-units";
 import { createWorkspaceRepository } from "../infrastructure/fileBackedRepository.js?v=20260717-file-storage";
-import { exportExportIntent } from "../infrastructure/exporters.js?v=20260724-pptxgenjs";
-import { buildE2ERouteDocument } from "../infrastructure/e2eRouteDocuments.js?v=20260724-pptxgenjs";
-import { renderRenameDialog } from "./renameDialog.js?v=20260724-pptxgenjs";
-import { destructiveActionMessage } from "./shared/destructiveActions.js?v=20260724-pptxgenjs";
-import { createE2ERouteExportCoordinator } from "./shared/e2eRouteExport.js?v=20260724-pptxgenjs";
-import { createChannelVarietyExportCoordinator } from "./shared/channelVarietyExport.js?v=20260724-pptxgenjs";
-import { buildAppHash, parseAppHash } from "./shared/appRouting.js?v=20260724-pptxgenjs";
-import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260724-pptxgenjs";
-import { renderProjectManagement } from "./projectManagement.js?v=20260724-pptxgenjs";
-import { applySkinPreference, defaultSkin, readSkinPreference } from "./skinSettings.js?v=20260724-pptxgenjs";
-import { renderStartPage } from "./startPage.js?v=20260724-pptxgenjs";
-import { renderOverview, renderOverviewFullscreenTile } from "./steps/overview.js?v=20260724-pptxgenjs";
-import { renderImplementation, renderImplementationFullscreenTile } from "./steps/implementation.js?v=20260724-pptxgenjs";
-import { getStep1FullscreenTileCount, renderStep1, renderStep1FullscreenTile } from "./steps/step1.js?v=20260724-pptxgenjs";
-import { normalizeStep2Subpage, renderStep2, renderStep2FullscreenTile } from "./steps/step2.js?v=20260724-pptxgenjs";
-import { filterScts, normalizeStep3Subpage, renderStep3, renderStep3FullscreenTile } from "./steps/step3.js?v=20260724-pptxgenjs";
-import { renderStep4, renderStep4FullscreenTile } from "./steps/step4.js?v=20260724-pptxgenjs";
-import { renderStep5, renderStep5FullscreenTile } from "./steps/step5.js?v=20260724-pptxgenjs";
-import { getActiveStep6SctId, renderStep6, renderStep6FullscreenTile } from "./steps/step6.js?v=20260724-pptxgenjs";
-import { renderStep7 } from "./steps/step7.js?v=20260724-pptxgenjs";
-import { renderVsmStandalone } from "./vsmStandalone.js?v=20260724-pptxgenjs";
+import { exportExportIntent } from "../infrastructure/exporters.js?v=20260725-step3-aspects-org-units";
+import { buildE2ERouteDocument } from "../infrastructure/e2eRouteDocuments.js?v=20260725-step3-aspects-org-units";
+import { renderRenameDialog } from "./renameDialog.js?v=20260725-step3-aspects-org-units";
+import { destructiveActionMessage } from "./shared/destructiveActions.js?v=20260725-step3-aspects-org-units";
+import { createE2ERouteExportCoordinator } from "./shared/e2eRouteExport.js?v=20260725-step3-aspects-org-units";
+import { createChannelVarietyExportCoordinator } from "./shared/channelVarietyExport.js?v=20260725-step3-aspects-org-units";
+import { buildAppHash, parseAppHash } from "./shared/appRouting.js?v=20260725-step3-aspects-org-units";
+import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260725-step3-aspects-org-units";
+import { renderProjectManagement } from "./projectManagement.js?v=20260725-step3-aspects-org-units";
+import { applySkinPreference, defaultSkin, readSkinPreference } from "./skinSettings.js?v=20260725-step3-aspects-org-units";
+import { renderStartPage } from "./startPage.js?v=20260725-step3-aspects-org-units";
+import { renderOverview, renderOverviewFullscreenTile } from "./steps/overview.js?v=20260725-step3-aspects-org-units";
+import { renderImplementation, renderImplementationFullscreenTile } from "./steps/implementation.js?v=20260725-step3-aspects-org-units";
+import { getStep1FullscreenTileCount, renderStep1, renderStep1FullscreenTile } from "./steps/step1.js?v=20260725-step3-aspects-org-units";
+import { normalizeStep2Subpage, renderStep2, renderStep2FullscreenTile } from "./steps/step2.js?v=20260725-step3-aspects-org-units";
+import { filterScts, normalizeStep3Subpage, renderStep3, renderStep3FullscreenTile } from "./steps/step3.js?v=20260725-step3-aspects-org-units";
+import { renderStep4, renderStep4FullscreenTile } from "./steps/step4.js?v=20260725-step3-aspects-org-units";
+import { renderStep5, renderStep5FullscreenTile } from "./steps/step5.js?v=20260725-step3-aspects-org-units";
+import { getActiveStep6SctId, renderStep6, renderStep6FullscreenTile } from "./steps/step6.js?v=20260725-step3-aspects-org-units";
+import { renderStep7 } from "./steps/step7.js?v=20260725-step3-aspects-org-units";
+import { renderVsmStandalone } from "./vsmStandalone.js?v=20260725-step3-aspects-org-units";
 import {
   buildVsmHostTree,
   getVsmSystemType,
   recursionLevelLabel,
   recursionLevelValue
-} from "./shared/vsmHostBridge.js?v=20260724-pptxgenjs";
+} from "./shared/vsmHostBridge.js?v=20260725-step3-aspects-org-units";
 
 const app = document.querySelector("#app");
 const repository = createWorkspaceRepository();
@@ -862,7 +863,7 @@ function ensureExportPanelFrame() {
   frame.dataset.exportPanelFrame = "true";
   frame.title = "VSM7 export panel";
   frame.setAttribute("aria-hidden", "true");
-  frame.src = "./design-previews/export-panel.html?host=vsm7&embed=1&v=20260724-pptxgenjs";
+  frame.src = "./design-previews/export-panel.html?host=vsm7&embed=1&v=20260725-step3-aspects-org-units";
   exportPanelFrame = frame;
   document.body.appendChild(frame);
   return frame;
@@ -1876,7 +1877,14 @@ async function handleInput(target) {
   if (target.dataset.collection && target.dataset.id && target.dataset.field) {
     const item = findCollectionItem(target.dataset.collection, target.dataset.id);
     if (item) {
-      item[target.dataset.field] = target.type === "checkbox" ? target.checked : target.value;
+      const value = target.type === "checkbox" ? target.checked : target.value;
+      const isStep3OptionalDetail = target.dataset.collection === "step3.successCriticalTasks"
+        && ["kpi", "requiredArtifacts", "toolOrMethodologicalApproach"].includes(target.dataset.field);
+      if (isStep3OptionalDetail) {
+        setSuccessCriticalTaskOptionalDetail(workspace, target.dataset.id, target.dataset.field, value);
+      } else {
+        item[target.dataset.field] = value;
+      }
     }
   }
 

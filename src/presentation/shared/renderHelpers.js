@@ -1,5 +1,5 @@
-import { renderMethodVisual } from "./methodVisuals.js?v=20260724-pptxgenjs";
-import { formatSctNumber } from "../../domain/vsm.js?v=20260724-pptxgenjs";
+import { renderMethodVisual } from "./methodVisuals.js?v=20260725-step3-aspects-org-units";
+import { formatSctNumber } from "../../domain/vsm.js?v=20260725-step3-aspects-org-units";
 
 export function stepHeader(token, title, description, guidance = "", actions = "") {
   const visual = getStepVisual(token, title);

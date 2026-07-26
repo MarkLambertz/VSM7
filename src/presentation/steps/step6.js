@@ -2,7 +2,7 @@ import {
   formatSctNumber,
   getStep6ChannelVarietyContext,
   getStep6RouteContext
-} from "../../domain/vsm.js?v=20260724-pptxgenjs";
+} from "../../domain/vsm.js?v=20260725-step3-aspects-org-units";
 import {
   emptyState,
   escapeAttr,
@@ -11,7 +11,7 @@ import {
   stepHeader,
   tileExportButton,
   tileFullscreenButton
-} from "../shared/renderHelpers.js?v=20260724-pptxgenjs";
+} from "../shared/renderHelpers.js?v=20260725-step3-aspects-org-units";
 
 export const step6Subpages = [
   { id: "e2e", label: "E2E Robustness Check" },
@@ -138,7 +138,7 @@ export function renderStep6E2ECheck(workspace, options = {}) {
       </div>
       <iframe
         class="e2e-robustness-frame"
-        src="./e2e-robustness-check.html?v=20260724-pptxgenjs"
+        src="./e2e-robustness-check.html?v=20260725-step3-aspects-org-units"
         title="E2E robustness route editor for ${escapeAttr(`${context.primarySct.displayId} · ${context.primarySct.name}`)}"
         allow="fullscreen"
         sandbox="allow-scripts allow-same-origin allow-downloads"
@@ -167,7 +167,7 @@ export function renderStep6Channels(workspace, options = {}) {
       <div class="channel-variety-frame-shell">
         <iframe
           class="channel-variety-frame"
-          src="./channel-variety-check.html?vsm=/vsm.html%3Fv%3D20260724-pptxgenjs&assetVersion=20260724-pptxgenjs"
+          src="./channel-variety-check.html?vsm=/vsm.html%3Fv%3D20260725-step3-aspects-org-units&assetVersion=20260725-step3-aspects-org-units"
           title="Communication variety checks for ${escapeAttr(context.meta.sifName)}"
           allow="fullscreen"
           sandbox="allow-scripts allow-same-origin allow-downloads"

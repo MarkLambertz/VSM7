@@ -1,4 +1,4 @@
-import { ensureWorkspaceShape, syncAllocations } from "../domain/vsm.js?v=20260724-pptxgenjs";
+import { ensureWorkspaceShape, syncAllocations } from "../domain/vsm.js?v=20260725-step3-aspects-org-units";
 
 export function loadWorkspace(repository) {
   return ensureWorkspaceShape(repository.load());

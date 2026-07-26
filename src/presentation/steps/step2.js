@@ -1,5 +1,5 @@
-import { evaluateStep2Variety } from "../../domain/vsm.js?v=20260724-pptxgenjs";
-import { escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, textarea, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260724-pptxgenjs";
+import { evaluateStep2Variety } from "../../domain/vsm.js?v=20260725-step3-aspects-org-units";
+import { escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, textarea, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260725-step3-aspects-org-units";
 
 export const step2Subpages = [
   {

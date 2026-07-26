@@ -12,7 +12,7 @@ import {
   markAllStep2SlidersAssessed,
   sixPackOfControl,
   syncAllocations
-} from "../domain/vsm.js?v=20260724-pptxgenjs";
+} from "../domain/vsm.js?v=20260725-step3-aspects-org-units";
 
 export function createSampleWorkspace() {
   const sample = createWorkspace();

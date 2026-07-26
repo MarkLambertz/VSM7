@@ -121,8 +121,11 @@ test("Step III renders the SCT register as a separate substep", () => {
   assert.match(detailHtml, /Description <em>Mandatory<\/em>/);
   assert.match(detailHtml, /maxlength="1000"/);
   assert.match(detailHtml, /Optional details/);
-  assert.match(detailHtml, /KPI \/ Success Metric/);
-  assert.match(detailHtml, /Tool or Methodological Approach/);
+  assert.match(detailHtml, /Metrics &amp; KPIs/);
+  assert.match(detailHtml, /Artifacts &amp; Result Types/);
+  assert.match(detailHtml, /Tools &amp; Methods/);
+  assert.doesNotMatch(detailHtml, /KPI \/ Success Metric/);
+  assert.doesNotMatch(detailHtml, /Tool or Methodological Approach/);
   assert.match(detailHtml, /Split SCT/);
 
   const selectedHtml = renderStep3(workspace, taskSources, vsmSystems, {

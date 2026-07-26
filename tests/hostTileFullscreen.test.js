@@ -115,7 +115,7 @@ test("host fullscreen modules use one cache label", () => {
   const starter = readFileSync(new URL("../start.command", import.meta.url), "utf8");
 
   assert.match(appSource, /renderHostTileFullscreenLayer/);
-  assert.match(appSource, /20260724-pptxgenjs/);
-  assert.match(index, /app\.js\?v=20260724-pptxgenjs/);
-  assert.match(starter, /VERSION="20260724-pptxgenjs"/);
+  assert.match(appSource, /20260725-step3-aspects-org-units/);
+  assert.match(index, /app\.js\?v=20260725-step3-aspects-org-units/);
+  assert.match(starter, /VERSION="20260725-step3-aspects-org-units"/);
 });

@@ -36,9 +36,9 @@ test("Step VII host iframe uses the current Step VII cache label", () => {
   const index = readProjectFile("index.html");
   const starter = readProjectFile("start.command");
 
-  assert.match(step7Host, /20260724-pptxgenjs/);
-  assert.match(app, /step7\.js\?v=20260724-pptxgenjs/);
-  assert.match(app, /domain\/vsm\.js\?v=20260724-pptxgenjs/);
-  assert.match(index, /app\.js\?v=20260724-pptxgenjs/);
-  assert.match(starter, /VERSION="20260724-pptxgenjs"/);
+  assert.match(step7Host, /20260725-step3-aspects-org-units/);
+  assert.match(app, /step7\.js\?v=20260725-step3-aspects-org-units/);
+  assert.match(app, /domain\/vsm\.js\?v=20260725-step3-aspects-org-units/);
+  assert.match(index, /app\.js\?v=20260725-step3-aspects-org-units/);
+  assert.match(starter, /VERSION="20260725-step3-aspects-org-units"/);
 });

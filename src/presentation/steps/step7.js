@@ -6,7 +6,7 @@ export function renderStep7() {
       <iframe
         class="step7-claude-frame"
         data-step7-frame
-        src="./design-previews/step7-ux.html?host=vsm7&v=20260724-pptxgenjs"
+        src="./design-previews/step7-ux.html?host=vsm7&v=20260725-step3-aspects-org-units"
         title="Step VII Representation editor"
         allow="fullscreen"
       ></iframe>

@@ -388,6 +388,42 @@ export function createSuccessCriticalTask(number = 0) {
   };
 }
 
+const successCriticalTaskAspectFields = {
+  kpi: "kpis",
+  requiredArtifacts: "artifacts",
+  toolOrMethodologicalApproach: "tools"
+};
+
+export function setSuccessCriticalTaskOptionalDetail(workspace, taskId, field, value) {
+  const aspectKind = successCriticalTaskAspectFields[field];
+  const task = workspace?.step3?.successCriticalTasks?.find((item) => item.id === taskId);
+  if (!aspectKind || !task) {
+    return false;
+  }
+
+  normalizeStep7Representation(workspace);
+  const previousValue = String(task[field] || "").trim();
+  const nextValue = String(value ?? "");
+  const bundle = ensureStep7AspectBundle(workspace, taskId);
+  const items = bundle[aspectKind];
+  const primaryIndex = findPrimaryStep3AspectIndex(items, taskId, aspectKind, previousValue);
+
+  if (nextValue.trim()) {
+    if (primaryIndex >= 0) {
+      items[primaryIndex] = { ...items[primaryIndex], text: nextValue };
+    } else {
+      items.unshift(createStep7AspectItem(nextValue, {
+        id: step3AspectItemId(taskId, aspectKind)
+      }));
+    }
+  } else if (primaryIndex >= 0) {
+    items.splice(primaryIndex, 1);
+  }
+
+  task[field] = nextValue;
+  return true;
+}
+
 export function createNumberedSuccessCriticalTask(workspace) {
   const nextNumber = Math.max(
     normalizePositiveInteger(workspace?.step3?.nextSctNumber) || 1,
@@ -797,6 +833,7 @@ export function setStep7EditorModel(workspace, model) {
   if (isPlainObject(model.aspects)) {
     const taskIds = new Set(workspace.step3.successCriticalTasks.map((task) => task.id));
     workspace.step7.aspects = normalizeStep7Aspects(model.aspects, taskIds);
+    syncStep3OptionalDetailsFromStep7Aspects(workspace);
   }
 
   if (isPlainObject(model.descriptions)) {
@@ -2527,6 +2564,7 @@ function normalizeStep7Representation(workspace) {
 
   const taskIds = new Set(workspace.step3.successCriticalTasks.map((task) => task.id));
   workspace.step7.aspects = normalizeStep7Aspects(legacy.aspects, taskIds);
+  migrateStep3OptionalDetailsToStep7Aspects(workspace);
   workspace.step7.metricDefs = normalizeStep7DefinitionPool(legacy.metricDefs);
   workspace.step7.artifactDefs = normalizeStep7DefinitionPool(legacy.artifactDefs);
   workspace.step7.toolDefs = normalizeStep7DefinitionPool(legacy.toolDefs);
@@ -2635,6 +2673,60 @@ function normalizeStep7Aspects(aspects, taskIds) {
   }
 
   return normalized;
+}
+
+function migrateStep3OptionalDetailsToStep7Aspects(workspace) {
+  for (const task of workspace.step3.successCriticalTasks) {
+    const bundle = ensureStep7AspectBundle(workspace, task.id);
+    for (const [field, aspectKind] of Object.entries(successCriticalTaskAspectFields)) {
+      const legacyValue = String(task[field] || "").trim();
+      const items = bundle[aspectKind];
+      const dedicatedIndex = items.findIndex((item) => item.id === step3AspectItemId(task.id, aspectKind));
+      const matchingIndex = legacyValue
+        ? items.findIndex((item) => item.text.trim() === legacyValue)
+        : -1;
+
+      if (legacyValue && dedicatedIndex < 0 && matchingIndex < 0) {
+        items.unshift(createStep7AspectItem(legacyValue, {
+          id: step3AspectItemId(task.id, aspectKind)
+        }));
+      }
+    }
+  }
+
+  syncStep3OptionalDetailsFromStep7Aspects(workspace);
+}
+
+function syncStep3OptionalDetailsFromStep7Aspects(workspace) {
+  for (const task of workspace.step3.successCriticalTasks) {
+    const bundle = ensureStep7AspectBundle(workspace, task.id);
+    for (const [field, aspectKind] of Object.entries(successCriticalTaskAspectFields)) {
+      const items = bundle[aspectKind];
+      const primaryIndex = findPrimaryStep3AspectIndex(items, task.id, aspectKind, String(task[field] || "").trim());
+      task[field] = primaryIndex >= 0 ? items[primaryIndex].text : "";
+    }
+  }
+}
+
+function ensureStep7AspectBundle(workspace, taskId) {
+  workspace.step7.aspects[taskId] ||= normalizeStep7AspectBundle({});
+  return workspace.step7.aspects[taskId];
+}
+
+function findPrimaryStep3AspectIndex(items, taskId, aspectKind, currentValue = "") {
+  const dedicatedIndex = items.findIndex((item) => item.id === step3AspectItemId(taskId, aspectKind));
+  if (dedicatedIndex >= 0) {
+    return dedicatedIndex;
+  }
+
+  const matchingIndex = currentValue
+    ? items.findIndex((item) => item.text.trim() === currentValue)
+    : -1;
+  return matchingIndex >= 0 ? matchingIndex : (items.length ? 0 : -1);
+}
+
+function step3AspectItemId(taskId, aspectKind) {
+  return `step3-${aspectKind}-${taskId}`;
 }
 
 function normalizeStep7VesselAspects(vesselAspects, validVesselIds) {
@@ -3259,11 +3351,21 @@ function getStep7MeetingLandscapeContributions(workspace) {
 function getStep7EditorUnits(workspace) {
   const organizations = getRecursionOrganizations(workspace);
   const sifUnitId = getStep7EditorSifUnitId(organizations);
-  return organizations.map((organization) => ({
-    ...cloneJson(organization),
-    sif: organization.id === sifUnitId,
-    parent: getStep7EditorParentUnitId(organization, organizations, sifUnitId)
-  }));
+  return [
+    ...organizations.map((organization) => ({
+      ...cloneJson(organization),
+      sif: organization.id === sifUnitId,
+      parent: getStep7EditorParentUnitId(organization, organizations, sifUnitId)
+    })),
+    ...(Array.isArray(workspace.step1.operativeUnits) ? workspace.step1.operativeUnits : []).map((unit) => ({
+      id: String(unit.id || ""),
+      name: String(unit.name || ""),
+      kind: "operative",
+      level: "S1",
+      parent: sifUnitId,
+      sif: false
+    })).filter((unit) => unit.id)
+  ];
 }
 
 function getStep7EditorSifUnitId(units) {

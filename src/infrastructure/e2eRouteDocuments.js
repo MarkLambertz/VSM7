@@ -1,4 +1,4 @@
-import PptxGenJS from "../vendor/pptxgen.bundle.js?v=20260724-pptxgenjs";
+import PptxGenJS from "../vendor/pptxgen.bundle.js?v=20260725-step3-aspects-org-units";
 
 const pdfMimeType = "application/pdf";
 const pptxMimeType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";

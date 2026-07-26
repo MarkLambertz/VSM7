@@ -11,7 +11,7 @@ import {
   getStep7EditorContext,
   getStep7EditorModel,
   getWeakSegmentationSignals
-} from "../domain/vsm.js?v=20260724-pptxgenjs";
+} from "../domain/vsm.js?v=20260725-step3-aspects-org-units";
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 

@@ -15,6 +15,7 @@ import {
   getStep7RasicAssignment,
   getStep7SctContributions,
   mergeSuccessCriticalTasks,
+  setSuccessCriticalTaskOptionalDetail,
   setStep7RasicAssignment,
   setStep7EditorModel,
   splitSuccessCriticalTask,
@@ -210,6 +211,49 @@ test("Step VII aspect items migrate to stable item records", () => {
   assert.match(workspace.step7.aspects["sct-a"].kpis[0].id, /^aspect-item-/);
   assert.equal(workspace.step7.aspects["sct-a"].artifacts[0].id, "artifact-roadmap");
   assert.equal(workspace.step7.aspects["sct-a"].tools[0].text, "Scenario planning");
+});
+
+test("Step III optional details share the canonical Step VII aspect records", () => {
+  const workspace = createWorkspace();
+  const task = createNumberedSuccessCriticalTask(workspace);
+  workspace.step3.successCriticalTasks.push(task);
+
+  assert.equal(setSuccessCriticalTaskOptionalDetail(workspace, task.id, "kpi", "Decision cycle time"), true);
+  assert.equal(setSuccessCriticalTaskOptionalDetail(workspace, task.id, "requiredArtifacts", "Decision log"), true);
+  assert.equal(setSuccessCriticalTaskOptionalDetail(workspace, task.id, "toolOrMethodologicalApproach", "Policy review"), true);
+
+  const model = getStep7EditorModel(workspace);
+  assert.equal(model.aspects[task.id].kpis[0].text, "Decision cycle time");
+  assert.equal(model.aspects[task.id].artifacts[0].text, "Decision log");
+  assert.equal(model.aspects[task.id].tools[0].text, "Policy review");
+
+  model.aspects[task.id].kpis[0].text = "Decision lead time";
+  model.aspects[task.id].artifacts[0].text = "Governance decision log";
+  model.aspects[task.id].tools[0].text = "Quarterly policy review";
+  assert.equal(setStep7EditorModel(workspace, model), true);
+  assert.equal(task.kpi, "Decision lead time");
+  assert.equal(task.requiredArtifacts, "Governance decision log");
+  assert.equal(task.toolOrMethodologicalApproach, "Quarterly policy review");
+});
+
+test("legacy Step III optional details migrate into all Step VII aspect categories", () => {
+  const workspace = ensureWorkspaceShape({
+    step3: {
+      successCriticalTasks: [{
+        id: "sct-legacy-details",
+        number: 1,
+        title: "Govern the portfolio",
+        kpi: "Portfolio decision time",
+        requiredArtifacts: "Portfolio roadmap",
+        toolOrMethodologicalApproach: "Quarterly portfolio review"
+      }]
+    }
+  });
+
+  const aspects = workspace.step7.aspects["sct-legacy-details"];
+  assert.equal(aspects.kpis[0].text, "Portfolio decision time");
+  assert.equal(aspects.artifacts[0].text, "Portfolio roadmap");
+  assert.equal(aspects.tools[0].text, "Quarterly portfolio review");
 });
 
 test("Step VII contexts expose org chart and meeting landscape payloads", () => {
@@ -414,6 +458,37 @@ test("Step VII editor context can scope dropdown candidates to the R0 System-in-
   assert.deepEqual(scoped.metricDefs.map((definition) => definition.id), ["kpi-r0"]);
   assert.deepEqual(scoped.artifactDefs.map((definition) => definition.id), ["artifact-r0"]);
   assert.deepEqual(scoped.toolDefs.map((definition) => definition.id), ["tool-r0"]);
+});
+
+test("Step VII editor context includes Step I operative units as S1 children of the SIF", () => {
+  const workspace = createWorkspace();
+  const sif = getRecursionOrganizations(workspace).find((organization) => organization.level === "R0");
+  workspace.step1.operativeUnits = [
+    { id: "operative-products", name: "AI Products", description: "Product teams", notes: "" },
+    { id: "operative-services", name: "AI Services", description: "Service teams", notes: "" }
+  ];
+
+  const context = getStep7EditorContext(workspace);
+  const operativeUnits = context.units.filter((unit) => unit.kind === "operative");
+
+  assert.deepEqual(operativeUnits, [
+    {
+      id: "operative-products",
+      name: "AI Products",
+      kind: "operative",
+      level: "S1",
+      parent: sif.id,
+      sif: false
+    },
+    {
+      id: "operative-services",
+      name: "AI Services",
+      kind: "operative",
+      level: "S1",
+      parent: sif.id,
+      sif: false
+    }
+  ]);
 });
 
 test("Step VII aspect owners and KPI details round-trip through the editor model", () => {

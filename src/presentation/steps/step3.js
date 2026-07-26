@@ -1,5 +1,5 @@
-import { cellInput, cellSelect, escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260724-pptxgenjs";
-import { formatSctNumber, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js?v=20260724-pptxgenjs";
+import { cellInput, cellSelect, escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260725-step3-aspects-org-units";
+import { formatSctNumber, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js?v=20260725-step3-aspects-org-units";
 
 const complexityDriverExamples = {
   environmentOperation: {
@@ -369,19 +369,19 @@ function renderSctInspector(task, taskSources) {
       <details class="sct-optional-details" ${hasOptionalDetails ? "open" : ""}>
         <summary>
           <span>Optional details</span>
-          <small>KPI / Success Metric, Required Artifact, and Tool or Methodological Approach</small>
+          <small>Metrics &amp; KPIs, Artifacts &amp; Result Types, and Tools &amp; Methods</small>
         </summary>
         <div class="field-grid two">
           <label class="field">
-            <span>KPI / Success Metric</span>
+            <span>Metrics &amp; KPIs</span>
             ${cellInput("step3.successCriticalTasks", task.id, "kpi", task.kpi)}
           </label>
           <label class="field">
-            <span>Required Artifact</span>
+            <span>Artifacts &amp; Result Types</span>
             ${cellInput("step3.successCriticalTasks", task.id, "requiredArtifacts", task.requiredArtifacts)}
           </label>
           <label class="field sct-method-approach-field">
-            <span>Tool or Methodological Approach</span>
+            <span>Tools &amp; Methods</span>
             ${cellInput("step3.successCriticalTasks", task.id, "toolOrMethodologicalApproach", task.toolOrMethodologicalApproach)}
           </label>
         </div>
