@@ -16,3 +16,18 @@ test-results/
 __pycache__/
 **/__pycache__/
 *.py[cod]
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
