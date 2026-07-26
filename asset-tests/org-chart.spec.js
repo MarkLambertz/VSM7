@@ -68,21 +68,19 @@ test('honest headline is computed from the verbatim warnings(): 2 no-owner · 1 
   expect(glyphs.has0A).toBe(true); // c12 no-accountable (Consumer Goods)
 });
 
-test('mode switch: only Levels + Cabinet remain; Cabinet reuses the polished vsm.html diagram (S3* seat never dropped)', async ({ page }) => {
-  // the Nested view was removed — the mode seg offers exactly Levels and Cabinet
-  expect(await page.evaluate(() => [...document.querySelectorAll('#modeSeg button')].map((b) => b.dataset.mode))).toEqual(['orgchart', 'vsm']);
-  await page.locator('#modeSeg button[data-mode="vsm"]').click();
-  // Cabinet embeds the shared VSM diagram (same reuse as Step VI), not a hand-rendered SVG
-  await expect(page.locator('#vsmframe')).toBeVisible();
-  const frame = page.frameLocator('#vsmframe');
-  // S3* is structurally present in the embedded diagram (never dropped)
-  await expect(frame.locator('svg text', { hasText: /^3\*$/ }).first()).toBeVisible();
-  // the org model's operating units feed the S1 layer (e.g. Mobility)
-  await expect(frame.locator('svg text', { hasText: 'Mobility' }).first()).toBeVisible();
-  // the org canvas host no longer hand-draws the cabinet SVG
-  expect(await page.evaluate(() => !!document.querySelector('#canvasHost svg'))).toBe(false);
-  // and the "Reveal how it steers" morph button (whose target was the removed Nested view) is gone
-  expect(await page.evaluate(() => !!document.querySelector('[data-act="reveal"]'))).toBe(false);
+test('7.7 has ONE view: the mode seg is gone and legacy vsm/cabinet mode ids map to the hierarchy editor', async ({ page }) => {
+  // the Org Chart|VSM toggle was removed (PO 2026-07-25): 7.7 = formal accountability structure only
+  expect(await page.evaluate(() => !!document.querySelector('#modeSeg'))).toBe(false);
+  expect(await page.evaluate(() => window.ORG.getState().ui.mode)).toBe('orgchart');
+  // bridge calls with legacy ids never blank the canvas — they map forward to the one mode
+  await page.evaluate(() => window.ORG.setMode('vsm'));
+  expect(await page.evaluate(() => window.ORG.getState().ui.mode)).toBe('orgchart');
+  await page.evaluate(() => window.ORG.setMode('cabinet'));
+  expect(await page.evaluate(() => window.ORG.getState().ui.mode)).toBe('orgchart');
+  // no embedded VSM iframe is ever mounted in 7.7
+  expect(await page.evaluate(() => !!document.querySelector('#vsmframe'))).toBe(false);
+  // and the editor canvas is alive
+  expect(await page.evaluate(() => document.querySelectorAll('#canvasHost g[data-nid]').length)).toBeGreaterThan(5);
 });
 
 test('the Plain/Expert language toggle is removed — labels are Plain and stay Plain', async ({ page }) => {
@@ -194,12 +192,14 @@ test('empty model: designed empty state renders, never fabricates structure, nev
   expect(res.text).toMatch(/take shape|will not invent any structure/);
 });
 
-test('honesty in Cabinet: S3* is always drawn and the accountability-gap headline stays on screen (no gap can hide in the flagship view)', async ({ page }) => {
-  await page.evaluate(() => { window.ORG.setOverlay('gaps', true); window.ORG.setMode('vsm'); });
-  // S3* is structurally present in the embedded diagram — the audit seat can never be dropped
-  const frame = page.frameLocator('#vsmframe');
-  await expect(frame.locator('svg text', { hasText: /^3\*$/ }).first()).toBeVisible();
-  // the gap headline is mode-independent: the accountability counts remain visible in Cabinet, so no gap hides behind the flagship view
+test('honesty: S3* stays a distinct system in 7.7 (audit colour + labels survive the VSM-mode removal; diagram coverage lives in the vsm.html suite)', async ({ page }) => {
+  // the audit seat can never be silently dropped: S3* keeps its own colour, distinct from S3
+  const s3s = await page.evaluate(() => ({ s3: sysColor('S3'), s3star: sysColor('S3*') }));
+  expect(s3s.s3star).toBe('#b85045');
+  expect(s3s.s3star).not.toBe(s3s.s3);
+  // the demo model's S3* vessel renders with the audit colour dot (chip or box context)
+  expect(await page.evaluate(() => !!document.querySelector('circle[fill="#b85045"]') || VESSELS.some((v) => v.sys === 'S3*'))).toBe(true);
+  // and the accountability-gap headline is always on screen
   await expect(page.locator('.headline .hpill.attn')).toBeVisible();
 });
 
@@ -459,21 +459,6 @@ test('the editor canvas is a real window: zoom controls scale it, and dragging e
   expect(panned.cleared).toBe(true);
 });
 
-test('VSM mode embeds vsm.html and unmounts it on the way out; every legacy mode id maps forward', async ({ page }) => {
-  await page.evaluate(() => window.ORG.setMode('vsm'));
-  await expect(page.locator('#vsmframe')).toBeVisible();
-  expect(await page.evaluate(() => getComputedStyle(document.querySelector('#zoomCtl')).display)).toBe('none');
-  await page.evaluate(() => window.ORG.setMode('orgchart'));
-  expect(await page.evaluate(() => !!document.querySelector('#vsmframe'))).toBe(false);
-  // legacy ids from old hosts / old persisted state map forward — they must never blank the canvas
-  for (const [legacy, canonical] of [['levels', 'orgchart'], ['cabinet', 'vsm'], ['nested', 'orgchart']]) {
-    await page.evaluate((id) => window.ORG.setMode(id), legacy);
-    expect(await page.evaluate(() => window.ORG.getState().ui.mode)).toBe(canonical);
-  }
-  await page.evaluate(() => window.ORG.setMode('vsm'));
-  await expect(page.locator('#vsmframe')).toBeVisible();
-});
-
 test('7.7 declutter: no Proposed-vs-agreed chip; Gaps is a spotlight (clean boxes recede, warned boxes stay bright); embedded chrome collapses', async ({ page }) => {
   // the Proposed-vs-agreed overlay chip is gone (scenarios come later); candidates still render dashed
   expect(await page.evaluate(() => !!document.querySelector('[data-ov="state"]'))).toBe(false);
@@ -494,8 +479,8 @@ test('7.7 declutter: no Proposed-vs-agreed chip; Gaps is a spotlight (clean boxe
   await page.waitForFunction(() => !!(window.ORG && window.ORG.getState));
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.topbar .brand')).display)).toBe('none');
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.topbar .ctx')).display)).toBe('none');
-  // the functional controls survive: mode seg + tile fullscreen
-  await expect(page.locator('#modeSeg')).toBeVisible();
+  // the functional controls survive: tile fullscreen (the mode seg is gone — 7.7 has ONE view)
+  expect(await page.evaluate(() => !!document.querySelector('#modeSeg'))).toBe(false);
   await expect(page.locator('#fsBtn')).toBeVisible();
 });
 
@@ -606,19 +591,16 @@ test('Step I operative units are chart citizens by DEFAULT: seeded as root boxes
   // (a) SEED path: empty hierarchy → R-1 org AND both operative units become root boxes
   await page.evaluate((units) => window.ORG.loadModel({ units, vessels: [], contribs: [], rasic: {}, scts: [], hierarchy: {} }), UNITS_FED);
   let hier = await page.evaluate(() => window.ORG.getState().model.hierarchy);
-  expect(hier['u-prod']?.parent).toBe('root');
+  // R-1 recursion orgs are NAVIGATION, not departments: when real operative units exist they are NOT seeded as boxes (PO 2026-07-25)
+  expect(hier['u-prod']).toBeUndefined();
   expect(hier['op-copilot']?.parent).toBe('root');   // kind:'operative' recognized
   expect(hier['op-sovereign']?.parent).toBe('root'); // level:'S1' recognized
+  // the unplaced R-1 org waits in the Unassigned tray, placeable when the formal structure spans recursion levels
+  expect(await page.evaluate(() => !!document.querySelector('#edTray [data-tray="u-prod"]'))).toBe(true);
   // they render as unit boxes on the canvas
   expect(await page.evaluate(() => !!document.querySelector('g[data-nid="op-copilot"]'))).toBe(true);
-  // HONEST kind labels (PO 2026-07-25): operative units say "operating unit"; the R-1 recursion org says "R-1 · organization"
-  const subs = await page.evaluate(() => ({
-    op: document.querySelector('g[data-nid="op-copilot"]').textContent,
-    r1: document.querySelector('g[data-nid="u-prod"]').textContent,
-  }));
-  expect(subs.op).toContain('operating unit');
-  expect(subs.r1).toContain('R-1 · organization');
-  expect(subs.r1).not.toContain('operating unit');
+  // HONEST kind label: operative units say "operating unit"
+  expect(await page.evaluate(() => document.querySelector('g[data-nid="op-copilot"]').textContent)).toContain('operating unit');
 
   // (b) AUTO-PLACE path: an EXISTING hierarchy that lacks the operative units gains them at root on feed
   await page.evaluate((units) => window.ORG.loadModel({
@@ -628,10 +610,40 @@ test('Step I operative units are chart citizens by DEFAULT: seeded as root boxes
   hier = await page.evaluate(() => window.ORG.getState().model.hierarchy);
   expect(hier['op-copilot']?.parent).toBe('root');
   expect(hier['op-sovereign']?.parent).toBe('root');
-  expect(hier['u-prod']?.parent).toBe('root'); // untouched
+  expect(hier['u-prod']?.parent).toBe('root'); // an explicitly PLACED R-1 org is preserved (multi-level formal structures are legitimate)
+  // and a placed R-1 org is honestly labeled as an organization, never as an operative unit
+  const r1txt = await page.evaluate(() => document.querySelector('g[data-nid="u-prod"]').textContent);
+  expect(r1txt).toContain('R-1 · organization');
+  expect(r1txt).not.toContain('operating unit');
 
   // the auto-place emitted ONE authoritative change so the placement persists through the host pipeline
   await page.waitForFunction(() => window.__up.length > 0);
   const last = await page.evaluate(() => window.__up[window.__up.length - 1]);
   expect(Object.keys(last.hierarchy)).toEqual(expect.arrayContaining(['op-copilot', 'op-sovereign']));
+});
+
+
+test('Start fresh empties the chart (undoable): everything to Unassigned incl. units, no reseed, deliberate-empty survives feeds', async ({ page }) => {
+  await page.goto('/design-previews/org-chart.html');
+  await page.waitForFunction(() => !!(window.ORG && window.ORG.getState));
+  const before = await page.evaluate(() => Object.keys(window.ORG.getState().model.hierarchy).length);
+  expect(before).toBeGreaterThan(10);
+
+  page.once('dialog', (d) => d.accept());
+  await page.locator('#edTray [data-act="startfresh"]').click();
+
+  // empty canvas; units AND functions AND roles wait in the tray
+  expect(await page.evaluate(() => Object.keys(window.ORG.getState().model.hierarchy).length)).toBe(0);
+  expect(await page.evaluate(() => !!document.querySelector('#edTray [data-tray="u-mob"]'))).toBe(true);  // an R-1 unit is re-placeable
+  expect(await page.evaluate(() => document.querySelectorAll('#edTray .tchip').length)).toBeGreaterThan(10);
+
+  // undo restores the full previous placement (a host feed clears history, so undo is tested BEFORE the feed)
+  await page.locator('[data-act="undo"]').first().click();
+  expect(await page.evaluate(() => Object.keys(window.ORG.getState().model.hierarchy).length)).toBe(before);
+
+  // start fresh again: a deliberately emptied chart is NOT re-seeded by a fresh feed (hierTouched holds)
+  page.once('dialog', (d) => d.accept());
+  await page.locator('#edTray [data-act="startfresh"]').click();
+  await page.evaluate(() => window.ORG.loadModel({ units: UNITS, vessels: VESSELS, contribs: CONTRIBS, rasic: RASIC, scts: SCTS, hierarchy: {} }));
+  expect(await page.evaluate(() => Object.keys(window.ORG.getState().model.hierarchy).length)).toBe(0);
 });

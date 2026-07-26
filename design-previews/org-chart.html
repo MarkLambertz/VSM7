@@ -229,10 +229,8 @@ body[data-skin="deck"] .watermark-note{background:#2e2712;color:var(--amber)}
       <div><label>Step VII</label><strong>7.7 · Organizational Representation</strong></div>
     </div>
     <div class="tools">
-      <div class="seg" id="modeSeg">
-        <button data-mode="orgchart" class="on">Org Chart</button>
-        <button data-mode="vsm">VSM</button>
-      </div>
+      <!-- the Org Chart|VSM mode seg was removed (PO 2026-07-25): 7.7 is the FORMAL accountability structure
+           (hierarchy, also in legal terms) — steering/control-org visualization gets its own experience elsewhere -->
       <button class="tile-export-button" data-act="export" title="Export the org chart (PNG / SVG)" aria-label="Export"><span aria-hidden="true">⬇</span></button>
       <button class="tile-fullscreen-button" id="fsBtn" title="Full screen (F)" aria-label="Full screen"><span class="fullscreen-corners" aria-hidden="true"><span></span></span></button>
     </div>
@@ -428,9 +426,10 @@ try{const saved=JSON.parse(localStorage.getItem(LS)||'{}');if(saved&&typeof save
 state.lang='plain';   /* Plain language only — the Expert/VSM toggle was removed (host may still call setLang) */
 /* canonical mode ids: 'orgchart' (hierarchy editor) · 'vsm' (embedded viable-system diagram).
    Legacy ids (levels/cabinet/nested) from old persisted state or old hosts map forward — never blank the canvas. */
-const MODE_ALIAS={levels:'orgchart',cabinet:'vsm',nested:'orgchart'};
-state.mode=MODE_ALIAS[state.mode]||state.mode;
-if(state.mode!=='orgchart'&&state.mode!=='vsm')state.mode='orgchart';
+/* ONE mode since 2026-07-25: the hierarchy editor. 7.7 shows the formal accountability structure; the VSM/steering
+   view left 7.7 (PO has separate plans for the diagram). Every legacy/persisted mode id maps to 'orgchart'. */
+const MODE_ALIAS={levels:'orgchart',cabinet:'orgchart',nested:'orgchart',vsm:'orgchart'};
+state.mode='orgchart';
 state.overlays.state=true;                                              /* candidate/accepted always visible (the Proposed-vs-agreed toggle was removed; scenarios come later) */
 function persist(){try{localStorage.setItem(LS,JSON.stringify({mode:state.mode,lang:state.lang,overlays:state.overlays,tourSeen:state.tourSeen,caption:state.caption,zoom:state.zoom,hierarchy:HIER,hierTouched:state.hierTouched}));}catch(_){}}
 
@@ -476,8 +475,12 @@ function seedHierarchy(){
   if(Object.keys(HIER).length||state.hierTouched)return;
   const sif=sifUnit(); if(!sif.id)return;
   let ord=0;
-  UNITS.filter(u=>u.level==='R-1').forEach(u=>{ HIER[u.id]={parent:'root',order:ord++}; });
-  UNITS.filter(isOperativeUnit).forEach(u=>{ HIER[u.id]={parent:'root',order:ord++}; });   // ALL operative units from Step I are boxes by default
+  /* R-1 recursion organizations are NAVIGATION in the recursion, not departments (PO 2026-07-25): they are
+     seeded as boxes ONLY when the project has no Step I operative units (legacy/demo shape, where the R-1
+     orgs stand in for the real S1s). As soon as real operative units exist, they alone are the S1 boxes. */
+  const ops=UNITS.filter(isOperativeUnit);
+  if(!ops.length) UNITS.filter(u=>u.level==='R-1').forEach(u=>{ HIER[u.id]={parent:'root',order:ord++}; });
+  ops.forEach(u=>{ HIER[u.id]={parent:'root',order:ord++}; });   // ALL operative units from Step I are boxes by default
   VESSELS.filter(v=>v.type==='function').forEach(f=>{
     HIER[f.id]={parent:(f.scope&&f.scope!==sif.id&&HIER[f.scope])?f.scope:'root',order:ord++};
   });
@@ -576,6 +579,18 @@ function reseedLayout(){
   persist(); renderEditorCommit({}); emitChange();
   snackbar('Layout re-suggested — place roles from Unassigned into their departments.',true);
 }
+/* Start fresh: a deliberately EMPTY canvas — every box and role returns to Unassigned, nothing is re-suggested.
+   The canonical model (units, roles, RASIC) is untouched; only the authored placement is cleared. */
+function startFreshLayout(){
+  if(!confirm('Start fresh?\n\nThis empties the whole chart — every department box and role returns to Unassigned, and nothing is re-suggested. The canonical model (units, roles, RASIC) is untouched. You can Undo.'))return;
+  const prev=hSnapshot();
+  Object.keys(HIER).forEach(k=>delete HIER[k]);
+  state.hierTouched=true;   // a deliberately emptied chart stays empty across feeds — no reseed, no auto-place
+  state.sel=null; state.collapsed={};
+  UNDO.push({t:'reseed',prev,next:hSnapshot()}); REDO.length=0;   // same bulk undo record as Re-suggest
+  persist(); renderEditorCommit({}); emitChange();
+  snackbar('Chart emptied — build it up from Unassigned, or Undo.',true);
+}
 function hierUndo(){ const u=UNDO.pop(); if(!u)return;
   if(u.t==='reseed'){ hRestore(u.prev); }
   else if(u.t==='u'){ const x=u.snap; applyEntry(x.id,x.old);
@@ -628,7 +643,11 @@ function warnWalk(){
 /* the Unassigned tray (Levels only) — plain HTML above the zoom/pan viewport */
 function renderTray(){
   const tray=trayVessels();
-  return `<div class="tray" id="edTray"><span class="tlab">Unassigned</span>${tray.length?tray.map(v=>{const tb=vesselBadge(v.id);return `<span class="tchip" data-tray="${esc(v.id)}"><span class="dot" style="background:${sysColor(v.sys)}"></span>${esc(clip(v.name,22))}${showBadge(tb)?`<span style="color:${tb.sev>=3?'#df6353':'#b8860b'};font-weight:900" title="carries an accountability warning">⚑</span>`:''}</span>`;}).join(''):'<span class="hint">everything is placed</span>'}<span style="margin-left:auto" class="undoseg"><button class="btn ghost" data-act="reseed" title="Clear the placement and re-suggest an honest one from the model (roles return to Unassigned). Undoable.">↻ Re-suggest</button><button class="btn ghost" data-act="undo" title="Undo (Ctrl+Z)">↩</button><button class="btn ghost" data-act="redo" title="Redo (Ctrl+Shift+Z)">↪</button></span></div>`;
+  /* unplaced UNITS (operative units, R-1 orgs) are tray citizens too — without them a fresh canvas could never get its units back */
+  const trayU=UNITS.filter(u=>(isOperativeUnit(u)||u.level==='R-1')&&!HIER[u.id]);
+  const chips=trayU.map(u=>`<span class="tchip" data-tray="${esc(u.id)}" title="${isOperativeUnit(u)?'operating unit':'recursion organization'}"><span class="dot" style="background:#34404c"></span>${esc(clip(u.name,22))}</span>`)
+    .concat(tray.map(v=>{const tb=vesselBadge(v.id);return `<span class="tchip" data-tray="${esc(v.id)}"><span class="dot" style="background:${sysColor(v.sys)}"></span>${esc(clip(v.name,22))}${showBadge(tb)?`<span style="color:${tb.sev>=3?'#df6353':'#b8860b'};font-weight:900" title="carries an accountability warning">⚑</span>`:''}</span>`;}));
+  return `<div class="tray" id="edTray"><span class="tlab">Unassigned</span>${chips.length?chips.join(''):'<span class="hint">everything is placed</span>'}<span style="margin-left:auto" class="undoseg"><button class="btn ghost" data-act="startfresh" title="Empty the whole chart — everything returns to Unassigned, nothing is re-suggested. Undoable.">⌫ Start fresh</button><button class="btn ghost" data-act="reseed" title="Clear the placement and re-suggest an honest one from the model (roles return to Unassigned). Undoable.">↻ Re-suggest</button><button class="btn ghost" data-act="undo" title="Undo (Ctrl+Z)">↩</button><button class="btn ghost" data-act="redo" title="Redo (Ctrl+Shift+Z)">↪</button></span></div>`;
 }
 /* the SVG sits inside a scrollable viewport (#edScroll) with a scaled inner layer (#edZoom) — this is the zoom/pan window */
 function zoomWrap(inner){ return `<div class="edscroll" id="edScroll"><div id="edZoom">${inner}</div></div>`; }
@@ -743,7 +762,6 @@ function renderSubbar(){
       ${ovBtn('acct','ov_acct',null,'Show the RASIC chips on each leader')}
       ${ovBtn('gaps','ov_gaps',null,'Spotlight open accountability gaps — boxes with a warning stay bright and show every badge; clean boxes recede')}
       ${ovBtn('meetings','ov_meet',null,'Show the meeting organs (◇) each box sits in')}
-      ${ovBtn('alg','ov_alg','--alg','Show the algedonic alarm spokes')}
     </div>
     <div class="divider"></div>
     <div class="grp">
@@ -760,7 +778,7 @@ function renderLegend(){
   const sw=s=>`<span><span class="sw" style="background:${sysColor(s)}"></span>${esc(sysLabel(s))}${s==='S3*'?' ▽':''}</span>`;
   let l=['S5','S4','S3','S3*','S2','S1'].map(sw).join('');
   if(state.overlays.gaps)l+=`<span><span class="sw" style="background:#df6353"></span>hard gap</span><span><span class="sw" style="background:#efbd45"></span>soft gap</span>`;
-  if(state.overlays.alg)l+=`<span><span class="sw" style="background:${C.alg}"></span>algedonic alarm ▲</span>`;
+  /* the Alarm-line overlay left with the VSM/Cabinet view (2026-07-25): algedonic spokes are STEERING, not formal hierarchy */
   $('#legend').innerHTML=l;
 }
 
@@ -1188,6 +1206,7 @@ document.addEventListener('click',e=>{ const a=e.target.closest('[data-act]'); i
   else if(act==='undo'){hierUndo();}
   else if(act==='redo'){hierRedo();}
   else if(act==='reseed'){reseedLayout();}
+  else if(act==='startfresh'){startFreshLayout();}
   else if(act==='snackx'){const s=$('#snack');if(s)s.remove();}
   else if(act==='mact'){runMenuAction(a.dataset.m,a.dataset.id);closeNodeMenu();}
   else if(act==='pickdest'){const nid=$('#modal').dataset.moveNode;closeModal();if(nid){const ok=hierMove(nid,a.dataset.id,null,isRoleNode(nid)?undefined:'keep',{landed:nid});if(ok)snackbar(`Moved ${nodeName(nid)} under ${a.dataset.id==='root'?nodeName(sifUnit().id):nodeName(a.dataset.id)}`,true);}}
@@ -1392,7 +1411,7 @@ function selectNode(id){state.sel=id;render();const v=vessel(id);emit('select',{
 function selectSys(sys){const fu=focusUnit();const first=VESSELS.find(v=>v.scope===fu.id&&v.sys===sys&&v.type!=='meeting');if(first){state.sel=first.id;render();emit('select',{kind:'vessel',id:first.id});}else{state.sel=null;$('#inspector').innerHTML=`<div class="card pad"><h3 style="margin:0">${esc(sysLabel(sys))}</h3><div class="plainacct">No vessel carries this system yet — an empty seat. ${sys==='S3*'?'VSM insists audit stays independent; do not fold it into control.':''}</div></div>`;}}
 function unfold(id){const u=unit(id);if(u.level!=='R-1')return;state.stack.push(id);state.sel=null;state.trayOpen=false;render();emit('unfold',{unitId:id,depth:state.stack.length});}
 function popLevel(){if(state.stack.length){state.stack.pop();state.sel=null;render();emit('unfold',{unitId:focusUnit().id,depth:state.stack.length});}}
-function syncModeSeg(){[...$('#modeSeg').children].forEach(b=>b.classList.toggle('on',b.dataset.mode===state.mode));}
+function syncModeSeg(){const el=$('#modeSeg');if(!el)return;[...el.children].forEach(b=>b.classList.toggle('on',b.dataset.mode===state.mode));}
 
 /* warning stepper */
 function walkNextWarning(){const w=warnWalk();if(!w.length)return;state.warnIndex=(state.warnIndex+1)%w.length;const cur=w[state.warnIndex];
@@ -1409,7 +1428,7 @@ function requestFix(cid,vid){emit('requestFix',{contribId:cid,vesselId:vid,lette
 function acknowledge(cid){const note=prompt('Record why this is a deliberate exception (optional):','');if(note===null)return;emit('acknowledgeException',{contribId:cid,note:note||''});toast('Exception acknowledged — recorded as a conscious decision.');}
 
 /* ============================ SKIN / FOCUS / FULLSCREEN ============================ */
-$('#modeSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.mode=b.dataset.mode;syncModeSeg();render();persist();emit('mode',{mode:state.mode,depth:state.stack.length});});
+/* mode seg removed 2026-07-25 — 7.7 has ONE view (the formal accountability hierarchy) */
 function setSkin(sk){document.body.dataset.skin=sk;const seg=$('#skinSeg');if(seg)[...seg.children].forEach(b=>b.classList.toggle('on',b.dataset.skin===sk));render();}   /* host-driven only (skin managed by Codex via the bridge); no in-asset toggle */
 $('#fsBtn').addEventListener('click',toggleFs);
 function isFs(){return !!(document.fullscreenElement||document.webkitFullscreenElement);}
@@ -1576,7 +1595,7 @@ window.ORG={
   setContext:c=>{if(!c||typeof c!=='object')return;if(Array.isArray(c.units))_rA(UNITS,c.units);if(Array.isArray(c.vessels))_rA(VESSELS,c.vessels);if(Array.isArray(c.contribs)||Array.isArray(c.contributions))_rA(CONTRIBS,_contribsFrom(c.contribs||c.contributions));if(Array.isArray(c.scts))_rA(SCTS,c.scts);if(c.rasic)_rO(RASIC,c.rasic);_adoptWarnings(c.warnings);if(c.hierarchy&&typeof c.hierarchy==='object'&&Object.keys(c.hierarchy).length){_rO(HIER,c.hierarchy);state.hierTouched=true;}UNDO.length=0;REDO.length=0;if(c.sifName)$('#ctxSif').textContent=c.sifName+' · R0';reconcileNav();seedHierarchy();ensureOperativeUnitsPlaced();render();},
   loadModel:m=>{if(!m||typeof m!=='object')return;if(Array.isArray(m.units))_rA(UNITS,m.units);if(Array.isArray(m.vessels))_rA(VESSELS,m.vessels);if(Array.isArray(m.contribs)||Array.isArray(m.contributions))_rA(CONTRIBS,_contribsFrom(m.contribs||m.contributions));if(Array.isArray(m.scts))_rA(SCTS,m.scts);if(m.rasic)_rO(RASIC,m.rasic);_adoptWarnings(m.warnings);if(m.hierarchy&&typeof m.hierarchy==='object'&&Object.keys(m.hierarchy).length){_rO(HIER,m.hierarchy);state.hierTouched=true;}UNDO.length=0;REDO.length=0;reconcileNav();seedHierarchy();ensureOperativeUnitsPlaced();render();},
   select:id=>{state.sel=id||null;render();},
-  setMode:mode=>{mode=MODE_ALIAS[mode]||mode;/* legacy ids (levels/cabinet/nested) map forward */ if(mode==='orgchart'||mode==='vsm'){state.mode=mode;syncModeSeg();render();}},
+  setMode:mode=>{mode=MODE_ALIAS[mode]||mode;/* every legacy id (levels/cabinet/nested/vsm) maps to the ONE remaining mode */ if(mode==='orgchart'){state.mode='orgchart';syncModeSeg();render();}},
   setOverlay:(id,on)=>{if(id in state.overlays){state.overlays[id]=on!==false;render();}},
   setLang:l=>{if(l==='plain'||l==='vsm'){state.lang=l;render();persist();}},
   skin:s=>{if(s==='workshop'||s==='deck')setSkin(s);},
