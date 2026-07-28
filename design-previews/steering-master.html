@@ -699,7 +699,7 @@ const S=55, X=x=>(x-500)/S, Y=y=>(430-y)/S, R=v=>v/S;
 /* ---- Z-DISCIPLINE (audit 2026-07-28): the model is a shallow BAS-RELIEF, not scattered depth.
    Every element lives in a ±0.7 band and its layer mirrors the 2D paint order, so the picture stays
    coherent from any angle or zoom — edge-on it reads as one slab, not a cloud of floating parts. */
-const Z={ env:0, envLens:.30, feed:-.24, chan:0, unit:0, bars:0, eye:-.08, squiggle:0,
+const Z={ env:0, envLens:.72, feed:-.24, chan:0, unit:0, bars:0, eye:-.08, squiggle:0,
           homeo:.58, arms:.62, alg:.58, label:.56 };
 const DEPTH={ bar:.95, tri:.85, unit:.55, env:1.5 };
 const rowY=i=>L.row0+i*L.rowH;
@@ -725,10 +725,10 @@ function nameCanvas(nm){
   /* printed ON the management box: the canvas IS the box face — opaque white ground, black ink, two lines */
   const lines=wrapName(nm,18), c=document.createElement('canvas'), W=768,H=362;
   c.width=W; c.height=H; const x=c.getContext('2d');
-  x.font='800 68px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.font='800 76px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
   x.fillStyle='#000000';
   if(lines.length===1) x.fillText(lines[0],W/2,H/2);
-  else { x.fillText(lines[0],W/2,H/2-40); x.fillText(lines[1],W/2,H/2+40); }
+  else { x.fillText(lines[0],W/2,H/2-44); x.fillText(lines[1],W/2,H/2+44); }
   return c; }
 const faceZ=(d,bt)=>d/2+(bt==null?d*0.14:bt)+0.014;   // true outer surface of a bevelled extrusion
 function plate(canvas,w,h,z,opaque){
@@ -755,7 +755,7 @@ function box3(w,h,d,colour){
   sh.moveTo(-w/2+rx,-h/2); sh.lineTo(w/2-rx,-h/2); sh.quadraticCurveTo(w/2,-h/2,w/2,-h/2+rx);
   sh.lineTo(w/2,h/2-rx); sh.quadraticCurveTo(w/2,h/2,w/2-rx,h/2); sh.lineTo(-w/2+rx,h/2);
   sh.quadraticCurveTo(-w/2,h/2,-w/2,h/2-rx); sh.lineTo(-w/2,-h/2+rx); sh.quadraticCurveTo(-w/2,-h/2,-w/2+rx,-h/2);
-  const g=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:d*0.14,bevelSize:d*0.10,bevelSegments:3,curveSegments:8});
+  const g=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:d*0.14,bevelSize:d*0.10,bevelSegments:8,curveSegments:20});
   g.translate(0,0,-d/2); g.computeVertexNormals();
   return new THREE.Mesh(g,mat(colour));
 }
@@ -770,34 +770,43 @@ function tri3(cx,topY,botY,colour,sysId,txt,pointDown){ const g=new THREE.Group(
   else { sh.moveTo(-wHalf,-h/2); sh.lineTo(wHalf,-h/2); sh.lineTo(0,h/2); }
   sh.closePath();
   const d=DEPTH.tri;
-  const geo=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:.09,bevelSize:.07,bevelSegments:3});
+  const geo=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:.09,bevelSize:.07,bevelSegments:8,curveSegments:16});
   geo.translate(0,0,-d/2); geo.computeVertexNormals();
   const m=new THREE.Mesh(geo,mat(colour)); g.add(m);
   const l=plate(textCanvas(txt,'#ffffff'),.46,.23,faceZ(d,.09)); l.position.y=pointDown?h/2-.30:-h/2+.30; g.add(l);
   g.position.set(X(cx),Y((topY+botY)/2),0); g.userData={sys:sysId,mesh:m}; sysMeshes[sysId]=g; scene.add(g); return g; }
 
 /* ---- POTATO: the 2D outline given real body — heavy bevel on both faces ---- */
+/* the 2D's own smoothing: a closed quadratic spline through the midpoints of the control polygon */
+function smoothShape(points2d){
+  const n=points2d.length, sh=new THREE.Shape();
+  const mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
+  const m0=mid(points2d[n-1],points2d[0]);
+  sh.moveTo(X(m0[0]),Y(m0[1]));
+  for(let i=0;i<n;i++){ const cur=points2d[i], nx=points2d[(i+1)%n], m=mid(cur,nx);
+    sh.quadraticCurveTo(X(cur[0]),Y(cur[1]),X(m[0]),Y(m[1])); }
+  sh.closePath(); return sh;
+}
 function potato(points2d,colour,op,depth,z,shell){
-  const sh=new THREE.Shape();
-  points2d.forEach((p,i)=>{ const px=X(p[0]), py=Y(p[1]); i?sh.lineTo(px,py):sh.moveTo(px,py); });
-  sh.closePath();
+  const sh=smoothShape(points2d);
   const d=depth||1.2;
-  const g=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:d*0.42,bevelSize:d*0.34,bevelSegments:6,curveSegments:10});
+  const g=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:d*0.44,bevelSize:d*0.36,bevelSegments:14,curveSegments:36});
   g.translate(0,0,-d/2); g.computeVertexNormals();
   const mm=mat(colour,op==null?.55:op);
+  mm.roughness=.86; mm.flatShading=false;                        // organic, not plastic
   if(shell){ mm.depthWrite=false; mm.side=THREE.DoubleSide; }   // an enclosing body must not hide what it contains
   const m=new THREE.Mesh(g,mm);
   m.position.z=z||0; m.renderOrder=shell?-1:0; envMeshes.push(m); scene.add(m); return m;
 }
 /* the 2D's own outline generators, verbatim in maths so the silhouettes match */
-function blobPts(cx,cy,rx,ry,seed,amp){ amp=amp==null?1:amp; const n=16,p=[];
+function blobPts(cx,cy,rx,ry,seed,amp){ amp=amp==null?1:amp; const n=26,p=[];
   for(let i=0;i<n;i++){ const a=i/n*Math.PI*2;
     const w=0.80+0.18*amp*Math.sin(seed*1.3+i*1.7)+0.07*amp*Math.cos(seed*0.7+i*2.3);
     p.push([cx+Math.cos(a)*rx*w, cy+Math.sin(a)*ry*w]); } return p; }
 function envSilPts(cx,yTop,yBot,seed){ const H=yBot-yTop;
   const prof=[[0,12],[0.07,62],[0.16,54],[0.27,38],[0.38,52],[0.54,62],[0.70,58],[0.85,52],[0.95,42],[1,20]];
   const hw=t=>{ for(let i=0;i<prof.length-1;i++){ if(t<=prof[i+1][0]){ const a=prof[i],b=prof[i+1],u=(t-a[0])/(b[0]-a[0]); return a[1]+(b[1]-a[1])*u; } } return prof[prof.length-1][1]; };
-  const pts=[],n=15;
+  const pts=[],n=26;
   for(let i=0;i<=n;i++){ const t=i/n,y=yTop+t*H,w=hw(t)*(1+0.05*Math.sin(seed+i*1.9)); pts.push([cx+w,y]); }
   for(let i=n;i>=0;i--){ const t=i/n,y=yTop+t*H,w=hw(t)*(1+0.05*Math.cos(seed*1.3+i*1.4)); pts.push([cx-w,y]); }
   return pts; }
@@ -805,7 +814,7 @@ function envSilPts(cx,yTop,yBot,seed){ const H=yBot-yTop;
 /* ---- channels ---- */
 function seg(x1,y1,x2,y2,colour,w,z,ud){ const a=new THREE.Vector3(X(x1),Y(y1),z||0), b=new THREE.Vector3(X(x2),Y(y2),z||0);
   const dir=new THREE.Vector3().subVectors(b,a), len=dir.length(); if(len<1e-4)return null;
-  const m=new THREE.Mesh(new THREE.CylinderGeometry(w||.045,w||.045,len,10),mat(colour));
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(w||.045,w||.045,len,16),mat(colour));
   m.position.copy(a).add(dir.clone().multiplyScalar(.5));
   m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());
   m.userData=ud||{}; chMeshes.push(m); scene.add(m);
@@ -816,10 +825,10 @@ function tubeFrom(curve,colour,w,ud,dashed){
   if(dashed){ const n=Math.max(12,Math.round(curve.getLength()/.30));
     for(let i=0;i<n;i+=2){ const t0=i/n,t1=Math.min(1,(i+1)/n);
       const c=new THREE.CatmullRomCurve3([curve.getPoint(t0),curve.getPoint((t0+t1)/2),curve.getPoint(t1)]);
-      const m=new THREE.Mesh(new THREE.TubeGeometry(c,4,w||.05,7,false),mat(colour));
+      const m=new THREE.Mesh(new THREE.TubeGeometry(c,6,w||.05,12,false),mat(colour));
       m.userData=ud||{}; chMeshes.push(m); scene.add(m); if(ud&&ud.ch==='g')algMeshes.push(m); }
     if(ud&&ud.ch) pulsePaths.push({curve,colour,ud}); return null; }
-  const m=new THREE.Mesh(new THREE.TubeGeometry(curve,48,w||.045,8,false),mat(colour));
+  const m=new THREE.Mesh(new THREE.TubeGeometry(curve,96,w||.045,14,false),mat(colour));
   m.userData=ud||{}; chMeshes.push(m); scene.add(m);
   if(ud&&ud.ch) pulsePaths.push({curve,colour,ud});
   if(ud&&ud.ch==='g') algMeshes.push(m);
@@ -827,7 +836,7 @@ function tubeFrom(curve,colour,w,ud,dashed){
 /* the 2D's arrow markers, as cones on the curve's own tangent */
 function arrowAt(pos,tangent,colour,size,ud){
   const s=size||.16;
-  const m=new THREE.Mesh(new THREE.ConeGeometry(s*.62,s*1.7,14),mat(colour));
+  const m=new THREE.Mesh(new THREE.ConeGeometry(s*.62,s*1.7,22),mat(colour));
   m.position.copy(pos); m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),tangent.clone().normalize());
   m.userData=ud||{}; chMeshes.push(m); scene.add(m); if(ud&&ud.ch==='g')algMeshes.push(m); return m; }
 function bez(pts,z){ return new THREE.CubicBezierCurve3(
@@ -868,8 +877,8 @@ function build(units){
   tubeFrom(bez(SHAPES.armL,Z.arms),COL.s5,.06,{ch:'h5',sys:['S5']});
   tubeFrom(bez(SHAPES.armR,Z.arms),COL.s5,.06,{ch:'h5',sys:['S5']});
   /* S4 <-> future cloud: two thin green arcs, one head each */
-  headed(poly([[499,126],[470,110],[L.envX+96,107],[L.envX+48,126]],Z.envLens),COL.s4,.035,{ch:'s4env',sys:['S4']},.15);
-  headed(poly([[L.envX+48,136],[L.envX+96,155],[470,152],[499,136]],Z.envLens),COL.s4,.035,{ch:'s4env',sys:['S4']},.15);
+  headed(poly([[499,126],[470,110],[L.envX+96,107],[L.envX+48,126]],Z.envLens*.62),COL.s4,.035,{ch:'s4env',sys:['S4']},.15);
+  headed(poly([[L.envX+48,136],[L.envX+96,155],[470,152],[499,136]],Z.envLens*.62),COL.s4,.035,{ch:'s4env',sys:['S4']},.15);
 
   /* S3* and S2 triangles + their S3 feed elbows */
   tri3(L.s3star.cx,L.s3star.topY,L.s3star.botY,COL.s3,'S3*','3*',true);
@@ -891,8 +900,8 @@ function build(units){
   }
   /* channel a — environmental overlaps: the amber lenses between neighbouring sub-environments */
   for(let i=0;i<N-1;i++){ const ym=(rowY(i)+rowY(i+1))/2;
-    const m=new THREE.Mesh(new THREE.SphereGeometry(R(27),18,12),mat(COL.s2,.62));
-    m.scale.set(1,11/27,.62); m.position.set(X(L.envX),Y(ym),Z.envLens);
+    const m=new THREE.Mesh(new THREE.SphereGeometry(R(27),32,24),mat(COL.s2,.72));
+    m.scale.set(1,11/27,.42); m.position.set(X(L.envX),Y(ym),Z.envLens);
     m.userData={ch:'a',sys:['S1']}; chMeshes.push(m); scene.add(m); }
 
   /* S1 rows: operation circle + management square + the local environment eye loops */
@@ -900,10 +909,8 @@ function build(units){
     seg(L.s3star.cx,y,463,y,COL.s3,.035,0,{ch:'b',sys:['S3*']});
     seg(621,y,L.s2.cx,y,COL.s2,.04,0,{ch:'f',sys:['S2']});
     const g=new THREE.Group();
-    const circ=new THREE.Mesh(new THREE.CylinderGeometry(R(L.r),R(L.r),DEPTH.unit,26),mat(COL.white));
+    const circ=new THREE.Mesh(new THREE.CylinderGeometry(R(L.r),R(L.r),DEPTH.unit,56),mat(COL.white));
     circ.rotation.x=Math.PI/2; circ.position.set(X(L.circleX),Y(y),0); g.add(circ);
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(R(L.r),.028,10,30),mat(COL.stroke));
-    ring.position.copy(circ.position); ring.position.z=DEPTH.unit/2; g.add(ring);
     const sq=box3(R(L.sqW),R(L.sqH),DEPTH.unit,COL.white); sq.position.set(X(L.sqCx),Y(y),Z.unit); g.add(sq);
     seg(515,y,L.sqCx-L.sqW/2,y,COL.stroke,.02,0,{sys:['S1']});
     const nm=plate(nameCanvas(u),R(L.sqW)*0.96,R(L.sqH)*0.90,0);                          // glyphs only — printed on the box face
@@ -917,7 +924,7 @@ function build(units){
   const alg=poly([[605,lastY],[700,lastY],[736,lastY-30],[736,140],[720,100],[L.s5.x+L.s5.w-14,86]],Z.alg);
   tubeFrom(alg,COL.alg,.05,{ch:'g',sys:['S5']},true);
   arrowAt(alg.getPoint(1),alg.getTangent(1),COL.alg,.20,{ch:'g',sys:['S5']});
-  const dot=new THREE.Mesh(new THREE.SphereGeometry(R(4.5),12,10),mat(COL.alg));
+  const dot=new THREE.Mesh(new THREE.SphereGeometry(R(4.5),20,16),mat(COL.alg));
   dot.position.set(X(600),Y(lastY),Z.alg); dot.userData={ch:'g',sys:['S5']}; chMeshes.push(dot); scene.add(dot); algMeshes.push(dot);
 }
 
