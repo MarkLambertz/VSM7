@@ -192,7 +192,7 @@ body[data-skin="deck"] .pop .warnrow{background:#2b1a18;color:var(--red)}
         <div class="stage">
           <iframe id="vsmframe" title="VSM system diagram"></iframe>
           <canvas id="three"></canvas>
-          <div class="d3hint">drag to orbit · scroll to zoom · click a system</div>
+          <div class="d3hint">drag to orbit · scroll to zoom · click a system <button data-resetview="1" style="margin-left:8px;border:1px solid var(--line-strong);background:var(--surface);border-radius:5px;padding:1px 7px;font-size:10.5px;font-weight:700">⟲ Reset view</button></div>
         </div>
         <div class="diagram-foot" id="dfoot">The shared VSM diagram — reused as-is. Selecting here filters the bands; selecting a band highlights here.</div>
       </div>
@@ -298,7 +298,7 @@ const UNITS=['Industrial AI Copilot','Sovereign AI Assistant Platform','Public S
 const CTX={sif:'EU AI Solutions SE', level:'R0'};
 
 /* ============================ STATE ============================ */
-const state={sel:null, lens:{instruments:true, accountability:true, channels:true}, collapsed:{}, s1:true, loop:null, view:'2d'};
+const state={sel:null, lens:{instruments:true, accountability:true, channels:true}, collapsed:{}, s1:true, loop:null, view:'2d', alg:false, flow:true};
 
 /* ============================ DERIVATIONS (the honesty spine) ============================
    Everything below is COMPUTED from the canonical data — this page asserts nothing of its own. */
@@ -371,7 +371,7 @@ function vsmFrame(){ return $('#vsmframe'); }
 function vsmSend(msg){ const f=vsmFrame(); if(vsmReady&&f&&f.contentWindow){ try{f.contentWindow.postMessage(msg,'*');}catch(_){ } } }
 function vsmFeed(){
   vsmSend({cmd:'loadTree', tree:{id:'sif', name:CTX.sif, children:UNITS.map((n,i)=>({id:'u'+i,name:n}))}});
-  vsmSend({cmd:'setChannels', shown:{a:true,b:true,c:true,d:true,e:true,f:true,g:true}});
+  vsmSend({cmd:'setChannels', shown:{a:true,b:true,c:true,d:true,e:true,f:true,g:state.alg}});
   syncDiagram();
 }
 /* band selection → drive the shared diagram (select + dim everything the focused system does not touch) */
@@ -403,6 +403,8 @@ function renderSubbar(){
     lens('channels','Channel health','Show the Step VI variety verdict of the loops touching each system')+
     `<span class="divider"></span>`+
     `<button class="tog ${state.s1?'on':''}" data-s1="1" title="Show the operative units as context — this page is about the metasystem">S1 context</button>`+
+    `<button class="tog ${state.alg?'on':''}" data-alg="1" title="Show the algedonic channel — the direct alarm path from operations to S5"><span class="sw" style="background:var(--alg)"></span>Algedonic</button>`+
+    `<button class="tog ${state.flow?'on':''}" data-flow="1" title="Animate the information flowing through the channels (3D)">✳ Flow</button>`+
     `<button class="tog" id="statsBtn" data-stats="1" title="Everything the seven steps actually hold — hover">▦ Steering Stats</button>`+
     `<div class="hpill ${attn?'attn':''}" data-act="walk" title="What the canonical model says is still open">`+
       (h.orphans?`<span><b>${h.orphans}</b> unsteered SCT${h.orphans>1?'s':''}</span><span class="sep">·</span>`:'')+
@@ -422,8 +424,8 @@ function slotSCTs(sys){
 }
 function slotOrgans(sys){
   const list=organsOf(sys);
-  if(!list.length) return `<div class="slot"><h4>Steering organs <span class="src">7.6</span></h4><div class="empty">No board, committee or meeting carries <b>${sys}</b> yet.</div></div>`;
-  return `<div class="slot"><h4>Steering organs <span class="src">7.6</span></h4>`+
+  if(!list.length) return `<div class="slot"><h4>Steering meetings <span class="src">7.6</span></h4><div class="empty">No board, committee or meeting carries <b>${sys}</b> yet.</div></div>`;
+  return `<div class="slot"><h4>Steering meetings <span class="src">7.6</span></h4>`+
     list.map(o=>{const gc=!o.alg&&(!o.covers||!o.covers.length);
       return `<button class="chip organ ${gc?'gc':''}" data-organ="${esc(o.id)}" title="${esc(o.name)} · ${esc(o.cad)}${gc?' — steers no SCT: review or abolish':''}">${o.alg?'<span class="did" style="color:var(--alg)">▲</span>':'<span class="did">◇</span>'}<span class="nm">${esc(clip(o.name,22))}</span><span class="cad">${esc(o.cad)}</span></button>`;
     }).join('')+`</div>`;
@@ -495,7 +497,7 @@ function setView(v){
   $('#dfoot').textContent = state.view==='3d'
     ? 'A spatial reading of the same model — the metasystem stacked over its operative units. Same data, same selection.'
     : 'The shared VSM diagram — reused as-is. Selecting here filters the bands; selecting a band highlights here.';
-  if(state.view==='3d'){ ensure3D().then(d=>{ if(d){ d.resize(); d.select(state.sel); } }); }
+  if(state.view==='3d'){ ensure3D().then(d=>{ if(d){ d.resize(); d.select(state.sel); d.setAlg(state.alg); d.setFlow(state.flow); } }); }
   emit('view',{view:state.view});
 }
 let _d3p=null;
@@ -515,8 +517,13 @@ function selectBand(sys,opts){
 document.addEventListener('click',e=>{
   const lens=e.target.closest('[data-lens]'); if(lens){ state.lens[lens.dataset.lens]=!state.lens[lens.dataset.lens]; render(); return; }
   const s1=e.target.closest('[data-s1]'); if(s1){ state.s1=!state.s1; render(); return; }
+  const ag=e.target.closest('[data-alg]'); if(ag){ state.alg=!state.alg;
+    vsmSend({cmd:'setChannels', shown:{a:true,b:true,c:true,d:true,e:true,f:true,g:state.alg}});
+    if(window.__d3)window.__d3.setAlg(state.alg); render(); return; }
+  const fl=e.target.closest('[data-flow]'); if(fl){ state.flow=!state.flow; if(window.__d3)window.__d3.setFlow(state.flow); render(); return; }
   const hb=e.target.closest('[data-headband]'); if(hb){ selectBand(hb.dataset.headband); return; }
   const vw=e.target.closest('[data-view]'); if(vw){ setView(vw.dataset.view); return; }
+  if(e.target.closest('[data-resetview]')){ if(window.__d3)window.__d3.resetView(); return; }
   /* a loop chip lights its OWN channel in the shared diagram — 6.2 already stores which one (vsmChannel) */
   const lp=e.target.closest('[data-loop]'); if(lp){ const l=LOOPS.find(x=>x.id===lp.dataset.loop);
     if(l){ state.loop = state.loop===l.id ? null : l.id;
@@ -671,139 +678,290 @@ window.addEventListener('message',e=>{ const m=e.data; if(!m||typeof m!=='object
 import * as THREE from './vendor/three.module.min.js';
 
 /* ============================ 3D = A FAITHFUL TRANSFER OF THE 2D DIAGRAM ============================
-   No new visual language (PO 2026-07-28): the scene reproduces vsm.html's OWN layout constants —
-   same positions, same shapes (bars, triangles, circles+squares, environment amoeba, future cloud),
-   same channel routing incl. the S3–S4 homeostat and the ANCHORED algedonic path — just with depth.
-   2D SVG coords (x right, y down) map to 3D via X=(x-500)/55, Y=(430-y)/55; z = thin layer lanes. */
+   No new visual language (PO): the scene reproduces vsm.html's OWN layout constants, shapes and routing —
+   including the editable homeostat/arm beziers, which are read from the SAME localStorage key the 2D uses,
+   so the 3D transfers the diagram the facilitator actually sees (falling back to the canonical default).
+   Volumes, not extruded signs: systems are shoe boxes; environments are bevelled potatoes.
+   2D SVG (x right, y down) -> 3D via X=(x-500)/55, Y=(430-y)/55. */
 const L={W:900,metaCx:568,
   s5:{x:493,w:150,y:42,h:46}, s4:{x:493,w:150,y:112,h:38}, s3:{x:493,w:150,y:194,h:48},
   s3star:{cx:360,topY:230,botY:285}, s2:{cx:748,topY:230,botY:285},
   circleX:490,r:25, sqCx:568,sqW:102,sqH:48, cmdL:561,cmdR:575,
   envX:200, row0:332, rowH:112};
-const COL={s5:0xA0C0D5,s4:0x7BCA79,s3:0xFF5534,s2:0xFFCC50,envF:0x9BC799,envBlob:0x919CA4,stroke:0x9A9A9A,alg:0xC0399F,white:0xffffff,ink:0x3a3f45};
-const X=x=>(x-500)/55, Y=y=>(430-y)/55;
+const COL={s5:0xA0C0D5,s4:0x7BCA79,s3:0xFF5534,s2:0xFFCC50,envF:0x9BC799,envOuter:0xD7D7D7,envBlob:0x919CA4,
+  stroke:0x9A9A9A,alg:0xC0399F,white:0xffffff,eye:0x2a5f9e};
+/* the very shapes the 2D draws — same key, same defaults (bezier control points) */
+const SHAPE_DEF={ red:[[491,220],[442,181],[453,160],[491,133]], green:[[647,133],[693,145],[682,201],[643,218]],
+  armL:[[492,69],[440,82],[420,140],[455,172]], armR:[[646,67],[701,81],[703,145],[679,171]] };
+let SHAPES; try{ SHAPES=JSON.parse(localStorage.getItem('vsmShapes3')); }catch(e){}
+if(!SHAPES||!SHAPES.red) SHAPES=JSON.parse(JSON.stringify(SHAPE_DEF));
+const S=55, X=x=>(x-500)/S, Y=y=>(430-y)/S, R=v=>v/S;
+/* ---- Z-DISCIPLINE (audit 2026-07-28): the model is a shallow BAS-RELIEF, not scattered depth.
+   Every element lives in a ±0.7 band and its layer mirrors the 2D paint order, so the picture stays
+   coherent from any angle or zoom — edge-on it reads as one slab, not a cloud of floating parts. */
+const Z={ env:0, envLens:.30, feed:-.24, chan:0, unit:0, bars:0, eye:-.08, squiggle:0,
+          homeo:.58, arms:.62, alg:.58, label:.56 };
+const DEPTH={ bar:.95, tri:.85, unit:.55, env:1.5 };
 const rowY=i=>L.row0+i*L.rowH;
 
 const api={started:false};
 let renderer,scene,camera,raf,picker,canvas,onPick,sel=null;
-let sysMeshes={},chMeshes=[],unitMeshes=[],envMeshes=[];
-let yaw=-0.38, pitch=0.18, dist=21.5, target=new THREE.Vector3(X(505),Y(410),0);   // opening frame shows the FULL model S1→S5
+let sysMeshes={},chMeshes=[],unitMeshes=[],envMeshes=[],algMeshes=[],pulsePaths=[],pulses=[],flowOn=true,algOn=false,clock=0;
+const VIEW0={yaw:-0.38,pitch:0.18,dist:22.5,tx:-0.5,ty:-0.5};   // opening frame: the whole model, orbiting its true centroid
+let yaw=VIEW0.yaw, pitch=VIEW0.pitch, dist=VIEW0.dist, target=new THREE.Vector3(VIEW0.tx,VIEW0.ty,0);
 
-function mat(c,op){ return new THREE.MeshStandardMaterial({color:c,roughness:.6,metalness:.04,transparent:true,opacity:op==null?1:op}); }
-function label(text,color,w){ const c=document.createElement('canvas'); c.width=512; c.height=128;
+function mat(c,op){ const t=(op!=null&&op<1);
+  return new THREE.MeshStandardMaterial({color:c,roughness:.62,metalness:.03,transparent:t,opacity:op==null?1:op}); }
+/* opacity changes must flip .transparent with them, else depth sorting misplaces the geometry */
+function setOp(m,v){ if(!m||!m.material)return; m.material.opacity=v; m.material.transparent=(v<1); m.material.needsUpdate=true; }
+/* the 2D's own name wrapping (wrapName(nm,16)) so the 3D breaks lines the same way */
+function wrapName(nm,max){ const w=String(nm||'').split(/\s+/), out=[]; let cur='';
+  w.forEach(x=>{ const t=cur?cur+' '+x:x; if(t.length<=max){cur=t;} else { if(cur)out.push(cur); cur=x; } });
+  if(cur)out.push(cur);
+  if(out.length>2){ const rest=out.slice(1).join(' '); out.length=1; out.push(rest.length>max?rest.slice(0,max-1)+'…':rest); }
+  return out.length?out:['']; }
+/* a unit-name plate: dark ink on a soft white card, two lines, high-res — legible at workshop distance */
+function nameCanvas(nm){
+  /* printed ON the management box: the canvas IS the box face — opaque white ground, black ink, two lines */
+  const lines=wrapName(nm,18), c=document.createElement('canvas'), W=768,H=362;
+  c.width=W; c.height=H; const x=c.getContext('2d');
+  x.font='800 68px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillStyle='#000000';
+  if(lines.length===1) x.fillText(lines[0],W/2,H/2);
+  else { x.fillText(lines[0],W/2,H/2-40); x.fillText(lines[1],W/2,H/2+40); }
+  return c; }
+const faceZ=(d,bt)=>d/2+(bt==null?d*0.14:bt)+0.014;   // true outer surface of a bevelled extrusion
+function plate(canvas,w,h,z,opaque){
+  const tex=new THREE.CanvasTexture(canvas); tex.anisotropy=8;
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),
+    new THREE.MeshBasicMaterial({map:tex,transparent:!opaque,alphaTest:opaque?0:.04,depthWrite:!!opaque,
+      polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
+  m.position.z=z; m.renderOrder=12; return m; }
+function textCanvas(text,color,bg){ const c=document.createElement('canvas'),W=512,H=256; c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  if(bg){ x.fillStyle=bg; x.fillRect(0,0,W,H); }
+  x.font='800 132px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillStyle=color||'#ffffff'; x.fillText(text,W/2,H/2); return c; }
+function label(t,color,w){ const c=document.createElement('canvas'); c.width=512;c.height=128;
   const x=c.getContext('2d'); x.font='700 72px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
-  x.fillStyle=color||'#3a3f45'; x.fillText(text,256,64);
-  const t=new THREE.CanvasTexture(c); t.anisotropy=4;
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false}));
+  x.fillStyle=color||'#3a3f45'; x.fillText(t,256,64);
+  const tex=new THREE.CanvasTexture(c); tex.anisotropy=4;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:true,depthWrite:false}));
   sp.scale.set(w||2,(w||2)/4,1); sp.renderOrder=20; return sp; }
+
+/* ---- SHOE BOX: a real volume with softened edges, never an extruded sign ---- */
+function box3(w,h,d,colour){
+  const sh=new THREE.Shape(), rx=Math.min(w,h)*0.12;
+  sh.moveTo(-w/2+rx,-h/2); sh.lineTo(w/2-rx,-h/2); sh.quadraticCurveTo(w/2,-h/2,w/2,-h/2+rx);
+  sh.lineTo(w/2,h/2-rx); sh.quadraticCurveTo(w/2,h/2,w/2-rx,h/2); sh.lineTo(-w/2+rx,h/2);
+  sh.quadraticCurveTo(-w/2,h/2,-w/2,h/2-rx); sh.lineTo(-w/2,-h/2+rx); sh.quadraticCurveTo(-w/2,-h/2,-w/2+rx,-h/2);
+  const g=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:d*0.14,bevelSize:d*0.10,bevelSegments:3,curveSegments:8});
+  g.translate(0,0,-d/2); g.computeVertexNormals();
+  return new THREE.Mesh(g,mat(colour));
+}
 function bar3(cfg,colour,sysId,txt){ const g=new THREE.Group();
-  const m=new THREE.Mesh(new THREE.BoxGeometry(cfg.w/55,cfg.h/55,.34),mat(colour));
-  g.add(m); const l=label(txt,'#ffffff',1.1); l.position.set(0,0,.30); g.add(l);
-  g.position.set(X(cfg.x+cfg.w/2),Y(cfg.y+cfg.h/2),.1);
+  const m=box3(R(cfg.w),R(cfg.h),DEPTH.bar,colour); g.add(m);
+  const l=plate(textCanvas(txt,'#ffffff'),R(cfg.h)*1.1,R(cfg.h)*0.55,faceZ(DEPTH.bar)); g.add(l);
+  g.position.set(X(cfg.x+cfg.w/2),Y(cfg.y+cfg.h/2),0);
   g.userData={sys:sysId,mesh:m}; sysMeshes[sysId]=g; scene.add(g); return g; }
 function tri3(cx,topY,botY,colour,sysId,txt,pointDown){ const g=new THREE.Group();
-  const sh=new THREE.Shape();
-  const wHalf=30/55,h=(botY-topY)/55;
+  const wHalf=R(30), h=R(botY-topY), sh=new THREE.Shape();
   if(pointDown){ sh.moveTo(-wHalf,h/2); sh.lineTo(wHalf,h/2); sh.lineTo(0,-h/2); }
   else { sh.moveTo(-wHalf,-h/2); sh.lineTo(wHalf,-h/2); sh.lineTo(0,h/2); }
   sh.closePath();
-  const m=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.30,bevelEnabled:false}),mat(colour));
-  m.position.z=-.15; g.add(m);
-  const l=label(txt,'#ffffff',0.85); l.position.set(0,pointDown?h/2-.28:-h/2+.28,.32); g.add(l);
-  g.position.set(X(cx),Y((topY+botY)/2),.1); g.userData={sys:sysId,mesh:m}; sysMeshes[sysId]=g; scene.add(g); return g; }
+  const d=DEPTH.tri;
+  const geo=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:.09,bevelSize:.07,bevelSegments:3});
+  geo.translate(0,0,-d/2); geo.computeVertexNormals();
+  const m=new THREE.Mesh(geo,mat(colour)); g.add(m);
+  const l=plate(textCanvas(txt,'#ffffff'),.46,.23,faceZ(d,.09)); l.position.y=pointDown?h/2-.30:-h/2+.30; g.add(l);
+  g.position.set(X(cx),Y((topY+botY)/2),0); g.userData={sys:sysId,mesh:m}; sysMeshes[sysId]=g; scene.add(g); return g; }
+
+/* ---- POTATO: the 2D outline given real body — heavy bevel on both faces ---- */
+function potato(points2d,colour,op,depth,z,shell){
+  const sh=new THREE.Shape();
+  points2d.forEach((p,i)=>{ const px=X(p[0]), py=Y(p[1]); i?sh.lineTo(px,py):sh.moveTo(px,py); });
+  sh.closePath();
+  const d=depth||1.2;
+  const g=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:d*0.42,bevelSize:d*0.34,bevelSegments:6,curveSegments:10});
+  g.translate(0,0,-d/2); g.computeVertexNormals();
+  const mm=mat(colour,op==null?.55:op);
+  if(shell){ mm.depthWrite=false; mm.side=THREE.DoubleSide; }   // an enclosing body must not hide what it contains
+  const m=new THREE.Mesh(g,mm);
+  m.position.z=z||0; m.renderOrder=shell?-1:0; envMeshes.push(m); scene.add(m); return m;
+}
+/* the 2D's own outline generators, verbatim in maths so the silhouettes match */
+function blobPts(cx,cy,rx,ry,seed,amp){ amp=amp==null?1:amp; const n=16,p=[];
+  for(let i=0;i<n;i++){ const a=i/n*Math.PI*2;
+    const w=0.80+0.18*amp*Math.sin(seed*1.3+i*1.7)+0.07*amp*Math.cos(seed*0.7+i*2.3);
+    p.push([cx+Math.cos(a)*rx*w, cy+Math.sin(a)*ry*w]); } return p; }
+function envSilPts(cx,yTop,yBot,seed){ const H=yBot-yTop;
+  const prof=[[0,12],[0.07,62],[0.16,54],[0.27,38],[0.38,52],[0.54,62],[0.70,58],[0.85,52],[0.95,42],[1,20]];
+  const hw=t=>{ for(let i=0;i<prof.length-1;i++){ if(t<=prof[i+1][0]){ const a=prof[i],b=prof[i+1],u=(t-a[0])/(b[0]-a[0]); return a[1]+(b[1]-a[1])*u; } } return prof[prof.length-1][1]; };
+  const pts=[],n=15;
+  for(let i=0;i<=n;i++){ const t=i/n,y=yTop+t*H,w=hw(t)*(1+0.05*Math.sin(seed+i*1.9)); pts.push([cx+w,y]); }
+  for(let i=n;i>=0;i--){ const t=i/n,y=yTop+t*H,w=hw(t)*(1+0.05*Math.cos(seed*1.3+i*1.4)); pts.push([cx-w,y]); }
+  return pts; }
+
+/* ---- channels ---- */
 function seg(x1,y1,x2,y2,colour,w,z,ud){ const a=new THREE.Vector3(X(x1),Y(y1),z||0), b=new THREE.Vector3(X(x2),Y(y2),z||0);
   const dir=new THREE.Vector3().subVectors(b,a), len=dir.length(); if(len<1e-4)return null;
-  const m=new THREE.Mesh(new THREE.CylinderGeometry(w||.045,w||.045,len,8),mat(colour,.95));
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(w||.045,w||.045,len,10),mat(colour));
   m.position.copy(a).add(dir.clone().multiplyScalar(.5));
   m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());
-  m.userData=ud||{}; chMeshes.push(m); scene.add(m); return m; }
-function curve3(pts2d,colour,w,z,ud,dashed){ const pts=pts2d.map(p=>new THREE.Vector3(X(p[0]),Y(p[1]),z||0));
-  const cur=new THREE.CatmullRomCurve3(pts);
-  if(dashed){ /* dashes as short tube segments so the algedonic stays visibly a PULSE line */
-    const nSeg=Math.max(10,Math.round(cur.getLength()/.34));
-    for(let i=0;i<nSeg;i+=2){ const t0=i/nSeg,t1=Math.min(1,(i+1)/nSeg);
-      const sub=new THREE.TubeGeometry(new THREE.CatmullRomCurve3([cur.getPoint(t0),cur.getPoint((t0+t1)/2),cur.getPoint(t1)]),4,w||.05,6,false);
-      const m=new THREE.Mesh(sub,mat(colour)); m.userData=ud||{}; chMeshes.push(m); scene.add(m); }
-    return null; }
-  const m=new THREE.Mesh(new THREE.TubeGeometry(cur,32,w||.045,7,false),mat(colour,.95));
-  m.userData=ud||{}; chMeshes.push(m); scene.add(m); return m; }
-function blob3(cx,cy,rx,ry,colour,op,z){ const sh=new THREE.Shape(); const n=14;
-  for(let i=0;i<=n;i++){ const a=i/n*Math.PI*2, wob=1+0.16*Math.sin(a*3+cy)+0.09*Math.cos(a*5);
-    const px=Math.cos(a)*rx/55*wob, py=Math.sin(a)*ry/55*wob;
-    if(i===0)sh.moveTo(px,py); else sh.lineTo(px,py); }
-  sh.closePath();
-  const m=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.16,bevelEnabled:false}),mat(colour,op==null?.5:op));
-  m.position.set(X(cx),Y(cy),(z==null?-.35:z)); envMeshes.push(m); scene.add(m); return m; }
+  m.userData=ud||{}; chMeshes.push(m); scene.add(m);
+  if(ud&&ud.ch) pulsePaths.push({curve:new THREE.LineCurve3(a.clone(),b.clone()),colour,ud});
+  if(ud&&ud.ch==='g') algMeshes.push(m);
+  return m; }
+function tubeFrom(curve,colour,w,ud,dashed){
+  if(dashed){ const n=Math.max(12,Math.round(curve.getLength()/.30));
+    for(let i=0;i<n;i+=2){ const t0=i/n,t1=Math.min(1,(i+1)/n);
+      const c=new THREE.CatmullRomCurve3([curve.getPoint(t0),curve.getPoint((t0+t1)/2),curve.getPoint(t1)]);
+      const m=new THREE.Mesh(new THREE.TubeGeometry(c,4,w||.05,7,false),mat(colour));
+      m.userData=ud||{}; chMeshes.push(m); scene.add(m); if(ud&&ud.ch==='g')algMeshes.push(m); }
+    if(ud&&ud.ch) pulsePaths.push({curve,colour,ud}); return null; }
+  const m=new THREE.Mesh(new THREE.TubeGeometry(curve,48,w||.045,8,false),mat(colour));
+  m.userData=ud||{}; chMeshes.push(m); scene.add(m);
+  if(ud&&ud.ch) pulsePaths.push({curve,colour,ud});
+  if(ud&&ud.ch==='g') algMeshes.push(m);
+  return m; }
+/* the 2D's arrow markers, as cones on the curve's own tangent */
+function arrowAt(pos,tangent,colour,size,ud){
+  const s=size||.16;
+  const m=new THREE.Mesh(new THREE.ConeGeometry(s*.62,s*1.7,14),mat(colour));
+  m.position.copy(pos); m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),tangent.clone().normalize());
+  m.userData=ud||{}; chMeshes.push(m); scene.add(m); if(ud&&ud.ch==='g')algMeshes.push(m); return m; }
+function bez(pts,z){ return new THREE.CubicBezierCurve3(
+  new THREE.Vector3(X(pts[0][0]),Y(pts[0][1]),z||0), new THREE.Vector3(X(pts[1][0]),Y(pts[1][1]),z||0),
+  new THREE.Vector3(X(pts[2][0]),Y(pts[2][1]),z||0), new THREE.Vector3(X(pts[3][0]),Y(pts[3][1]),z||0)); }
+function poly(pts,z){ return new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(X(p[0]),Y(p[1]),z||0))); }
+function headed(curve,colour,w,ud,size){ tubeFrom(curve,colour,w,ud);
+  arrowAt(curve.getPoint(1),curve.getTangent(1),colour,size,ud); }
+/* channel c: the operational-dependency squiggle between consecutive operations (2D wave(), same maths) */
+function wavePts(x,y1,y2,amp){ const pts=[[x,y1]],steps=Math.max(3,Math.round((y2-y1)/12)); let dir=1;
+  for(let i=1;i<=steps;i++){ const y=y1+(y2-y1)*i/steps, ya=y1+(y2-y1)*(i-0.5)/steps;
+    pts.push([x+amp*dir,ya]); pts.push([x,y]); dir*=-1; } return pts; }
 
 function build(units){
   scene=new THREE.Scene();
-  scene.add(new THREE.HemisphereLight(0xffffff,0x99a5b0,1.25));
-  const key=new THREE.DirectionalLight(0xffffff,.7); key.position.set(3,6,9); scene.add(key);
+  scene.add(new THREE.HemisphereLight(0xffffff,0x9aa6b2,1.38));
+  const k1=new THREE.DirectionalLight(0xffffff,.71); k1.position.set(4,7,10); scene.add(k1);
+  const k2=new THREE.DirectionalLight(0xffffff,.32); k2.position.set(-6,3,-6); scene.add(k2);
   const N=Math.max(1,units.length), lastY=rowY(N-1);
 
-  /* environment — the amoeba chain + the green future cloud, exactly where the 2D puts them */
-  for(let i=0;i<N;i++) blob3(L.envX,rowY(i),43,86,COL.envBlob,.42);
-  blob3(L.envX,150,46,40,COL.envF,.75,-.30);
-  const envLbl=label('environment','#667482',2.2); envLbl.position.set(X(L.envX),Y(150)+1.4,0); scene.add(envLbl);
+  /* ENVIRONMENT — the surrounding body first, then the per-unit sub-environments, then the future cloud */
+  potato(envSilPts(L.envX,70,lastY+90,2),COL.envOuter,.26,DEPTH.env*1.9,Z.env,true);      // the surrounding environment: a shell
+  for(let i=0;i<N;i++) potato(blobPts(L.envX,rowY(i),40,80,i+3,0.6),COL.envBlob,.62,DEPTH.env*0.72,Z.env);   // sub-environments nested inside it
+  potato(blobPts(L.envX,150,42,36,7),COL.envF,.92,DEPTH.env*0.72,Z.env);                   // the future / unknown environment
+  const el=label('Environment','#667482',2.2); el.position.set(X(L.envX),Y(50),Z.env+DEPTH.env/2+.1); scene.add(el);
 
-  /* metasystem bars 5·4·3 with their spine segments (blue 5↔4, green 4↔3) on both command lines */
+  /* METASYSTEM bars + the two command-axis spines */
   bar3(L.s5,COL.s5,'S5','5'); bar3(L.s4,COL.s4,'S4','4'); bar3(L.s3,COL.s3,'S3','3');
   seg(L.cmdL,L.s5.y+L.s5.h,L.cmdL,L.s4.y,COL.s5,.05,0,{ch:'h5',sys:['S5','S4']});
   seg(L.cmdR,L.s5.y+L.s5.h,L.cmdR,L.s4.y,COL.s5,.05,0,{ch:'h5',sys:['S5','S4']});
   seg(L.cmdL,L.s4.y+L.s4.h,L.cmdL,L.s3.y,COL.s4,.055,0,{ch:'h34',sys:['S4','S3']});
   seg(L.cmdR,L.s4.y+L.s4.h,L.cmdR,L.s3.y,COL.s4,.055,0,{ch:'h34',sys:['S4','S3']});
-  /* the 3↔4 HOMEOSTAT — the two thick hooked arrows left of the bars, kept as in 2D */
-  curve3([[500,206],[468,194],[462,160],[478,134],[500,126]],COL.s3,.07,.28,{ch:'h34',sys:['S3','S4']});
-  curve3([[500,120],[470,130],[464,166],[480,196],[500,204]],COL.s4,.07,-.28,{ch:'h34',sys:['S4','S3']});
-  /* S4 ↔ future cloud — the thin green two-way eye */
-  curve3([[499,126],[451,107],[L.envX+96,107],[L.envX+48,126]],COL.s4,.035,.15,{ch:'s4env',sys:['S4']});
-  curve3([[L.envX+48,136],[L.envX+96,155],[451,155],[499,136]],COL.s4,.035,.15,{ch:'s4env',sys:['S4']});
-  /* S5 dampening arms flanking down toward 3* and 2 */
-  curve3([[500,65],[430,92],[380,160],[L.s3star.cx,L.s3star.topY-6]],COL.s5,.055,-.2,{ch:'h5',sys:['S5']});
-  curve3([[636,65],[706,92],[756,160],[L.s2.cx,L.s2.topY-6]],COL.s5,.055,-.2,{ch:'h5',sys:['S5']});
 
-  /* triangles: S3* inverted (left) — never forget — and S2 upward (right), with their S3 feed elbows */
+  /* 3–4 HOMEOSTAT — the authored beziers themselves: red and green stay on their OWN sides, with heads */
+  headed(bez(SHAPES.red,Z.homeo),COL.s3,.075,{ch:'h34',sys:['S3','S4']},.30);
+  headed(bez(SHAPES.green,Z.homeo),COL.s4,.075,{ch:'h34',sys:['S4','S3']},.30);
+  /* S5 dampening arms (no heads in 2D) */
+  tubeFrom(bez(SHAPES.armL,Z.arms),COL.s5,.06,{ch:'h5',sys:['S5']});
+  tubeFrom(bez(SHAPES.armR,Z.arms),COL.s5,.06,{ch:'h5',sys:['S5']});
+  /* S4 <-> future cloud: two thin green arcs, one head each */
+  headed(poly([[499,126],[470,110],[L.envX+96,107],[L.envX+48,126]],Z.envLens),COL.s4,.035,{ch:'s4env',sys:['S4']},.15);
+  headed(poly([[L.envX+48,136],[L.envX+96,155],[470,152],[499,136]],Z.envLens),COL.s4,.035,{ch:'s4env',sys:['S4']},.15);
+
+  /* S3* and S2 triangles + their S3 feed elbows */
   tri3(L.s3star.cx,L.s3star.topY,L.s3star.botY,COL.s3,'S3*','3*',true);
   tri3(L.s2.cx,L.s2.topY,L.s2.botY,COL.s2,'S2','2',false);
-  seg(520,216,L.s3star.cx,216,COL.s3,.055,-.1,{ch:'b',sys:['S3','S3*']});
-  seg(L.s3star.cx,216,L.s3star.cx,L.s3star.topY,COL.s3,.055,-.1,{ch:'b',sys:['S3','S3*']});
-  seg(616,216,L.s2.cx,216,COL.s2,.055,-.1,{ch:'f',sys:['S3','S2']});
-  seg(L.s2.cx,216,L.s2.cx,L.s2.topY,COL.s2,.055,-.1,{ch:'f',sys:['S3','S2']});
+  seg(520,216,L.s3star.cx,216,COL.s3,.055,Z.feed,{ch:'b',sys:['S3','S3*']});
+  seg(L.s3star.cx,216,L.s3star.cx,L.s3star.topY,COL.s3,.055,Z.feed,{ch:'b',sys:['S3','S3*']});
+  seg(616,216,L.s2.cx,216,COL.s2,.055,Z.feed,{ch:'f',sys:['S3','S2']});
+  seg(L.s2.cx,216,L.s2.cx,L.s2.topY,COL.s2,.055,Z.feed,{ch:'f',sys:['S3','S2']});
 
-  /* vertical channels exactly on their 2D lanes: command e (left red), resource bargain d (right red),
-     S3* audit b (left, with rungs into the circles), S2 coordination f (right, rungs into the squares) */
+  /* vertical channels on their 2D lanes */
   seg(L.cmdL,L.s3.y+L.s3.h,L.cmdL,lastY,COL.s3,.05,0,{ch:'e',sys:['S3']});
   seg(L.cmdR,L.s3.y+L.s3.h,L.cmdR,lastY,COL.s3,.05,0,{ch:'d',sys:['S3']});
   seg(L.s3star.cx,L.s3star.botY-2,L.s3star.cx,lastY,COL.s3,.045,0,{ch:'b',sys:['S3*']});
   seg(L.s2.cx,L.s2.botY,L.s2.cx,lastY,COL.s2,.05,0,{ch:'f',sys:['S2']});
 
-  /* S1 rows: white circle (operation) + white square (management) + local-environment eye loops */
+  /* channel c — operational dependencies: the yellow squiggle running between the operations */
+  for(let i=0;i<N-1;i++){
+    tubeFrom(poly(wavePts(L.circleX,rowY(i)+L.r,rowY(i+1)-L.r,4),Z.squiggle),COL.s2,.032,{ch:'c',sys:['S1']});
+  }
+  /* channel a — environmental overlaps: the amber lenses between neighbouring sub-environments */
+  for(let i=0;i<N-1;i++){ const ym=(rowY(i)+rowY(i+1))/2;
+    const m=new THREE.Mesh(new THREE.SphereGeometry(R(27),18,12),mat(COL.s2,.62));
+    m.scale.set(1,11/27,.62); m.position.set(X(L.envX),Y(ym),Z.envLens);
+    m.userData={ch:'a',sys:['S1']}; chMeshes.push(m); scene.add(m); }
+
+  /* S1 rows: operation circle + management square + the local environment eye loops */
   units.forEach((u,i)=>{ const y=rowY(i);
     seg(L.s3star.cx,y,463,y,COL.s3,.035,0,{ch:'b',sys:['S3*']});
     seg(621,y,L.s2.cx,y,COL.s2,.04,0,{ch:'f',sys:['S2']});
     const g=new THREE.Group();
-    const circ=new THREE.Mesh(new THREE.CylinderGeometry(L.r/55,L.r/55,.3,24),mat(COL.white));
+    const circ=new THREE.Mesh(new THREE.CylinderGeometry(R(L.r),R(L.r),DEPTH.unit,26),mat(COL.white));
     circ.rotation.x=Math.PI/2; circ.position.set(X(L.circleX),Y(y),0); g.add(circ);
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(L.r/55,.025,8,28),mat(COL.stroke));
-    ring.position.copy(circ.position); g.add(ring);
-    const sq=new THREE.Mesh(new THREE.BoxGeometry(L.sqW/55,L.sqH/55,.3),mat(COL.white));
-    sq.position.set(X(L.sqCx),Y(y),0); g.add(sq);
-    const edge=new THREE.LineSegments(new THREE.EdgesGeometry(sq.geometry),new THREE.LineBasicMaterial({color:COL.stroke}));
-    edge.position.copy(sq.position); g.add(edge);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(R(L.r),.028,10,30),mat(COL.stroke));
+    ring.position.copy(circ.position); ring.position.z=DEPTH.unit/2; g.add(ring);
+    const sq=box3(R(L.sqW),R(L.sqH),DEPTH.unit,COL.white); sq.position.set(X(L.sqCx),Y(y),Z.unit); g.add(sq);
     seg(515,y,L.sqCx-L.sqW/2,y,COL.stroke,.02,0,{sys:['S1']});
-    const nm=label(String(u).length>16?String(u).slice(0,15)+'…':String(u),'#3a3f45',2.1);
-    nm.position.set(X(L.sqCx),Y(y),.34); g.add(nm);
-    /* the env↔operation eye loop (blue in the shared diagram's channel 'a'-adjacent loops) */
-    curve3([[L.envX+46,y-8],[330,y-16],[L.circleX-L.r-4,y-6]],0x2a5f9e,.028,.1,{sys:['S1']});
-    curve3([[L.circleX-L.r-4,y+6],[330,y+16],[L.envX+46,y+8]],0x2a5f9e,.028,.1,{sys:['S1']});
+    const nm=plate(nameCanvas(u),R(L.sqW)*0.96,R(L.sqH)*0.90,0);                          // glyphs only — printed on the box face
+    nm.position.set(X(L.sqCx),Y(y),faceZ(DEPTH.unit)); g.add(nm);
+    headed(poly([[L.envX+46,y-8],[330,y-16],[L.circleX-L.r-6,y-6]],Z.eye),COL.eye,.028,{ch:'env',sys:['S1']},.11);
+    headed(poly([[L.circleX-L.r-6,y+6],[330,y+16],[L.envX+46,y+8]],Z.eye),COL.eye,.028,{ch:'env',sys:['S1']},.11);
     g.userData={sys:'S1'}; unitMeshes.push(g); scene.add(g);
   });
 
-  /* the ALGEDONIC line — anchored exactly as in 2D: from the last operation row, out right, straight up,
-     hooking into S5's right end. Dashed magenta. Never lost in space. */
-  curve3([[605,lastY],[736,lastY],[736,108],[700,90],[L.s5.x+L.s5.w-14,86]],COL.alg,.05,.22,{ch:'g',sys:['S5']},true);
+  /* ALGEDONIC — anchored exactly as in 2D, dashed, with its head landing on S5's right end */
+  const alg=poly([[605,lastY],[700,lastY],[736,lastY-30],[736,140],[720,100],[L.s5.x+L.s5.w-14,86]],Z.alg);
+  tubeFrom(alg,COL.alg,.05,{ch:'g',sys:['S5']},true);
+  arrowAt(alg.getPoint(1),alg.getTangent(1),COL.alg,.20,{ch:'g',sys:['S5']});
+  const dot=new THREE.Mesh(new THREE.SphereGeometry(R(4.5),12,10),mat(COL.alg));
+  dot.position.set(X(600),Y(lastY),Z.alg); dot.userData={ch:'g',sys:['S5']}; chMeshes.push(dot); scene.add(dot); algMeshes.push(dot);
 }
 
+/* ---- NEURAL FLOW: information travelling the channels as glowing pulses (additive, like a firing axon) ---- */
+function glowTex(){ const c=document.createElement('canvas'); c.width=c.height=64;
+  const x=c.getContext('2d'), g=x.createRadialGradient(32,32,0,32,32,32);
+  /* opaque hot core -> soft halo: reads as a travelling signal on the light workshop background
+     (additive blending would be invisible over white, so the pulse is drawn normally and tinted per channel) */
+  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.18,'rgba(255,255,255,.98)');
+  g.addColorStop(.42,'rgba(255,255,255,.55)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=g; x.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(c); }
+let GLOW=null;
+function buildPulses(){
+  GLOW=GLOW||glowTex();
+  pulsePaths.forEach(p=>{
+    const len=p.curve.getLength(); if(len<0.25)return;
+    const n=Math.max(1,Math.min(3,Math.round(len/2.2)));           // longer channels carry more signals
+    for(let i=0;i<n;i++){
+      const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW,color:p.colour,transparent:true,
+        depthWrite:false,depthTest:true,opacity:1}));
+      const sc=.42+Math.random()*.12; sp.scale.set(sc,sc,1); sp.renderOrder=16;
+      sp.userData={ch:p.ud.ch,sys:p.ud.sys||[]};
+      pulses.push({sp,curve:p.curve,t:(i/n)+Math.random()*.12,speed:(.10+Math.random()*.10)/Math.max(1,len/3.2),ud:p.ud});
+      scene.add(sp);
+    }
+  });
+}
+function stepPulses(dt){
+  const vis=flowOn&&document.body.classList.contains('view3d');
+  pulses.forEach(p=>{
+    const isAlg=p.ud.ch==='g';
+    const dim=(sel&&!(p.ud.sys||[]).includes(sel)) || (isAlg&&!algOn);
+    if(!vis||dim){ p.sp.visible=false; return; }
+    p.sp.visible=true;
+    p.t+=p.speed*dt; if(p.t>1)p.t-=1;
+    p.sp.position.copy(p.curve.getPoint(p.t));
+    /* fade in/out at the ends + a gentle heartbeat so it reads as a travelling signal, not a bead */
+    const edge=Math.min(p.t,1-p.t)*7, puls=.72+.28*Math.sin(clock*7+p.t*10);
+    p.sp.material.opacity=Math.max(0,Math.min(1,edge))*puls;
+    const s0=p.sp.userData.s0||(p.sp.userData.s0=p.sp.scale.x), k=s0*(.85+.3*puls);
+    p.sp.scale.set(k,k,1);
+  });
+}
 function fit(){ const st=canvas.parentElement, w=st.clientWidth, h=st.clientHeight;
   renderer.setSize(w,h,false); camera.aspect=w/Math.max(1,h); camera.updateProjectionMatrix(); }
 function place(){ camera.position.set(
@@ -811,11 +969,11 @@ function place(){ camera.position.set(
   camera.lookAt(target); }
 function applySel(){
   const on=id=>!sel||sel===id;
-  Object.entries(sysMeshes).forEach(([id,g])=>{ g.userData.mesh.material.opacity=on(id)?1:.15; });
-  chMeshes.forEach(c=>{ const sys=c.userData.sys||[];
-    c.material.opacity=(!sel||sys.includes(sel))?.95:.06; });
-  unitMeshes.forEach(g=>{ g.traverse(o=>{ if(o.material&&o.material.opacity!=null)o.material.opacity=sel?.3:1; }); });
-  envMeshes.forEach(m=>{ m.material.opacity=(!sel||sel==='S4')?(m.material.color.getHex()===COL.envF?.75:.42):.08; });
+  Object.entries(sysMeshes).forEach(([id,g])=>{ setOp(g.userData.mesh,on(id)?1:.15); });
+  chMeshes.forEach(c=>{ const sys=c.userData.sys||[]; setOp(c,(!sel||sys.includes(sel))?1:.06); });
+  unitMeshes.forEach(g=>{ g.traverse(o=>{ if(o.material&&o.material.opacity!=null)setOp(o,sel?.3:1); }); });
+  envMeshes.forEach(m=>{ setOp(m,(!sel||sel==='S4')?(m.userData.base||.5):.08); });
+  algMeshes.forEach(m=>{ m.visible=algOn; });
 }
 api.start=function({units,onPick:pick}){
   if(api.started)return; api.started=true; onPick=pick;
@@ -823,7 +981,10 @@ api.start=function({units,onPick:pick}){
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
   renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
   camera=new THREE.PerspectiveCamera(40,1,.1,300);
-  build(units); fit(); place(); applySel();
+  build(units);
+  envMeshes.forEach(m=>{ m.userData.base=m.material.opacity; });
+  buildPulses();
+  fit(); place(); applySel();
   picker=new THREE.Raycaster();
   let drag=false,px=0,py=0,moved=0;
   canvas.addEventListener('pointerdown',e=>{drag=true;moved=0;px=e.clientX;py=e.clientY;canvas.setPointerCapture(e.pointerId);});
@@ -837,17 +998,23 @@ api.start=function({units,onPick:pick}){
       for(const h of hits){ let o=h.object; while(o&&!(o.userData&&o.userData.sys))o=o.parent;
         if(o&&typeof o.userData.sys==='string'&&o.userData.sys!=='S1'){ onPick&&onPick(o.userData.sys); return; }
         if(o){ onPick&&onPick(null); return; } } } });
-  canvas.addEventListener('wheel',e=>{ e.preventDefault(); dist=Math.max(8,Math.min(34,dist*(e.deltaY>0?1.09:.92))); place(); },{passive:false});
+  canvas.addEventListener('wheel',e=>{ e.preventDefault(); dist=Math.max(8,Math.min(38,dist*(e.deltaY>0?1.09:.92))); place(); },{passive:false});
   addEventListener('resize',()=>{ if(document.body.classList.contains('view3d')){fit();place();} });
-  (function loop(){ raf=requestAnimationFrame(loop); if(document.body.classList.contains('view3d')) renderer.render(scene,camera); })();
+  let _last=performance.now();
+  (function loop(){ raf=requestAnimationFrame(loop);
+    const now=performance.now(), dt=Math.min(.05,(now-_last)/1000); _last=now;
+    if(document.body.classList.contains('view3d')){ clock+=dt; stepPulses(dt); renderer.render(scene,camera); } })();
 };
 api.select=function(sys){ sel=sys||null; if(api.started)applySel(); };
 api.highlightLoop=function(l){ if(!api.started)return;
   if(!l){ applySel(); return; }
-  chMeshes.forEach(c=>{ c.material.opacity=(c.userData.ch===l.ch)?1:.05; });
-  Object.values(sysMeshes).forEach(g=>{ g.userData.mesh.material.opacity=(l.sys||[]).includes(g.userData.sys)?1:.15; });
-  unitMeshes.forEach(g=>{ g.traverse(o=>{ if(o.material&&o.material.opacity!=null)o.material.opacity=.45; }); });
+  chMeshes.forEach(c=>{ setOp(c,(c.userData.ch===l.ch)?1:.05); });
+  Object.values(sysMeshes).forEach(g=>{ setOp(g.userData.mesh,(l.sys||[]).includes(g.userData.sys)?1:.15); });
+  unitMeshes.forEach(g=>{ g.traverse(o=>{ if(o.material&&o.material.opacity!=null)setOp(o,.45); }); });
 };
+api.resetView=function(){ yaw=VIEW0.yaw; pitch=VIEW0.pitch; dist=VIEW0.dist; target.set(VIEW0.tx,VIEW0.ty,0); if(api.started)place(); };
+api.setAlg=function(on){ algOn=!!on; if(api.started)applySel(); };
+api.setFlow=function(on){ flowOn=!!on; };
 api.resize=function(){ if(api.started){fit();place();} };
 window.__d3=api;
 </script>
