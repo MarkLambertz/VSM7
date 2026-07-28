@@ -63,12 +63,24 @@ body[data-skin="deck"] .hpill.attn{background:#2b1a18}
 .hpill .sep{color:var(--line-strong)}
 
 /* ---------- the split: diagram library (left) · bands (right) ---------- */
-.wrap{display:grid;grid-template-columns:minmax(320px,38%) minmax(0,1fr);gap:14px;align-items:start;flex:1;min-height:0}
-.diagram-card{position:sticky;top:0;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+.wrap{display:grid;grid-template-columns:minmax(360px,42%) minmax(0,1fr);gap:14px;align-items:start;flex:1;min-height:0}
+/* the diagram takes the FULL available height so the shared model renders S1→S5 at a readable size (PO 2026-07-25) */
+.diagram-card{position:sticky;top:8px;height:calc(100vh - 128px);min-height:460px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
 .diagram-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line)}
 .diagram-head b{font-size:12.5px}
 .diagram-head .hint{font-size:10.5px;color:var(--muted)}
-#vsmframe{width:100%;border:0;background:var(--surface);display:block;flex:1;min-height:420px}
+.viewseg{margin-left:auto;display:inline-flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden;flex:none}
+.viewseg button{border:0;background:var(--surface);padding:3px 11px;font-size:11.5px;font-weight:800;color:var(--muted)}
+.viewseg button.on{background:var(--blue);color:#fff}
+.viewseg button:not(:last-child){border-right:1px solid var(--line)}
+.stage{position:relative;flex:1;min-height:0}
+#vsmframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--surface);display:block}
+#three{position:absolute;inset:0;width:100%;height:100%;display:none;touch-action:none;cursor:grab}
+#three.on{display:block}
+#three:active{cursor:grabbing}
+body.view3d #vsmframe{visibility:hidden;pointer-events:none}
+.d3hint{position:absolute;left:10px;bottom:8px;z-index:3;font-size:10.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 8px;display:none}
+body.view3d .d3hint{display:block}
 .diagram-foot{padding:7px 12px;border-top:1px solid var(--line);font-size:10.5px;color:var(--muted);background:var(--surface-soft)}
 
 .bands{display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -141,6 +153,18 @@ body[data-skin="deck"] .pop .warnrow{background:#2b1a18;color:var(--red)}
 .pop .close{position:absolute;top:8px;right:9px;border:0;background:transparent;color:var(--muted);font-size:15px}
 .pop .jump{margin-top:9px;border:1px solid var(--line-strong);background:var(--surface);border-radius:7px;padding:5px 10px;font-size:11.5px;font-weight:700}
 .pop .jump:hover{border-color:var(--blue);color:var(--blue)}
+/* Steering Stats hover panel */
+.statspop{position:fixed;z-index:70;width:min(330px,92vw);max-height:min(70vh,560px);overflow:auto;border:1px solid var(--line-strong);border-radius:11px;background:var(--surface);box-shadow:0 16px 44px rgba(0,0,0,.22);padding:11px 13px;font-size:12px}
+.statspop h3{margin:0 0 2px;font-size:13.5px}
+.statspop .sub{font-size:10.5px;color:var(--muted);margin-bottom:8px;line-height:1.4}
+.statspop .grp{margin-top:9px}
+.statspop .grp>label{display:block;font-size:9.5px;font-weight:850;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:3px}
+.statspop .row{display:flex;align-items:baseline;gap:8px;padding:2px 0;border-bottom:1px dotted var(--line)}
+.statspop .row:last-child{border-bottom:0}
+.statspop .row .k{color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.statspop .row .v{margin-left:auto;font-weight:850;font-variant-numeric:tabular-nums;flex:none}
+.statspop .row.warn .v{color:var(--red)}
+.statspop .foot{margin-top:9px;font-size:10.5px;color:var(--muted);line-height:1.45;border-top:1px solid var(--line);padding-top:7px}
 @media (max-width:900px){ .wrap{grid-template-columns:minmax(0,1fr)} .diagram-card{position:static} }
 </style>
 </head>
@@ -162,9 +186,15 @@ body[data-skin="deck"] .pop .warnrow{background:#2b1a18;color:var(--red)}
     <div class="subbar" id="subbar"></div>
     <div class="wrap">
       <div class="diagram-card">
-        <div class="diagram-head"><b>Steering systems</b><span class="hint">click a system to focus its band</span></div>
-        <iframe id="vsmframe" title="VSM system diagram"></iframe>
-        <div class="diagram-foot">The shared VSM diagram — reused as-is. Selecting here filters the bands; selecting a band highlights here.</div>
+        <div class="diagram-head"><b>Steering systems</b><span class="hint">click a system to focus its band</span>
+          <span class="viewseg" id="viewSeg"><button data-view="2d" class="on">2D</button><button data-view="3d">3D</button></span>
+        </div>
+        <div class="stage">
+          <iframe id="vsmframe" title="VSM system diagram"></iframe>
+          <canvas id="three"></canvas>
+          <div class="d3hint">drag to orbit · scroll to zoom · click a system</div>
+        </div>
+        <div class="diagram-foot" id="dfoot">The shared VSM diagram — reused as-is. Selecting here filters the bands; selecting a band highlights here.</div>
       </div>
       <div class="bands" id="bands"></div>
     </div>
@@ -237,22 +267,38 @@ const ASPECTS={
 /* accountability = 7.2 RASIC A-holders per SCT (roles); a missing entry is an open gap */
 const ACC={ s1:'CEO', s2:'CEO', s3:'CEO', s4:'Director Legal', s5:'Head of Strategy',
   s7:'CFO', s8:'COO', s9:'COO', s11:null, s12:'CTO', s13:null, s14:null, s6:null, s10:'COO' };
-/* Step VI canonical loops with their variety verdict (rag) + the weakest check */
-const LOOPS=[
-  {id:'l1', name:'S5–S4/S3 · normative',        sys:['S5','S4','S3'], rag:'g', note:'closed'},
-  {id:'l2', name:'S5–S1 · algedonic',           sys:['S5'],           rag:'r', note:'informal only'},
-  {id:'l3', name:'S4–Environment · scanning',   sys:['S4'],           rag:'a', note:'synchronicity'},
-  {id:'l4', name:'S4–S3 · today vs tomorrow',   sys:['S4','S3'],      rag:'a', note:'capacity'},
-  {id:'l5', name:'S3–S1 · resource bargain',    sys:['S3'],           rag:'g', note:'closed'},
-  {id:'l6', name:'S3–S1 · command',             sys:['S3'],           rag:'g', note:'closed'},
-  {id:'l7', name:'S3*–S1 · audit',              sys:['S3*'],          rag:'r', note:'no closed loop'},
-  {id:'l8', name:'S2–S1 · coordination',        sys:['S2'],           rag:'a', note:'intelligibility'},
+/* ---- Step VI · 6.2 Communication Variety Checks — the canonical 7+1 vertical loops, VERBATIM in 6.2's shape ----
+   ratings = the four fixed criteria [capacity, clarity, synchronicity, closure]; 0=unrated 1=weak 2=caution 3=pass.
+   A loop's verdict is its WEAKEST criterion (the weakest link is the channel's real variety) — never an average.
+   vsmChannel = the token 6.2 already carries to light this loop up in the shared vsm.html diagram. */
+const CRIT=[
+  {k:'capacity',     label:'Capacity',     tip:'Requisite variety — can the channel carry enough variety, in time? (Ashby)'},
+  {k:'clarity',      label:'Clarity',      tip:'Is the message clear and understood end to end? (transduction)'},
+  {k:'synchronicity',label:'Synchronicity',tip:'Does its rhythm match the rate of change of the content?'},
+  {k:'closure',      label:'Closure',      tip:'Is the loop closed — is receipt and understanding confirmed?'},
 ];
+const LOOPS=[
+  {id:'l-s2s1',   sys:['S2'],           name:'S2–S1 coordination',              ratings:[3,3,2,3], note:'', ch:'f'},
+  {id:'l-s3s1i',  sys:['S3'],           name:'S3–S1 intervention',              ratings:[3,3,3,2], note:'', ch:'e'},
+  {id:'l-s3s1r',  sys:['S3'],           name:'S3–S1 resource bargain',          ratings:[2,3,3,3], note:'', ch:'d'},
+  {id:'l-s3star', sys:['S3*'],          name:'S3*–S1 real-life information',    ratings:[3,2,1,3], note:'Audit probe runs quarterly — the real-life picture is stale by the time it lands.', ch:'b'},
+  {id:'l-s4env',  sys:['S4'],           name:'S4–environment sensing',          ratings:[2,3,3,3], note:'', ch:'s4env'},
+  {id:'l-s4s3',   sys:['S4','S3'],      name:'S4–S3 strategy & planning',       ratings:[3,2,3,3], note:'', ch:'h34'},
+  {id:'l-s5n',    sys:['S5','S4','S3'], name:'S5–S4/S3 normative parameters',   ratings:[3,3,3,2], note:'', ch:'h5'},
+  {id:'l-s5alg',  sys:['S5'],           name:'S5–S1 algedonic signal',          ratings:[1,2,2,3], note:'Alarm path shares the routine reporting queue — it can saturate exactly when it matters.', ch:'g'},
+];
+/* weakest-link verdict: 1=weak→red · 2=caution→amber · 3=pass→green · 0/none→unrated grey */
+function loopVerdict(l){
+  const rated=(l.ratings||[]).filter(v=>v>0);
+  if(!rated.length) return {rag:'n', weakest:null, label:'not rated yet'};
+  const min=Math.min(...rated), i=(l.ratings||[]).indexOf(min);
+  return {rag:min===1?'r':min===2?'a':'g', weakest:CRIT[i]?CRIT[i].label:null, label:min===3?'closed':(CRIT[i]?CRIT[i].label.toLowerCase():'weak')};
+}
 const UNITS=['Industrial AI Copilot','Sovereign AI Assistant Platform','Public Sector AI Suite','Regulated Data & Model Platform','AI Assurance & Compliance Toolkit'];
 const CTX={sif:'EU AI Solutions SE', level:'R0'};
 
 /* ============================ STATE ============================ */
-const state={sel:null, lens:{instruments:true, accountability:true, channels:true}, collapsed:{}, s1:true};
+const state={sel:null, lens:{instruments:true, accountability:true, channels:true}, collapsed:{}, s1:true, loop:null, view:'2d'};
 
 /* ============================ DERIVATIONS (the honesty spine) ============================
    Everything below is COMPUTED from the canonical data — this page asserts nothing of its own. */
@@ -277,9 +323,42 @@ const loopsOf = sys => LOOPS.filter(l=>l.sys.includes(sys));
 function headline(){
   let orphans=0,gc=0,seats=0,redLoops=0,noAcc=0;
   SYSTEMS.forEach(s=>{ orphans+=orphansOf(s.id).length; gc+=gcOf(s.id).length; if(isEmptySeat(s.id))seats++; });
-  LOOPS.forEach(l=>{ if(l.rag==='r')redLoops++; });
+  LOOPS.forEach(l=>{ if(loopVerdict(l).rag==='r')redLoops++; });
   SCTS.forEach(s=>{ if(!ACC[s.id])noAcc++; });
   return {orphans,gc,seats,redLoops,noAcc};
+}
+/* ---- Steering Stats: aggregate ONLY what the seven steps actually hold. Never invent a number. ---- */
+function stats(){
+  const c=coveredIds(), rated=LOOPS.filter(l=>(l.ratings||[]).some(v=>v>0));
+  const instr=SYSTEMS.reduce((a,s)=>{const i=instrumentsOf(s.id);a.kpis+=i.kpis.length;a.art+=i.artifacts.length;a.tools+=i.tools.length;return a;},{kpis:0,art:0,tools:0});
+  const roles=new Set(Object.values(ACC).filter(Boolean));
+  const seats=SYSTEMS.filter(s=>isEmptySeat(s.id)).map(s=>s.id);
+  return [
+    {g:'Step I',   rows:[['Operative units (S1)', UNITS.length]]},
+    {g:'Steps III & V', rows:[
+      ['Success-critical tasks', SCTS.length],
+      ['… mapped to a system', SCTS.filter(s=>s.sys).length],
+      ['… still candidates', SCTS.filter(s=>s.state==='candidate').length],
+      ['… steered by an organ', SCTS.filter(s=>c.has(s.id)).length, SCTS.filter(s=>!c.has(s.id)).length?'warn':''],
+    ]},
+    {g:'Step 7.6', rows:[
+      ['Steering organs', ORGANS.length],
+      ['… algedonic lines', ORGANS.filter(o=>o.alg).length],
+      ['… steering no task', ORGANS.filter(o=>!o.alg&&!(o.covers||[]).length).length, ORGANS.some(o=>!o.alg&&!(o.covers||[]).length)?'warn':''],
+      ['Participants (max per organ)', ORGANS.reduce((m,o)=>Math.max(m,o.people||0),0)],
+    ]},
+    {g:'Step 7.2', rows:[
+      ['Distinct accountable roles', roles.size],
+      ['Tasks without an accountable', SCTS.filter(s=>!ACC[s.id]).length, SCTS.some(s=>!ACC[s.id])?'warn':''],
+    ]},
+    {g:'Step 7.3', rows:[['Metrics / KPIs', instr.kpis],['Artifacts', instr.art],['Tools & methods', instr.tools]]},
+    {g:'Step 6.2', rows:[
+      ['Canonical loops', LOOPS.length],
+      ['… rated', rated.length],
+      ['… weakest link is weak', LOOPS.filter(l=>loopVerdict(l).rag==='r').length, LOOPS.some(l=>loopVerdict(l).rag==='r')?'warn':''],
+    ]},
+    {g:'Coverage', rows:[['Systems with a designed seat', SYSTEMS.length-seats.length+' / '+SYSTEMS.length, seats.length?'warn':'']]},
+  ];
 }
 
 /* ============================ THE VSM DIAGRAM — REUSED AS A LIBRARY ============================
@@ -324,6 +403,7 @@ function renderSubbar(){
     lens('channels','Channel health','Show the Step VI variety verdict of the loops touching each system')+
     `<span class="divider"></span>`+
     `<button class="tog ${state.s1?'on':''}" data-s1="1" title="Show the operative units as context — this page is about the metasystem">S1 context</button>`+
+    `<button class="tog" id="statsBtn" data-stats="1" title="Everything the seven steps actually hold — hover">▦ Steering Stats</button>`+
     `<div class="hpill ${attn?'attn':''}" data-act="walk" title="What the canonical model says is still open">`+
       (h.orphans?`<span><b>${h.orphans}</b> unsteered SCT${h.orphans>1?'s':''}</span><span class="sep">·</span>`:'')+
       (h.noAcc?`<span><b>${h.noAcc}</b> without accountable</span><span class="sep">·</span>`:'')+
@@ -369,8 +449,10 @@ function slotLoops(sys){
   if(!state.lens.channels) return '';
   const list=loopsOf(sys);
   if(!list.length) return '';
-  return `<div class="slot"><h4>Channel health <span class="src">Step VI</span></h4><div class="loops">`+
-    list.map(l=>`<div class="loop"><span class="rag ${l.rag}"></span><span class="lname">${esc(l.name)}</span><span class="lnote">${esc(l.note)}</span></div>`).join('')+
+  return `<div class="slot"><h4>Channel health <span class="src">Step 6.2</span></h4><div class="loops">`+
+    list.map(l=>{const v=loopVerdict(l);
+      return `<div class="loop" data-loop="${esc(l.id)}" title="${esc(l.name)} — weakest: ${esc(v.label)}${l.note?' · '+esc(l.note):''}" style="cursor:pointer"><span class="rag ${v.rag}"></span><span class="lname">${esc(l.name)}</span><span class="lnote">${esc(v.label)}</span></div>`;
+    }).join('')+
     `</div></div>`;
 }
 function renderBands(){
@@ -403,16 +485,43 @@ function renderNote(){
 function render(){ renderSubbar(); renderBands(); renderNote(); }
 
 /* ============================ INTERACTION ============================ */
+/* ---- 2D (the shared vsm.html library) ⇄ 3D (Three.js scene over the SAME model) ---- */
+function setView(v){
+  state.view = v==='3d' ? '3d' : '2d';
+  document.body.classList.toggle('view3d', state.view==='3d');
+  $('#three').classList.toggle('on', state.view==='3d');
+  [...$('#viewSeg').children].forEach(b=>b.classList.toggle('on', b.dataset.view===state.view));
+  $('#dfoot').textContent = state.view==='3d'
+    ? 'A spatial reading of the same model — the metasystem stacked over its operative units. Same data, same selection.'
+    : 'The shared VSM diagram — reused as-is. Selecting here filters the bands; selecting a band highlights here.';
+  if(state.view==='3d'){ ensure3D().then(d=>{ if(d){ d.resize(); d.select(state.sel); } }); }
+  emit('view',{view:state.view});
+}
+let _d3p=null;
+function ensure3D(){ if(_d3p)return _d3p;
+  _d3p = (window.__d3 ? Promise.resolve(window.__d3)
+        : new Promise(res=>{ const t=setInterval(()=>{ if(window.__d3){clearInterval(t);res(window.__d3);} },40); setTimeout(()=>{clearInterval(t);res(window.__d3||null);},4000); }))
+        .then(d=>{ if(d&&!d.started){ d.start({systems:SYSTEMS, units:UNITS, onPick:sys=>selectBand(sys,{fromDiagram:true})}); } return d; });
+  return _d3p;
+}
 function selectBand(sys,opts){
   opts=opts||{};
   state.sel = state.sel===sys && !opts.fromDiagram ? null : sys;
-  render(); syncDiagram(); emit('select',{system:state.sel});
+  state.loop=null;
+  render(); syncDiagram(); if(window.__d3)window.__d3.select(state.sel); emit('select',{system:state.sel});
   if(opts.fromDiagram&&state.sel){ const el=document.querySelector(`.band[data-band="${CSS.escape(state.sel)}"]`); if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'}); }
 }
 document.addEventListener('click',e=>{
   const lens=e.target.closest('[data-lens]'); if(lens){ state.lens[lens.dataset.lens]=!state.lens[lens.dataset.lens]; render(); return; }
   const s1=e.target.closest('[data-s1]'); if(s1){ state.s1=!state.s1; render(); return; }
   const hb=e.target.closest('[data-headband]'); if(hb){ selectBand(hb.dataset.headband); return; }
+  const vw=e.target.closest('[data-view]'); if(vw){ setView(vw.dataset.view); return; }
+  /* a loop chip lights its OWN channel in the shared diagram — 6.2 already stores which one (vsmChannel) */
+  const lp=e.target.closest('[data-loop]'); if(lp){ const l=LOOPS.find(x=>x.id===lp.dataset.loop);
+    if(l){ state.loop = state.loop===l.id ? null : l.id;
+      if(state.loop){ vsmSend({cmd:'highlight',els:[l.ch]}); if(window.__d3)window.__d3.highlightLoop(l); }
+      else { syncDiagram(); if(window.__d3)window.__d3.highlightLoop(null); } }
+    return; }
   const sct=e.target.closest('[data-sct]'); if(sct){ popSct(sct.dataset.sct,sct); return; }
   const org=e.target.closest('[data-organ]'); if(org){ popOrgan(org.dataset.organ,org); return; }
   if(e.target.closest('[data-act="walk"]')){ walkOpen(); return; }
@@ -449,6 +558,28 @@ function popOrgan(id,anchor){
              :`<div class="warnrow">This organ steers no success-critical task. What would happen if it were abolished?</div>`)}
     <button class="jump" data-close="1">Open the charter in 7.6 →</button>`,anchor);
 }
+/* ---- Steering Stats: hover panel, aggregated from the canonical model only ---- */
+let _statsT=null;
+function showStats(anchor){
+  hideStats();
+  const d=document.createElement('div'); d.className='statspop'; d.id='statspop';
+  d.innerHTML=`<h3>Steering Stats</h3><div class="sub">${esc(CTX.sif)} · ${esc(CTX.level)} — everything the seven steps actually hold. Nothing here is estimated.</div>`+
+    stats().map(g=>`<div class="grp"><label>${esc(g.g)}</label>`+
+      g.rows.map(r=>`<div class="row ${r[2]||''}"><span class="k">${esc(r[0])}</span><span class="v">${esc(r[1])}</span></div>`).join('')+
+    `</div>`).join('')+
+    `<div class="foot">Counts come from Step I units, Step III/V tasks, 7.6 organs, 7.2 accountability, 7.3 instruments and 6.2 loop ratings. Empty means not yet captured — never a score.</div>`;
+  document.body.appendChild(d);
+  const r=anchor.getBoundingClientRect(), w=d.offsetWidth, h=d.offsetHeight;
+  d.style.left=Math.min(Math.max(8,r.left), innerWidth-w-8)+'px';
+  d.style.top=(r.bottom+8+h>innerHeight ? Math.max(8,r.top-h-8) : r.bottom+8)+'px';
+  d.addEventListener('mouseenter',()=>clearTimeout(_statsT));
+  d.addEventListener('mouseleave',()=>{_statsT=setTimeout(hideStats,160);});
+}
+function hideStats(){ const p=$('#statspop'); if(p)p.remove(); }
+document.addEventListener('mouseover',e=>{ const b=e.target.closest('[data-stats]'); if(b){ clearTimeout(_statsT); showStats(b); } });
+document.addEventListener('mouseout',e=>{ const b=e.target.closest('[data-stats]');
+  if(b && !(e.relatedTarget&&e.relatedTarget.closest&&e.relatedTarget.closest('#statspop'))){ _statsT=setTimeout(hideStats,160); } });
+
 function walkOpen(){
   const first=SYSTEMS.find(s=>orphansOf(s.id).length)||SYSTEMS.find(s=>gcOf(s.id).length);
   if(first){ selectBand(first.id,{fromDiagram:true}); }
@@ -512,6 +643,138 @@ window.addEventListener('message',e=>{ const m=e.data; if(!m||typeof m!=='object
   render();
   emit('ready',{});
 })();
+</script>
+
+<!-- ============================ 3D VIEW (Three.js, vendored locally — no CDN, the app stays browser-shareable offline)
+     A SPATIAL reading of the very same model: the metasystem stacked S5→S4→S3 over its operative units, S3* and S2
+     on their own flanks, the environment as a body to the side. It never replaces the perfected 2D diagram — the
+     2D/3D switch chooses the reading. Colour grammar is the locked VSM one. Orbit is hand-rolled (no extra deps). -->
+<script type="module">
+import * as THREE from './vendor/three.module.min.js';
+
+const C={S1:0x34404c,S2:0xefbd45,S3:0xdf6353,'S3*':0xb85045,S4:0x63b16c,S5:0x9dbed2,env:0xc2d2d9,line:0x9aa7b0,alg:0xc0399f};
+const api={started:false};
+let renderer,scene,camera,raf,picker,canvas,onPick,groups={},unitMeshes=[],channels=[],envMesh,sel=null;
+let yaw=-0.62, pitch=0.30, dist=15.4, target=new THREE.Vector3(0,0.6,0);
+
+function label(text,color,w=2.0){                       // crisp canvas sprite label
+  const c=document.createElement('canvas'), s=256; c.width=s*2; c.height=s/2;
+  const x=c.getContext('2d'); x.fillStyle='rgba(0,0,0,0)'; x.fillRect(0,0,c.width,c.height);
+  x.font='700 78px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillStyle=color||'#1f2935'; x.fillText(text,c.width/2,c.height/2);
+  const t=new THREE.CanvasTexture(c); t.anisotropy=4;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false}));
+  sp.scale.set(w,w/4,1); sp.renderOrder=10; return sp;
+}
+function slab(w,h,d,colour,op){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),
+    new THREE.MeshStandardMaterial({color:colour,roughness:.55,metalness:.05,transparent:true,opacity:op==null?1:op}));
+  m.castShadow=m.receiveShadow=false; return m;
+}
+function tube(a,b,colour,r){
+  const dir=new THREE.Vector3().subVectors(b,a), len=dir.length();
+  const g=new THREE.CylinderGeometry(r||0.035,r||0.035,len,8);
+  const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:colour,roughness:.6,transparent:true,opacity:.85}));
+  m.position.copy(a).add(dir.clone().multiplyScalar(.5));
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());
+  return m;
+}
+function build(systems,units){
+  scene=new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff,0x8899aa,1.15));
+  const key=new THREE.DirectionalLight(0xffffff,.85); key.position.set(4,8,6); scene.add(key);
+
+  /* the metasystem: S5 on top, S4, S3 — the vertical command axis */
+  const stackY={S5:4.5,S4:3.3,S3:2.1};
+  ['S5','S4','S3'].forEach(id=>{
+    const g=new THREE.Group(); const m=slab(4.2,.62,2.0,C[id]); g.add(m);
+    const l=label(id,'#ffffff',1.5); l.position.set(0,0,1.06); g.add(l);
+    g.position.set(0,stackY[id],0); g.userData={sys:id,mesh:m}; groups[id]=g; scene.add(g);
+  });
+  /* S3* audit on its own flank (never folded into S3) and S2 coordination on the other */
+  [['S3*',-3.5,1.75],['S2',3.5,1.75]].forEach(([id,x,y])=>{
+    const g=new THREE.Group();
+    const m=new THREE.Mesh(new THREE.ConeGeometry(.78,1.25,4),
+      new THREE.MeshStandardMaterial({color:C[id],roughness:.5,transparent:true,opacity:1}));
+    m.rotation.y=Math.PI/4; if(id==='S3*')m.rotation.z=Math.PI; g.add(m);
+    const l=label(id,'#ffffff',1.35); l.position.set(0,id==='S3*'?-.95:.95,0); g.add(l);
+    g.position.set(x,y,0); g.userData={sys:id,mesh:m}; groups[id]=g; scene.add(g);
+  });
+  /* S1 operative units — the value-creating row the whole metasystem exists for */
+  const n=Math.max(1,units.length), span=Math.min(9,1.9*n), step=n>1?span/(n-1):0;
+  units.forEach((u,i)=>{
+    const x=n>1?(-span/2+i*step):0;
+    const g=new THREE.Group(); const m=slab(1.35,.85,1.35,C.S1); g.add(m);
+    const l=label(String(u).split(' ')[0],'#eaf1f6',1.25); l.position.set(0,.72,0); g.add(l);
+    g.position.set(x,.1,0); g.userData={sys:'S1',unit:u,mesh:m}; unitMeshes.push(g); scene.add(g);
+    /* vertical channels: S3 command + resource bargain (red), S2 coordination (amber), S3* audit (dark red) */
+    const top=new THREE.Vector3(x,.55,0);
+    channels.push(addCh(new THREE.Vector3(x*.35,stackY.S3-.3,0),top,C.S3,['S3'],'d'));
+    channels.push(addCh(new THREE.Vector3(3.5,1.3,.45),new THREE.Vector3(x,.35,.45),C.S2,['S2'],'f'));
+    channels.push(addCh(new THREE.Vector3(-3.5,1.3,-.45),new THREE.Vector3(x,.35,-.45),C['S3*'],['S3*'],'b'));
+  });
+  /* the environment — the variety the whole system must absorb */
+  envMesh=new THREE.Mesh(new THREE.IcosahedronGeometry(2.5,1),
+    new THREE.MeshStandardMaterial({color:C.env,roughness:.9,transparent:true,opacity:.30,flatShading:true}));
+  envMesh.position.set(-7.4,2.1,0); envMesh.userData={sys:'ENV'}; scene.add(envMesh);
+  const el=label('environment','#667482',2.2); el.position.set(-7.4,4.9,0); scene.add(el);
+  /* S4 senses the environment (green), S5 holds the normative arms (blue) */
+  channels.push(addCh(new THREE.Vector3(-5.2,2.6,0),new THREE.Vector3(-2.1,stackY.S4,0),C.S4,['S4'],'s4env'));
+  channels.push(addCh(new THREE.Vector3(-2.1,stackY.S5,0),new THREE.Vector3(-2.1,stackY.S3,0),C.S5,['S5'],'h5'));
+  channels.push(addCh(new THREE.Vector3(2.1,stackY.S4,0),new THREE.Vector3(2.1,stackY.S3,0),C.S4,['S4','S3'],'h34'));
+  /* algedonic: the red hotline straight from the floor to S5 */
+  channels.push(addCh(new THREE.Vector3(span/2+1.1,.35,0),new THREE.Vector3(span/2+1.1,stackY.S5,0),C.alg,['S5'],'g',.028));
+}
+function addCh(a,b,colour,sys,ch,r){ const m=tube(a,b,colour,r); m.userData={ch,sys}; scene.add(m); return m; }
+
+function fit(){ const st=canvas.parentElement, w=st.clientWidth, h=st.clientHeight;
+  renderer.setSize(w,h,false); camera.aspect=w/Math.max(1,h); camera.updateProjectionMatrix(); }
+function place(){ camera.position.set(
+    target.x+dist*Math.cos(pitch)*Math.sin(yaw), target.y+dist*Math.sin(pitch), target.z+dist*Math.cos(pitch)*Math.cos(yaw));
+  camera.lookAt(target); }
+function applySel(){
+  const on=id=>!sel||sel===id;
+  Object.entries(groups).forEach(([id,g])=>{ const m=g.userData.mesh; m.material.opacity=on(id)?1:.16; m.material.needsUpdate=true; });
+  unitMeshes.forEach(g=>{ g.userData.mesh.material.opacity=sel?.28:1; });
+  channels.forEach(c=>{ c.material.opacity=(!sel||(c.userData.sys||[]).includes(sel))?.85:.07; });
+  if(envMesh) envMesh.material.opacity=(!sel||sel==='S4')?.30:.08;
+}
+api.start=function({systems,units,onPick:pick}){
+  if(api.started)return; api.started=true; onPick=pick;
+  canvas=document.getElementById('three');
+  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  camera=new THREE.PerspectiveCamera(42,1,.1,200);
+  build(systems,units); fit(); place(); applySel();
+  picker=new THREE.Raycaster();
+  /* hand-rolled orbit — no OrbitControls dependency */
+  let drag=false,px=0,py=0,moved=0;
+  canvas.addEventListener('pointerdown',e=>{drag=true;moved=0;px=e.clientX;py=e.clientY;canvas.setPointerCapture(e.pointerId);});
+  canvas.addEventListener('pointermove',e=>{ if(!drag)return; const dx=e.clientX-px,dy=e.clientY-py; px=e.clientX;py=e.clientY;
+    moved+=Math.abs(dx)+Math.abs(dy); yaw-=dx*.006; pitch=Math.max(-.25,Math.min(1.25,pitch+dy*.005)); place(); });
+  canvas.addEventListener('pointerup',e=>{ drag=false;
+    if(moved<4){                                        // a click, not a drag → pick a system
+      const r=canvas.getBoundingClientRect();
+      const nd=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1);
+      picker.setFromCamera(nd,camera);
+      const hits=picker.intersectObjects(scene.children,true);
+      for(const h of hits){ let o=h.object; while(o&&!o.userData.sys)o=o.parent;
+        if(o&&o.userData.sys&&o.userData.sys!=='S1'&&o.userData.sys!=='ENV'){ onPick&&onPick(o.userData.sys); break; }
+        if(o&&(o.userData.sys==='S1'||o.userData.sys==='ENV')){ onPick&&onPick(null); break; } }
+    } });
+  canvas.addEventListener('wheel',e=>{ e.preventDefault(); dist=Math.max(7,Math.min(30,dist*(e.deltaY>0?1.09:.92))); place(); },{passive:false});
+  addEventListener('resize',()=>{ if(document.body.classList.contains('view3d')){fit();place();} });
+  (function loop(){ raf=requestAnimationFrame(loop); if(document.body.classList.contains('view3d')) renderer.render(scene,camera); })();
+};
+api.select=function(sys){ sel=sys||null; if(api.started)applySel(); };
+api.highlightLoop=function(l){ if(!api.started)return;
+  if(!l){ applySel(); return; }
+  channels.forEach(c=>{ c.material.opacity=(c.userData.ch===l.ch)?1:.05; });
+  Object.values(groups).forEach(g=>{ g.userData.mesh.material.opacity=(l.sys||[]).includes(g.userData.sys)?1:.16; });
+  unitMeshes.forEach(g=>{ g.userData.mesh.material.opacity=.5; });
+};
+api.resize=function(){ if(api.started){fit();place();} };
+window.__d3=api;
 </script>
 </body>
 </html>
