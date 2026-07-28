@@ -432,10 +432,11 @@ function slotInstruments(sys){
   if(!state.lens.instruments) return '';
   const a=instrumentsOf(sys), n=a.kpis.length+a.artifacts.length+a.tools.length;
   if(!n) return `<div class="slot"><h4>Instruments <span class="src">7.3</span></h4><div class="empty">No metrics, artifacts or tools captured for this system's tasks yet.</div></div>`;
-  const tag=(k,v)=>`<span class="itag"><i>${k}</i>${esc(clip(v,20))}</span>`;
-  return `<div class="slot"><h4>Instruments <span class="src">7.3</span></h4><div class="instr">`+
-    a.kpis.map(v=>tag('KPI',v)).join('')+a.artifacts.map(v=>tag('ART',v)).join('')+a.tools.map(v=>tag('TOOL',v)).join('')+
-    `</div></div>`;
+  /* counts only (PO 2026-07-28); the names live in a hover layover that scrolls when extensive */
+  const cnt=(k,v)=>v?`<span class="itag"><i>${v}</i>${k}</span>`:'';
+  return `<div class="slot" data-instr="${esc(sys)}" style="cursor:help"><h4>Instruments <span class="src">7.3</span></h4><div class="instr">`+
+    cnt('KPIs',a.kpis.length)+cnt('Artifacts',a.artifacts.length)+cnt('Tools',a.tools.length)+
+    `</div><div class="empty" style="margin-top:5px">hover for the full list</div></div>`;
 }
 function slotAcct(sys){
   if(!state.lens.accountability) return '';
@@ -501,7 +502,7 @@ let _d3p=null;
 function ensure3D(){ if(_d3p)return _d3p;
   _d3p = (window.__d3 ? Promise.resolve(window.__d3)
         : new Promise(res=>{ const t=setInterval(()=>{ if(window.__d3){clearInterval(t);res(window.__d3);} },40); setTimeout(()=>{clearInterval(t);res(window.__d3||null);},4000); }))
-        .then(d=>{ if(d&&!d.started){ d.start({systems:SYSTEMS, units:UNITS, onPick:sys=>selectBand(sys,{fromDiagram:true})}); } return d; });
+        .then(d=>{ if(d&&!d.started){ d.start({units:UNITS, onPick:sys=>selectBand(sys,{fromDiagram:true})}); } return d; });
   return _d3p;
 }
 function selectBand(sys,opts){
@@ -576,9 +577,26 @@ function showStats(anchor){
   d.addEventListener('mouseleave',()=>{_statsT=setTimeout(hideStats,160);});
 }
 function hideStats(){ const p=$('#statspop'); if(p)p.remove(); }
-document.addEventListener('mouseover',e=>{ const b=e.target.closest('[data-stats]'); if(b){ clearTimeout(_statsT); showStats(b); } });
-document.addEventListener('mouseout',e=>{ const b=e.target.closest('[data-stats]');
+document.addEventListener('mouseover',e=>{ const b=e.target.closest('[data-stats]'); if(b){ clearTimeout(_statsT); showStats(b); return; }
+  const ins=e.target.closest('[data-instr]'); if(ins){ clearTimeout(_statsT); showInstr(ins.dataset.instr,ins); } });
+document.addEventListener('mouseout',e=>{ const b=e.target.closest('[data-stats],[data-instr]');
   if(b && !(e.relatedTarget&&e.relatedTarget.closest&&e.relatedTarget.closest('#statspop'))){ _statsT=setTimeout(hideStats,160); } });
+/* the Instruments layover: full names grouped, scrollable when the list gets long (real projects will be) */
+function showInstr(sys,anchor){
+  hideStats();
+  const a=instrumentsOf(sys), sName=sysOf(sys)?sysOf(sys).epithet:sys;
+  const grp=(lab,items)=>items.length?`<div class="grp"><label>${esc(lab)} (${items.length})</label>`+
+      items.map(v=>`<div class="row"><span class="k">${esc(v)}</span></div>`).join('')+`</div>`:'';
+  const d=document.createElement('div'); d.className='statspop'; d.id='statspop';
+  d.innerHTML=`<h3>Instruments · ${esc(sys)}</h3><div class="sub">${esc(sName)} — the metrics, artifacts and tools its success-critical tasks carry (7.3).</div>`+
+    grp('Metrics / KPIs',a.kpis)+grp('Artifacts',a.artifacts)+grp('Tools & methods',a.tools);
+  document.body.appendChild(d);
+  const r=anchor.getBoundingClientRect(), w=d.offsetWidth, h=d.offsetHeight;
+  d.style.left=Math.min(Math.max(8,r.left), innerWidth-w-8)+'px';
+  d.style.top=(r.bottom+8+h>innerHeight ? Math.max(8,r.top-h-8) : r.bottom+8)+'px';
+  d.addEventListener('mouseenter',()=>clearTimeout(_statsT));
+  d.addEventListener('mouseleave',()=>{_statsT=setTimeout(hideStats,160);});
+}
 
 function walkOpen(){
   const first=SYSTEMS.find(s=>orphansOf(s.id).length)||SYSTEMS.find(s=>gcOf(s.id).length);
@@ -652,80 +670,139 @@ window.addEventListener('message',e=>{ const m=e.data; if(!m||typeof m!=='object
 <script type="module">
 import * as THREE from './vendor/three.module.min.js';
 
-const C={S1:0x34404c,S2:0xefbd45,S3:0xdf6353,'S3*':0xb85045,S4:0x63b16c,S5:0x9dbed2,env:0xc2d2d9,line:0x9aa7b0,alg:0xc0399f};
-const api={started:false};
-let renderer,scene,camera,raf,picker,canvas,onPick,groups={},unitMeshes=[],channels=[],envMesh,sel=null;
-let yaw=-0.62, pitch=0.30, dist=15.4, target=new THREE.Vector3(0,0.6,0);
+/* ============================ 3D = A FAITHFUL TRANSFER OF THE 2D DIAGRAM ============================
+   No new visual language (PO 2026-07-28): the scene reproduces vsm.html's OWN layout constants —
+   same positions, same shapes (bars, triangles, circles+squares, environment amoeba, future cloud),
+   same channel routing incl. the S3–S4 homeostat and the ANCHORED algedonic path — just with depth.
+   2D SVG coords (x right, y down) map to 3D via X=(x-500)/55, Y=(430-y)/55; z = thin layer lanes. */
+const L={W:900,metaCx:568,
+  s5:{x:493,w:150,y:42,h:46}, s4:{x:493,w:150,y:112,h:38}, s3:{x:493,w:150,y:194,h:48},
+  s3star:{cx:360,topY:230,botY:285}, s2:{cx:748,topY:230,botY:285},
+  circleX:490,r:25, sqCx:568,sqW:102,sqH:48, cmdL:561,cmdR:575,
+  envX:200, row0:332, rowH:112};
+const COL={s5:0xA0C0D5,s4:0x7BCA79,s3:0xFF5534,s2:0xFFCC50,envF:0x9BC799,envBlob:0x919CA4,stroke:0x9A9A9A,alg:0xC0399F,white:0xffffff,ink:0x3a3f45};
+const X=x=>(x-500)/55, Y=y=>(430-y)/55;
+const rowY=i=>L.row0+i*L.rowH;
 
-function label(text,color,w=2.0){                       // crisp canvas sprite label
-  const c=document.createElement('canvas'), s=256; c.width=s*2; c.height=s/2;
-  const x=c.getContext('2d'); x.fillStyle='rgba(0,0,0,0)'; x.fillRect(0,0,c.width,c.height);
-  x.font='700 78px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
-  x.fillStyle=color||'#1f2935'; x.fillText(text,c.width/2,c.height/2);
+const api={started:false};
+let renderer,scene,camera,raf,picker,canvas,onPick,sel=null;
+let sysMeshes={},chMeshes=[],unitMeshes=[],envMeshes=[];
+let yaw=-0.38, pitch=0.18, dist=21.5, target=new THREE.Vector3(X(505),Y(410),0);   // opening frame shows the FULL model S1→S5
+
+function mat(c,op){ return new THREE.MeshStandardMaterial({color:c,roughness:.6,metalness:.04,transparent:true,opacity:op==null?1:op}); }
+function label(text,color,w){ const c=document.createElement('canvas'); c.width=512; c.height=128;
+  const x=c.getContext('2d'); x.font='700 72px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillStyle=color||'#3a3f45'; x.fillText(text,256,64);
   const t=new THREE.CanvasTexture(c); t.anisotropy=4;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false}));
-  sp.scale.set(w,w/4,1); sp.renderOrder=10; return sp;
-}
-function slab(w,h,d,colour,op){
-  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),
-    new THREE.MeshStandardMaterial({color:colour,roughness:.55,metalness:.05,transparent:true,opacity:op==null?1:op}));
-  m.castShadow=m.receiveShadow=false; return m;
-}
-function tube(a,b,colour,r){
-  const dir=new THREE.Vector3().subVectors(b,a), len=dir.length();
-  const g=new THREE.CylinderGeometry(r||0.035,r||0.035,len,8);
-  const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:colour,roughness:.6,transparent:true,opacity:.85}));
+  sp.scale.set(w||2,(w||2)/4,1); sp.renderOrder=20; return sp; }
+function bar3(cfg,colour,sysId,txt){ const g=new THREE.Group();
+  const m=new THREE.Mesh(new THREE.BoxGeometry(cfg.w/55,cfg.h/55,.34),mat(colour));
+  g.add(m); const l=label(txt,'#ffffff',1.1); l.position.set(0,0,.30); g.add(l);
+  g.position.set(X(cfg.x+cfg.w/2),Y(cfg.y+cfg.h/2),.1);
+  g.userData={sys:sysId,mesh:m}; sysMeshes[sysId]=g; scene.add(g); return g; }
+function tri3(cx,topY,botY,colour,sysId,txt,pointDown){ const g=new THREE.Group();
+  const sh=new THREE.Shape();
+  const wHalf=30/55,h=(botY-topY)/55;
+  if(pointDown){ sh.moveTo(-wHalf,h/2); sh.lineTo(wHalf,h/2); sh.lineTo(0,-h/2); }
+  else { sh.moveTo(-wHalf,-h/2); sh.lineTo(wHalf,-h/2); sh.lineTo(0,h/2); }
+  sh.closePath();
+  const m=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.30,bevelEnabled:false}),mat(colour));
+  m.position.z=-.15; g.add(m);
+  const l=label(txt,'#ffffff',0.85); l.position.set(0,pointDown?h/2-.28:-h/2+.28,.32); g.add(l);
+  g.position.set(X(cx),Y((topY+botY)/2),.1); g.userData={sys:sysId,mesh:m}; sysMeshes[sysId]=g; scene.add(g); return g; }
+function seg(x1,y1,x2,y2,colour,w,z,ud){ const a=new THREE.Vector3(X(x1),Y(y1),z||0), b=new THREE.Vector3(X(x2),Y(y2),z||0);
+  const dir=new THREE.Vector3().subVectors(b,a), len=dir.length(); if(len<1e-4)return null;
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(w||.045,w||.045,len,8),mat(colour,.95));
   m.position.copy(a).add(dir.clone().multiplyScalar(.5));
   m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());
-  return m;
-}
-function build(systems,units){
-  scene=new THREE.Scene();
-  scene.add(new THREE.HemisphereLight(0xffffff,0x8899aa,1.15));
-  const key=new THREE.DirectionalLight(0xffffff,.85); key.position.set(4,8,6); scene.add(key);
+  m.userData=ud||{}; chMeshes.push(m); scene.add(m); return m; }
+function curve3(pts2d,colour,w,z,ud,dashed){ const pts=pts2d.map(p=>new THREE.Vector3(X(p[0]),Y(p[1]),z||0));
+  const cur=new THREE.CatmullRomCurve3(pts);
+  if(dashed){ /* dashes as short tube segments so the algedonic stays visibly a PULSE line */
+    const nSeg=Math.max(10,Math.round(cur.getLength()/.34));
+    for(let i=0;i<nSeg;i+=2){ const t0=i/nSeg,t1=Math.min(1,(i+1)/nSeg);
+      const sub=new THREE.TubeGeometry(new THREE.CatmullRomCurve3([cur.getPoint(t0),cur.getPoint((t0+t1)/2),cur.getPoint(t1)]),4,w||.05,6,false);
+      const m=new THREE.Mesh(sub,mat(colour)); m.userData=ud||{}; chMeshes.push(m); scene.add(m); }
+    return null; }
+  const m=new THREE.Mesh(new THREE.TubeGeometry(cur,32,w||.045,7,false),mat(colour,.95));
+  m.userData=ud||{}; chMeshes.push(m); scene.add(m); return m; }
+function blob3(cx,cy,rx,ry,colour,op,z){ const sh=new THREE.Shape(); const n=14;
+  for(let i=0;i<=n;i++){ const a=i/n*Math.PI*2, wob=1+0.16*Math.sin(a*3+cy)+0.09*Math.cos(a*5);
+    const px=Math.cos(a)*rx/55*wob, py=Math.sin(a)*ry/55*wob;
+    if(i===0)sh.moveTo(px,py); else sh.lineTo(px,py); }
+  sh.closePath();
+  const m=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.16,bevelEnabled:false}),mat(colour,op==null?.5:op));
+  m.position.set(X(cx),Y(cy),(z==null?-.35:z)); envMeshes.push(m); scene.add(m); return m; }
 
-  /* the metasystem: S5 on top, S4, S3 — the vertical command axis */
-  const stackY={S5:4.5,S4:3.3,S3:2.1};
-  ['S5','S4','S3'].forEach(id=>{
-    const g=new THREE.Group(); const m=slab(4.2,.62,2.0,C[id]); g.add(m);
-    const l=label(id,'#ffffff',1.5); l.position.set(0,0,1.06); g.add(l);
-    g.position.set(0,stackY[id],0); g.userData={sys:id,mesh:m}; groups[id]=g; scene.add(g);
-  });
-  /* S3* audit on its own flank (never folded into S3) and S2 coordination on the other */
-  [['S3*',-3.5,1.75],['S2',3.5,1.75]].forEach(([id,x,y])=>{
+function build(units){
+  scene=new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff,0x99a5b0,1.25));
+  const key=new THREE.DirectionalLight(0xffffff,.7); key.position.set(3,6,9); scene.add(key);
+  const N=Math.max(1,units.length), lastY=rowY(N-1);
+
+  /* environment — the amoeba chain + the green future cloud, exactly where the 2D puts them */
+  for(let i=0;i<N;i++) blob3(L.envX,rowY(i),43,86,COL.envBlob,.42);
+  blob3(L.envX,150,46,40,COL.envF,.75,-.30);
+  const envLbl=label('environment','#667482',2.2); envLbl.position.set(X(L.envX),Y(150)+1.4,0); scene.add(envLbl);
+
+  /* metasystem bars 5·4·3 with their spine segments (blue 5↔4, green 4↔3) on both command lines */
+  bar3(L.s5,COL.s5,'S5','5'); bar3(L.s4,COL.s4,'S4','4'); bar3(L.s3,COL.s3,'S3','3');
+  seg(L.cmdL,L.s5.y+L.s5.h,L.cmdL,L.s4.y,COL.s5,.05,0,{ch:'h5',sys:['S5','S4']});
+  seg(L.cmdR,L.s5.y+L.s5.h,L.cmdR,L.s4.y,COL.s5,.05,0,{ch:'h5',sys:['S5','S4']});
+  seg(L.cmdL,L.s4.y+L.s4.h,L.cmdL,L.s3.y,COL.s4,.055,0,{ch:'h34',sys:['S4','S3']});
+  seg(L.cmdR,L.s4.y+L.s4.h,L.cmdR,L.s3.y,COL.s4,.055,0,{ch:'h34',sys:['S4','S3']});
+  /* the 3↔4 HOMEOSTAT — the two thick hooked arrows left of the bars, kept as in 2D */
+  curve3([[500,206],[468,194],[462,160],[478,134],[500,126]],COL.s3,.07,.28,{ch:'h34',sys:['S3','S4']});
+  curve3([[500,120],[470,130],[464,166],[480,196],[500,204]],COL.s4,.07,-.28,{ch:'h34',sys:['S4','S3']});
+  /* S4 ↔ future cloud — the thin green two-way eye */
+  curve3([[499,126],[451,107],[L.envX+96,107],[L.envX+48,126]],COL.s4,.035,.15,{ch:'s4env',sys:['S4']});
+  curve3([[L.envX+48,136],[L.envX+96,155],[451,155],[499,136]],COL.s4,.035,.15,{ch:'s4env',sys:['S4']});
+  /* S5 dampening arms flanking down toward 3* and 2 */
+  curve3([[500,65],[430,92],[380,160],[L.s3star.cx,L.s3star.topY-6]],COL.s5,.055,-.2,{ch:'h5',sys:['S5']});
+  curve3([[636,65],[706,92],[756,160],[L.s2.cx,L.s2.topY-6]],COL.s5,.055,-.2,{ch:'h5',sys:['S5']});
+
+  /* triangles: S3* inverted (left) — never forget — and S2 upward (right), with their S3 feed elbows */
+  tri3(L.s3star.cx,L.s3star.topY,L.s3star.botY,COL.s3,'S3*','3*',true);
+  tri3(L.s2.cx,L.s2.topY,L.s2.botY,COL.s2,'S2','2',false);
+  seg(520,216,L.s3star.cx,216,COL.s3,.055,-.1,{ch:'b',sys:['S3','S3*']});
+  seg(L.s3star.cx,216,L.s3star.cx,L.s3star.topY,COL.s3,.055,-.1,{ch:'b',sys:['S3','S3*']});
+  seg(616,216,L.s2.cx,216,COL.s2,.055,-.1,{ch:'f',sys:['S3','S2']});
+  seg(L.s2.cx,216,L.s2.cx,L.s2.topY,COL.s2,.055,-.1,{ch:'f',sys:['S3','S2']});
+
+  /* vertical channels exactly on their 2D lanes: command e (left red), resource bargain d (right red),
+     S3* audit b (left, with rungs into the circles), S2 coordination f (right, rungs into the squares) */
+  seg(L.cmdL,L.s3.y+L.s3.h,L.cmdL,lastY,COL.s3,.05,0,{ch:'e',sys:['S3']});
+  seg(L.cmdR,L.s3.y+L.s3.h,L.cmdR,lastY,COL.s3,.05,0,{ch:'d',sys:['S3']});
+  seg(L.s3star.cx,L.s3star.botY-2,L.s3star.cx,lastY,COL.s3,.045,0,{ch:'b',sys:['S3*']});
+  seg(L.s2.cx,L.s2.botY,L.s2.cx,lastY,COL.s2,.05,0,{ch:'f',sys:['S2']});
+
+  /* S1 rows: white circle (operation) + white square (management) + local-environment eye loops */
+  units.forEach((u,i)=>{ const y=rowY(i);
+    seg(L.s3star.cx,y,463,y,COL.s3,.035,0,{ch:'b',sys:['S3*']});
+    seg(621,y,L.s2.cx,y,COL.s2,.04,0,{ch:'f',sys:['S2']});
     const g=new THREE.Group();
-    const m=new THREE.Mesh(new THREE.ConeGeometry(.78,1.25,4),
-      new THREE.MeshStandardMaterial({color:C[id],roughness:.5,transparent:true,opacity:1}));
-    m.rotation.y=Math.PI/4; if(id==='S3*')m.rotation.z=Math.PI; g.add(m);
-    const l=label(id,'#ffffff',1.35); l.position.set(0,id==='S3*'?-.95:.95,0); g.add(l);
-    g.position.set(x,y,0); g.userData={sys:id,mesh:m}; groups[id]=g; scene.add(g);
+    const circ=new THREE.Mesh(new THREE.CylinderGeometry(L.r/55,L.r/55,.3,24),mat(COL.white));
+    circ.rotation.x=Math.PI/2; circ.position.set(X(L.circleX),Y(y),0); g.add(circ);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(L.r/55,.025,8,28),mat(COL.stroke));
+    ring.position.copy(circ.position); g.add(ring);
+    const sq=new THREE.Mesh(new THREE.BoxGeometry(L.sqW/55,L.sqH/55,.3),mat(COL.white));
+    sq.position.set(X(L.sqCx),Y(y),0); g.add(sq);
+    const edge=new THREE.LineSegments(new THREE.EdgesGeometry(sq.geometry),new THREE.LineBasicMaterial({color:COL.stroke}));
+    edge.position.copy(sq.position); g.add(edge);
+    seg(515,y,L.sqCx-L.sqW/2,y,COL.stroke,.02,0,{sys:['S1']});
+    const nm=label(String(u).length>16?String(u).slice(0,15)+'…':String(u),'#3a3f45',2.1);
+    nm.position.set(X(L.sqCx),Y(y),.34); g.add(nm);
+    /* the env↔operation eye loop (blue in the shared diagram's channel 'a'-adjacent loops) */
+    curve3([[L.envX+46,y-8],[330,y-16],[L.circleX-L.r-4,y-6]],0x2a5f9e,.028,.1,{sys:['S1']});
+    curve3([[L.circleX-L.r-4,y+6],[330,y+16],[L.envX+46,y+8]],0x2a5f9e,.028,.1,{sys:['S1']});
+    g.userData={sys:'S1'}; unitMeshes.push(g); scene.add(g);
   });
-  /* S1 operative units — the value-creating row the whole metasystem exists for */
-  const n=Math.max(1,units.length), span=Math.min(9,1.9*n), step=n>1?span/(n-1):0;
-  units.forEach((u,i)=>{
-    const x=n>1?(-span/2+i*step):0;
-    const g=new THREE.Group(); const m=slab(1.35,.85,1.35,C.S1); g.add(m);
-    const l=label(String(u).split(' ')[0],'#eaf1f6',1.25); l.position.set(0,.72,0); g.add(l);
-    g.position.set(x,.1,0); g.userData={sys:'S1',unit:u,mesh:m}; unitMeshes.push(g); scene.add(g);
-    /* vertical channels: S3 command + resource bargain (red), S2 coordination (amber), S3* audit (dark red) */
-    const top=new THREE.Vector3(x,.55,0);
-    channels.push(addCh(new THREE.Vector3(x*.35,stackY.S3-.3,0),top,C.S3,['S3'],'d'));
-    channels.push(addCh(new THREE.Vector3(3.5,1.3,.45),new THREE.Vector3(x,.35,.45),C.S2,['S2'],'f'));
-    channels.push(addCh(new THREE.Vector3(-3.5,1.3,-.45),new THREE.Vector3(x,.35,-.45),C['S3*'],['S3*'],'b'));
-  });
-  /* the environment — the variety the whole system must absorb */
-  envMesh=new THREE.Mesh(new THREE.IcosahedronGeometry(2.5,1),
-    new THREE.MeshStandardMaterial({color:C.env,roughness:.9,transparent:true,opacity:.30,flatShading:true}));
-  envMesh.position.set(-7.4,2.1,0); envMesh.userData={sys:'ENV'}; scene.add(envMesh);
-  const el=label('environment','#667482',2.2); el.position.set(-7.4,4.9,0); scene.add(el);
-  /* S4 senses the environment (green), S5 holds the normative arms (blue) */
-  channels.push(addCh(new THREE.Vector3(-5.2,2.6,0),new THREE.Vector3(-2.1,stackY.S4,0),C.S4,['S4'],'s4env'));
-  channels.push(addCh(new THREE.Vector3(-2.1,stackY.S5,0),new THREE.Vector3(-2.1,stackY.S3,0),C.S5,['S5'],'h5'));
-  channels.push(addCh(new THREE.Vector3(2.1,stackY.S4,0),new THREE.Vector3(2.1,stackY.S3,0),C.S4,['S4','S3'],'h34'));
-  /* algedonic: the red hotline straight from the floor to S5 */
-  channels.push(addCh(new THREE.Vector3(span/2+1.1,.35,0),new THREE.Vector3(span/2+1.1,stackY.S5,0),C.alg,['S5'],'g',.028));
+
+  /* the ALGEDONIC line — anchored exactly as in 2D: from the last operation row, out right, straight up,
+     hooking into S5's right end. Dashed magenta. Never lost in space. */
+  curve3([[605,lastY],[736,lastY],[736,108],[700,90],[L.s5.x+L.s5.w-14,86]],COL.alg,.05,.22,{ch:'g',sys:['S5']},true);
 }
-function addCh(a,b,colour,sys,ch,r){ const m=tube(a,b,colour,r); m.userData={ch,sys}; scene.add(m); return m; }
 
 function fit(){ const st=canvas.parentElement, w=st.clientWidth, h=st.clientHeight;
   renderer.setSize(w,h,false); camera.aspect=w/Math.max(1,h); camera.updateProjectionMatrix(); }
@@ -734,44 +811,42 @@ function place(){ camera.position.set(
   camera.lookAt(target); }
 function applySel(){
   const on=id=>!sel||sel===id;
-  Object.entries(groups).forEach(([id,g])=>{ const m=g.userData.mesh; m.material.opacity=on(id)?1:.16; m.material.needsUpdate=true; });
-  unitMeshes.forEach(g=>{ g.userData.mesh.material.opacity=sel?.28:1; });
-  channels.forEach(c=>{ c.material.opacity=(!sel||(c.userData.sys||[]).includes(sel))?.85:.07; });
-  if(envMesh) envMesh.material.opacity=(!sel||sel==='S4')?.30:.08;
+  Object.entries(sysMeshes).forEach(([id,g])=>{ g.userData.mesh.material.opacity=on(id)?1:.15; });
+  chMeshes.forEach(c=>{ const sys=c.userData.sys||[];
+    c.material.opacity=(!sel||sys.includes(sel))?.95:.06; });
+  unitMeshes.forEach(g=>{ g.traverse(o=>{ if(o.material&&o.material.opacity!=null)o.material.opacity=sel?.3:1; }); });
+  envMeshes.forEach(m=>{ m.material.opacity=(!sel||sel==='S4')?(m.material.color.getHex()===COL.envF?.75:.42):.08; });
 }
-api.start=function({systems,units,onPick:pick}){
+api.start=function({units,onPick:pick}){
   if(api.started)return; api.started=true; onPick=pick;
   canvas=document.getElementById('three');
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
   renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
-  camera=new THREE.PerspectiveCamera(42,1,.1,200);
-  build(systems,units); fit(); place(); applySel();
+  camera=new THREE.PerspectiveCamera(40,1,.1,300);
+  build(units); fit(); place(); applySel();
   picker=new THREE.Raycaster();
-  /* hand-rolled orbit — no OrbitControls dependency */
   let drag=false,px=0,py=0,moved=0;
   canvas.addEventListener('pointerdown',e=>{drag=true;moved=0;px=e.clientX;py=e.clientY;canvas.setPointerCapture(e.pointerId);});
   canvas.addEventListener('pointermove',e=>{ if(!drag)return; const dx=e.clientX-px,dy=e.clientY-py; px=e.clientX;py=e.clientY;
-    moved+=Math.abs(dx)+Math.abs(dy); yaw-=dx*.006; pitch=Math.max(-.25,Math.min(1.25,pitch+dy*.005)); place(); });
+    moved+=Math.abs(dx)+Math.abs(dy); yaw-=dx*.006; pitch=Math.max(-.3,Math.min(1.2,pitch+dy*.005)); place(); });
   canvas.addEventListener('pointerup',e=>{ drag=false;
-    if(moved<4){                                        // a click, not a drag → pick a system
-      const r=canvas.getBoundingClientRect();
+    if(moved<4){ const r=canvas.getBoundingClientRect();
       const nd=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1);
       picker.setFromCamera(nd,camera);
       const hits=picker.intersectObjects(scene.children,true);
-      for(const h of hits){ let o=h.object; while(o&&!o.userData.sys)o=o.parent;
-        if(o&&o.userData.sys&&o.userData.sys!=='S1'&&o.userData.sys!=='ENV'){ onPick&&onPick(o.userData.sys); break; }
-        if(o&&(o.userData.sys==='S1'||o.userData.sys==='ENV')){ onPick&&onPick(null); break; } }
-    } });
-  canvas.addEventListener('wheel',e=>{ e.preventDefault(); dist=Math.max(7,Math.min(30,dist*(e.deltaY>0?1.09:.92))); place(); },{passive:false});
+      for(const h of hits){ let o=h.object; while(o&&!(o.userData&&o.userData.sys))o=o.parent;
+        if(o&&typeof o.userData.sys==='string'&&o.userData.sys!=='S1'){ onPick&&onPick(o.userData.sys); return; }
+        if(o){ onPick&&onPick(null); return; } } } });
+  canvas.addEventListener('wheel',e=>{ e.preventDefault(); dist=Math.max(8,Math.min(34,dist*(e.deltaY>0?1.09:.92))); place(); },{passive:false});
   addEventListener('resize',()=>{ if(document.body.classList.contains('view3d')){fit();place();} });
   (function loop(){ raf=requestAnimationFrame(loop); if(document.body.classList.contains('view3d')) renderer.render(scene,camera); })();
 };
 api.select=function(sys){ sel=sys||null; if(api.started)applySel(); };
 api.highlightLoop=function(l){ if(!api.started)return;
   if(!l){ applySel(); return; }
-  channels.forEach(c=>{ c.material.opacity=(c.userData.ch===l.ch)?1:.05; });
-  Object.values(groups).forEach(g=>{ g.userData.mesh.material.opacity=(l.sys||[]).includes(g.userData.sys)?1:.16; });
-  unitMeshes.forEach(g=>{ g.userData.mesh.material.opacity=.5; });
+  chMeshes.forEach(c=>{ c.material.opacity=(c.userData.ch===l.ch)?1:.05; });
+  Object.values(sysMeshes).forEach(g=>{ g.userData.mesh.material.opacity=(l.sys||[]).includes(g.userData.sys)?1:.15; });
+  unitMeshes.forEach(g=>{ g.traverse(o=>{ if(o.material&&o.material.opacity!=null)o.material.opacity=.45; }); });
 };
 api.resize=function(){ if(api.started){fit();place();} };
 window.__d3=api;
