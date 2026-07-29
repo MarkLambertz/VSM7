@@ -800,6 +800,15 @@ const rowY=i=>L.row0+i*L.rowH;
 
 const api={started:false};
 let renderer,scene,camera,raf,picker,canvas,onPick,sel=null,composer,ssaoPass;
+let hemi,key,fill,aoOn=false;
+/* One exposure knob for the whole scene, applied by LinearToneMapping — the rig itself stays fixed
+   so the model looks the same everywhere. Nudged just above 1 because the lit scene read a shade
+   dark once the pipeline was pinned. */
+const EXPOSURE=1.06;
+const RIG={hemi:1.38, key:.71, fill:.32};
+/* Measured, not assumed: with the pipeline pinned, losing SSAO moves mean scene luminance by ~0%.
+   So there is deliberately NO lighting compensation for the AO-less path — adding one would make
+   those machines DARKER than the rest, inventing the very inconsistency it claims to remove. */
 let sysMeshes={},chMeshes=[],unitMeshes=[],envMeshes=[],algMeshes=[],pulsePaths=[],pulses=[],flowOn=true,algOn=false,clock=0;
 const VIEW0={yaw:-0.38,pitch:0.18,dist:22.5,tx:-0.5,ty:-0.5};   // opening frame: the whole model, orbiting its true centroid
 let yaw=VIEW0.yaw, pitch=VIEW0.pitch, dist=VIEW0.dist, target=new THREE.Vector3(VIEW0.tx,VIEW0.ty,0);
@@ -960,9 +969,9 @@ function wavePts(x,y1,y2,amp){ const pts=[[x,y1]],steps=Math.max(3,Math.round((y
 
 function build(units){
   scene=new THREE.Scene();
-  scene.add(new THREE.HemisphereLight(0xffffff,0x9aa6b2,1.38));
-  const k1=new THREE.DirectionalLight(0xffffff,.71); k1.position.set(4,7,10); scene.add(k1);
-  const k2=new THREE.DirectionalLight(0xffffff,.32); k2.position.set(-6,3,-6); scene.add(k2);
+  hemi=new THREE.HemisphereLight(0xffffff,0x9aa6b2,RIG.hemi); scene.add(hemi);
+  key=new THREE.DirectionalLight(0xffffff,RIG.key);  key.position.set(4,7,10);   scene.add(key);
+  fill=new THREE.DirectionalLight(0xffffff,RIG.fill); fill.position.set(-6,3,-6); scene.add(fill);
   const N=Math.max(1,units.length), lastY=rowY(N-1);
 
   /* ENVIRONMENT — the surrounding body first, then the per-unit sub-environments, then the future cloud */
@@ -1103,17 +1112,36 @@ api.start=function({units,onPick:pick}){
   renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
   camera=new THREE.PerspectiveCamera(40,1,.1,300);
   renderer.setClearColor(0x000000,0);
+  /* Pin the colour pipeline instead of inheriting defaults. OutputPass reads BOTH of these, so
+     leaving them implicit means the composer path and the fallback path can disagree — which is
+     how the same scene ends up brighter on one machine than another. LinearToneMapping is a plain
+     exposure multiply: it keeps the look and gives us one knob for the whole scene. */
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.LinearToneMapping;
+  renderer.toneMappingExposure=EXPOSURE;
   build(units);
   envMeshes.forEach(m=>{ m.userData.base=m.material.opacity; });
   buildPulses();
-  /* ambient occlusion — the depth cue the literature calls essential for shape perception */
+  /* Ambient occlusion — the depth cue the literature calls essential for shape perception. It is
+     also the scene's main source of contact shading, so a machine that cannot run it sees a much
+     flatter, brighter model. SSAOPass needs depth textures and float targets; corporate GPU
+     policies and software rendering (SwiftShader) do not always provide them. Never let that take
+     the composer — or the init that follows it — down with it. */
   composer=new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene,camera));
-  ssaoPass=new SSAOPass(scene,camera,1,1);
-  ssaoPass.kernelRadius=0.42; ssaoPass.minDistance=0.0006; ssaoPass.maxDistance=0.10;
-  ssaoPass.output=SSAOPass.OUTPUT.Default;
-  composer.addPass(ssaoPass);
-  composer.addPass(new OutputPass());
+  aoOn=false;
+  /* ?ao=off forces the no-AO path — the same one a machine without depth-texture support takes.
+     It exists so the two looks can be compared side by side on the machine that shows the problem. */
+  const aoWanted=(new URLSearchParams(location.search).get('ao')||'').toLowerCase()!=='off';
+  try{
+    if(!aoWanted) throw new Error('ao disabled by url');
+    ssaoPass=new SSAOPass(scene,camera,1,1);
+    ssaoPass.kernelRadius=0.42; ssaoPass.minDistance=0.0006; ssaoPass.maxDistance=0.10;
+    ssaoPass.output=SSAOPass.OUTPUT.Default;
+    composer.addPass(ssaoPass);
+    aoOn=true;
+  }catch(_){ ssaoPass=null; }
+  composer.addPass(new OutputPass());   // always present, on both paths — this is what pins the output
   fit(); place(); applySel();
   picker=new THREE.Raycaster();
   let drag=false,panning=false,px=0,py=0,moved=0;
@@ -1164,6 +1192,12 @@ api.resetView=function(){ yaw=VIEW0.yaw; pitch=VIEW0.pitch; dist=VIEW0.dist; tar
 api.setAlg=function(on){ algOn=!!on; if(api.started)applySel(); };
 api.setFlow=function(on){ flowOn=!!on; };
 api.resize=function(){ if(api.started){fit();place();} };
+/* diagnostics: which render path this machine actually took (AO is the big look differentiator) */
+api.pipeline=function(){ return { ao:aoOn, exposure:renderer?renderer.toneMappingExposure:null,
+  toneMapping:renderer?renderer.toneMapping:null, colorSpace:renderer?renderer.outputColorSpace:null,
+  composer:!!composer, hemi:hemi?+hemi.intensity.toFixed(3):null, key:key?+key.intensity.toFixed(3):null,
+  renderer:(()=>{ try{ const gl=renderer.getContext(), d=gl.getExtension('WEBGL_debug_renderer_info');
+    return d?gl.getParameter(d.UNMASKED_RENDERER_WEBGL):'n/a'; }catch(_){ return 'n/a'; } })() }; };
 window.__d3=api;
 </script>
 </body>
