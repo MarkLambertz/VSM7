@@ -713,21 +713,6 @@ const rowY=i=>L.row0+i*L.rowH;
 
 const api={started:false};
 let renderer,scene,camera,raf,picker,canvas,onPick,sel=null,composer,ssaoPass;
-/* an inverted-hull shell per body: back faces, pushed out along the normal — a clean dark silhouette
-   that keeps the 3D reading like the 2D line drawing (and costs one extra draw, no postprocessing). */
-const OUTLINE=new THREE.MeshBasicMaterial({color:0x2b3440,side:THREE.BackSide});
-function outline(mesh,worldT){
-  const t=worldT==null?.030:worldT;
-  mesh.geometry.computeBoundingBox();
-  const bb=mesh.geometry.boundingBox, sz=new THREE.Vector3(); bb.getSize(sz);
-  const o=new THREE.Mesh(mesh.geometry,OUTLINE.clone());
-  o.material.opacity=1; o.material.transparent=false;
-  o.userData.outlineFor=mesh; o.renderOrder=-2;
-  /* constant stand-off on every axis, so a long bar and a small cone get the SAME line weight */
-  o.scale.set((sz.x+2*t)/Math.max(1e-4,sz.x),(sz.y+2*t)/Math.max(1e-4,sz.y),(sz.z+2*t)/Math.max(1e-4,sz.z));
-  o.position.copy(mesh.position); o.rotation.copy(mesh.rotation);
-  mesh.parent?mesh.parent.add(o):scene.add(o);
-  return o; }
 let sysMeshes={},chMeshes=[],unitMeshes=[],envMeshes=[],algMeshes=[],pulsePaths=[],pulses=[],flowOn=true,algOn=false,clock=0;
 const VIEW0={yaw:-0.38,pitch:0.18,dist:22.5,tx:-0.5,ty:-0.5};   // opening frame: the whole model, orbiting its true centroid
 let yaw=VIEW0.yaw, pitch=VIEW0.pitch, dist=VIEW0.dist, target=new THREE.Vector3(VIEW0.tx,VIEW0.ty,0);
@@ -735,8 +720,7 @@ let yaw=VIEW0.yaw, pitch=VIEW0.pitch, dist=VIEW0.dist, target=new THREE.Vector3(
 function mat(c,op){ const t=(op!=null&&op<1);
   return new THREE.MeshStandardMaterial({color:c,roughness:.62,metalness:.03,transparent:t,opacity:op==null?1:op}); }
 /* opacity changes must flip .transparent with them, else depth sorting misplaces the geometry */
-function setOp(m,v){ if(!m||!m.material)return; m.material.opacity=v; m.material.transparent=(v<1); m.material.needsUpdate=true;
-  if(m.parent){ m.parent.children.forEach(ch=>{ if(ch.userData&&ch.userData.outlineFor===m){ ch.visible=v>.5; } }); } }
+function setOp(m,v){ if(!m||!m.material)return; m.material.opacity=v; m.material.transparent=(v<1); m.material.needsUpdate=true; }
 /* the 2D's own name wrapping (wrapName(nm,16)) so the 3D breaks lines the same way */
 function wrapName(nm,max){ const w=String(nm||'').split(/\s+/), out=[]; let cur='';
   w.forEach(x=>{ const t=cur?cur+' '+x:x; if(t.length<=max){cur=t;} else { if(cur)out.push(cur); cur=x; } });
@@ -783,7 +767,7 @@ function box3(w,h,d,colour){
   return new THREE.Mesh(g,mat(colour));
 }
 function bar3(cfg,colour,sysId,txt){ const g=new THREE.Group();
-  const m=box3(R(cfg.w),R(cfg.h),DEPTH.bar,colour); g.add(m); outline(m,.028);
+  const m=box3(R(cfg.w),R(cfg.h),DEPTH.bar,colour); g.add(m);
   const l=plate(textCanvas(txt,'#ffffff'),R(cfg.h)*1.1,R(cfg.h)*0.55,faceZ(DEPTH.bar)); g.add(l);
   g.position.set(X(cfg.x+cfg.w/2),Y(cfg.y+cfg.h/2),0);
   g.userData={sys:sysId,mesh:m}; sysMeshes[sysId]=g; scene.add(g); return g; }
@@ -795,7 +779,7 @@ function tri3(cx,topY,botY,colour,sysId,txt,pointDown){ const g=new THREE.Group(
   const d=DEPTH.tri;
   const geo=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:.09,bevelSize:.07,bevelSegments:8,curveSegments:16});
   geo.translate(0,0,-d/2); geo.computeVertexNormals();
-  const m=new THREE.Mesh(geo,mat(colour)); g.add(m); outline(m,.028);
+  const m=new THREE.Mesh(geo,mat(colour)); g.add(m);
   const l=plate(textCanvas(txt,'#ffffff'),.46,.23,faceZ(d,.09)); l.position.y=pointDown?h/2-.30:-h/2+.30; g.add(l);
   g.position.set(X(cx),Y((topY+botY)/2),0); g.userData={sys:sysId,mesh:m}; sysMeshes[sysId]=g; scene.add(g); return g; }
 
@@ -819,9 +803,7 @@ function potato(points2d,colour,op,depth,z,shell){
   mm.roughness=.86; mm.flatShading=false;                        // organic, not plastic
   if(shell){ mm.depthWrite=false; mm.side=THREE.DoubleSide; }   // an enclosing body must not hide what it contains
   const m=new THREE.Mesh(g,mm);
-  m.position.z=z||0; m.renderOrder=shell?-1:0; envMeshes.push(m); scene.add(m);
-  if(!shell){ const o=outline(m,.022); o.material.color.setHex(0x6b7784); }
-  return m;
+  m.position.z=z||0; m.renderOrder=shell?-1:0; envMeshes.push(m); scene.add(m); return m;
 }
 /* the 2D's own outline generators, verbatim in maths so the silhouettes match */
 function blobPts(cx,cy,rx,ry,seed,amp){ amp=amp==null?1:amp; const n=26,p=[];
@@ -935,8 +917,8 @@ function build(units){
     seg(621,y,L.s2.cx,y,COL.s2,.04,0,{ch:'f',sys:['S2'],dir:-1});   // coordination reaches into the unit
     const g=new THREE.Group();
     const circ=new THREE.Mesh(new THREE.CylinderGeometry(R(L.r),R(L.r),DEPTH.unit,56),mat(COL.white));
-    circ.rotation.x=Math.PI/2; circ.position.set(X(L.circleX),Y(y),0); g.add(circ); outline(circ,.026);
-    const sq=box3(R(L.sqW),R(L.sqH),DEPTH.unit,COL.white); sq.position.set(X(L.sqCx),Y(y),Z.unit); g.add(sq); outline(sq,.026);
+    circ.rotation.x=Math.PI/2; circ.position.set(X(L.circleX),Y(y),0); g.add(circ);
+    const sq=box3(R(L.sqW),R(L.sqH),DEPTH.unit,COL.white); sq.position.set(X(L.sqCx),Y(y),Z.unit); g.add(sq);
     seg(515,y,L.sqCx-L.sqW/2,y,COL.stroke,.02,0,{sys:['S1']});
     const nm=plate(nameCanvas(u),R(L.sqW)*0.96,R(L.sqH)*0.90,0);                          // glyphs only — printed on the box face
     nm.position.set(X(L.sqCx),Y(y),faceZ(DEPTH.unit)); g.add(nm);
