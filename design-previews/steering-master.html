@@ -939,10 +939,10 @@ function build(units){
 /* ---- NEURAL FLOW: information travelling the channels as glowing pulses (additive, like a firing axon) ---- */
 function glowTex(){ const c=document.createElement('canvas'); c.width=c.height=64;
   const x=c.getContext('2d'), g=x.createRadialGradient(32,32,0,32,32,32);
-  /* opaque hot core -> soft halo: reads as a travelling signal on the light workshop background
-     (additive blending would be invisible over white, so the pulse is drawn normally and tinted per channel) */
-  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.18,'rgba(255,255,255,.98)');
-  g.addColorStop(.42,'rgba(255,255,255,.55)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  /* a hot core with a smooth falloff to nothing — drawn ADDITIVELY, so it only ever adds light to what
+     it travels over and never lays a pale disc on the background */
+  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.22,'rgba(255,255,255,.85)');
+  g.addColorStop(.5,'rgba(255,255,255,.30)'); g.addColorStop(1,'rgba(255,255,255,0)');
   x.fillStyle=g; x.fillRect(0,0,64,64);
   return new THREE.CanvasTexture(c); }
 let GLOW=null;
@@ -953,8 +953,8 @@ function buildPulses(){
     const n=Math.max(1,Math.min(3,Math.round(len/2.2)));           // longer channels carry more signals
     for(let i=0;i<n;i++){
       const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW,color:p.colour,transparent:true,
-        depthWrite:false,depthTest:true,opacity:1}));
-      const sc=.42+Math.random()*.12; sp.scale.set(sc,sc,1); sp.renderOrder=16;
+        blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true,opacity:1}));
+      const sc=.50+Math.random()*.14; sp.scale.set(sc,sc,1); sp.renderOrder=16;
       sp.userData={ch:p.ud.ch,sys:p.ud.sys||[]};
       pulses.push({sp,curve:p.curve,t:(i/n)+Math.random()*.12,speed:(.10+Math.random()*.10)/Math.max(1,len/3.2),
         dir:(p.ud.dir==null?1:p.ud.dir),ud:p.ud});
