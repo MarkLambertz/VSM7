@@ -681,3 +681,26 @@ test('7.7 created boxes persist: org "change" relays into the host model (vessel
   await page.evaluate(() => window.STEP7.loadModel({ orgHierarchy: { 'echo-test': { parent: 'root', order: 99 } } }));
   expect(await page.evaluate(() => window.STEP7.getState().model.orgHierarchy['echo-test'].order)).toBe(99);
 });
+
+// ---- Steering Master → 7.6 deep link (STEP7.select accepts a meeting ref) ----
+// The Steering Master's "Open the charter in 7.6" link resolves through the host, which sends
+// `goto 7.6` then `{cmd:'select', ref:{kind:'meeting', id}}`. 7.6 defaults selMtg to meetings[0],
+// so this only proves anything when the target is NOT the first meeting.
+test('7.6 accepts a meeting selection from the host, including a non-default meeting', async ({ page }) => {
+  await page.locator('.substep-button[data-step="7.6"]').click();
+  const ids = await page.evaluate(() => window.STEP7.getState().model.vessels.filter((v) => v.type === 'meeting').map((v) => v.id));
+  expect(ids.length).toBeGreaterThan(1);
+  const first = await page.evaluate(() => window.STEP7.getState().ui.selMtg);
+  expect(first).toBe(ids[0]);                                   // the default, so ids[1] is the real test
+
+  await page.evaluate((id) => window.STEP7.select({ kind: 'meeting', id }), ids[1]);
+  expect(await page.evaluate(() => window.STEP7.getState().ui.selMtg)).toBe(ids[1]);
+
+  // an unknown meeting id must be ignored, not blank the pane
+  await page.evaluate(() => window.STEP7.select({ kind: 'meeting', id: 'no-such-meeting' }));
+  expect(await page.evaluate(() => window.STEP7.getState().ui.selMtg)).toBe(ids[1]);
+
+  // and it must not disturb the other selections the same bridge call owns
+  await page.evaluate(() => window.STEP7.select({ kind: 'contrib', id: 'c1' }));
+  expect(await page.evaluate(() => window.STEP7.getState().ui.selMtg)).toBe(ids[1]);
+});
