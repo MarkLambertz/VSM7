@@ -704,3 +704,48 @@ test('7.6 accepts a meeting selection from the host, including a non-default mee
   await page.evaluate(() => window.STEP7.select({ kind: 'contrib', id: 'c1' }));
   expect(await page.evaluate(() => window.STEP7.getState().ui.selMtg)).toBe(ids[1]);
 });
+
+// ---- 7.1 Edit → the substep that OWNS that vessel's description ----
+// 7.1 is a register, not an editor. Each vessel type is described somewhere else, so its Edit
+// button must land on that substep with the vessel already selected. These were dead no-ops.
+test('7.1 Edit opens the owning substep with the vessel selected (role→7.4, function→7.5, meeting→7.6)', async ({ page }) => {
+  const cases = [['role', '7.4', 'selRole'], ['function', '7.5', 'selFn'], ['meeting', '7.6', 'selMtg']];
+  for (const [type, step, key] of cases) {
+    await page.locator('.substep-button[data-step="7.1"]').click();
+    const ids = await page.evaluate((t) => window.STEP7.getState().model.vessels.filter((v) => v.type === t).map((v) => v.id), type);
+    expect(ids.length).toBeGreaterThan(1);
+    const target = ids[ids.length - 1];          // the LAST one — a default selection cannot fake this
+    await page.locator(`.vcard[data-vid="${target}"] [data-act="vedit"]`).click();
+    const ui = await page.evaluate(() => window.STEP7.getState().ui);
+    expect(ui.step).toBe(step);
+    expect(ui[key]).toBe(target);
+  }
+});
+
+test('7.1 Edit tells the host where it went, so the route and the frame stay in step', async ({ page }) => {
+  await page.locator('.substep-button[data-step="7.1"]').click();
+  const emitted = await page.evaluate(async () => {
+    const out = [];
+    window.STEP7.onEmit = (m) => out.push(m);
+    const id = window.STEP7.getState().model.vessels.filter((v) => v.type === 'meeting').pop().id;
+    document.querySelector(`.vcard[data-vid="${id}"] [data-act="vedit"]`).click();
+    await new Promise((r) => setTimeout(r, 80));
+    return { out, id };
+  });
+  expect(emitted.out).toContainEqual({ evt: 'goto', substep: '7.6' });
+  expect(emitted.out).toContainEqual({ evt: 'select', ref: { kind: 'meeting', id: emitted.id } });
+});
+
+test('STEP7.select accepts every vessel kind the 7.1 Edit link can reach', async ({ page }) => {
+  const ids = await page.evaluate(() => {
+    const v = window.STEP7.getState().model.vessels;
+    return { role: v.filter((x) => x.type === 'role').pop().id, fn: v.filter((x) => x.type === 'function').pop().id };
+  });
+  await page.evaluate((id) => window.STEP7.select({ kind: 'role', id }), ids.role);
+  expect(await page.evaluate(() => window.STEP7.getState().ui.selRole)).toBe(ids.role);
+  await page.evaluate((id) => window.STEP7.select({ kind: 'function', id }), ids.fn);
+  expect(await page.evaluate(() => window.STEP7.getState().ui.selFn)).toBe(ids.fn);
+  // a kind/id mismatch must be ignored, not cross-assign
+  await page.evaluate((id) => window.STEP7.select({ kind: 'role', id }), ids.fn);
+  expect(await page.evaluate(() => window.STEP7.getState().ui.selRole)).toBe(ids.role);
+});

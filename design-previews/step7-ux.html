@@ -601,7 +601,7 @@ function vcard(v){
     <div class="acts">
       ${acc?`<button class="mini" data-act="vstate" data-vid="${v.id}">↩ Back to candidate</button>`
             :`<button class="mini go" data-act="vstate" data-vid="${v.id}">✓ Accept</button>`}
-      <button class="mini" data-act="noop">✎ Edit</button>
+      <button class="mini" data-act="vedit" data-vid="${v.id}" title="Open its description in ${esc(VESSEL_STEP_LABEL[v.type]||'its substep')}">✎ Edit</button>
       <button class="mini" data-act="noop">⇄ Merge</button>
       <button class="mini no" data-act="vreject" data-vid="${v.id}">✕ Reject</button>
     </div>
@@ -918,6 +918,19 @@ function inhAspItem(sctId,kind,id,input){ const A=ASPECTS[sctId]; if(!A||!Array.
   return idx<0?null:{A,idx}; }
 function curDescV(){ return state.step==='7.5'?state.selFn:state.selRole; }
 const RLABEL={A:'Accountable for',R:'Responsible for',S:'Support',C:'Consulted',I:'Informed'};
+/* 7.1 lists every vessel, but each TYPE is described in its own substep. The Edit button opens the
+   substep that owns that description and selects the vessel there — 7.1 itself owns no editor. */
+const VESSEL_STEP={role:'7.4', function:'7.5', meeting:'7.6'};
+const VESSEL_STEP_LABEL={role:'7.4 Role Descriptions', function:'7.5 Function Descriptions', meeting:'7.6 Meetings & Agendas'};
+function openVesselEditor(id){
+  const v=VESSELS.find(x=>x.id===id), step=v&&VESSEL_STEP[v.type];
+  if(!step)return;
+  if(v.type==='role')state.selRole=v.id; else if(v.type==='function')state.selFn=v.id; else state.selMtg=v.id;
+  mClosePicker(); mCloseRt(); mCloseRc(); state.useEdit=null; if(state.tileFs)exitTileFs();
+  state.step=step; render();
+  emit('goto',{substep:step});            // keep the host's substep + route in step with us
+  emit('select',{ref:{kind:v.type, id:v.id}});
+}
 function viewRoles(){return descView('role');}
 function viewFunctions(){return descView('function');}
 function descView(kind){
@@ -1446,6 +1459,7 @@ document.addEventListener('click',e=>{
   const a=e.target.closest('[data-act]'); if(!a)return; const act=a.dataset.act;
   if(['aspadd','asprm','rmmeeting','vaspadd','vasprm','vstate','vreject'].includes(act))_mtgVer++;   // graph inputs a charter derives from changed → invalidate cached charters
   if(act==='cycle'){const k=a.dataset.c+'|'+a.dataset.v;const cur=RASIC[k]||'';const seq=['','R','A','S','I','C'];RASIC[k]=seq[(seq.indexOf(cur)+1)%seq.length];if(!RASIC[k])delete RASIC[k];state.selContrib=a.dataset.c;_mtgVer++;renderPreservingScroll();emit('rasic',{contribId:a.dataset.c,vesselId:a.dataset.v,letter:RASIC[k]||null,prev:cur||null});emitChange();}
+  else if(act==='vedit'){ openVesselEditor(a.dataset.vid); }
   else if(act==='selcontrib'){state.selContrib=a.dataset.c;renderPreservingScroll();emit('select',{ref:{kind:'contrib',id:a.dataset.c}});}
   else if(act==='togglegroup'){state.collapsed[a.dataset.grp]=!state.collapsed[a.dataset.grp];render();}
   else if(act==='filter'){/* select filters are committed on change */}
@@ -1510,7 +1524,8 @@ if(inFrame)document.body.classList.add('embed');   // host provides brand/org/pr
 let _rid=0, _emitT=null;
 function step7Ctx(){ return JSON.parse(JSON.stringify({ units:UNITS, scts:SCTS, contribs:CONTRIBS, meta:CTX_META })); }
 function step7Model(){ return JSON.parse(JSON.stringify({ vessels:VESSELS, rasic:RASIC, aspects:ASPECTS, descriptions:HUMAN, membership:MEMBERSHIP, vesselAspects:VASPECTS, meetings:mtgModel(), orgHierarchy:ORGHIER })); }
-function step7State(){ return { ctx:step7Ctx(), model:step7Model(), ui:{ step:state.step, selContrib:state.selContrib, selVessel:state.selVessel, selNode:state.selNode, selMtg:state.selMtg, filter:state.filter, skin:document.body.dataset.skin } }; }
+function step7State(){ return { ctx:step7Ctx(), model:step7Model(), ui:{ step:state.step, selContrib:state.selContrib, selVessel:state.selVessel, selNode:state.selNode,
+       selRole:state.selRole, selFn:state.selFn, selMtg:state.selMtg, filter:state.filter, skin:document.body.dataset.skin } }; }
 function postToHost(msg){ try{ if(inFrame) window.parent.postMessage(msg,'*'); }catch(_){ } try{ if(window.STEP7&&typeof window.STEP7.onEmit==='function') window.STEP7.onEmit(msg); }catch(_){ } }
 function emit(evt,extra){ postToHost(Object.assign({evt},extra||{})); }
 function emitChange(){ clearTimeout(_emitT); _emitT=setTimeout(()=>emit('change',{model:step7Model()}),120); }   // authoritative, debounced; fired only on genuine user edits
@@ -1530,6 +1545,9 @@ window.STEP7={
   select:ref=>{ if(ref&&ref.kind==='contrib')state.selContrib=ref.id||ref.contribId;
     else if(ref&&ref.kind==='node')state.selNode=ref.id;
     else if(ref&&ref.kind==='meeting'&&ref.id&&mtgList().some(m=>m.id===ref.id))state.selMtg=ref.id;
+    /* role/function complete the set: every vessel type the 7.1 Edit link can deep-link to */
+    else if(ref&&(ref.kind==='role'||ref.kind==='function')&&ref.id&&VESSELS.some(v=>v.id===ref.id&&v.type===ref.kind)){
+      if(ref.kind==='role')state.selRole=ref.id; else state.selFn=ref.id; }
     else if(ref==null){state.selContrib=null;state.selNode=null;} render(); },
   filter:spec=>{ state.filter=Object.assign(defaultFilters(),spec||{}); render(); },
   fullscreen:on=>{ if(on===false){const fn=document.exitFullscreen||document.webkitExitFullscreen;fn&&fn.call(document);} else if(on===true){const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;fn&&fn.call(el);} else toggleFs(); },
