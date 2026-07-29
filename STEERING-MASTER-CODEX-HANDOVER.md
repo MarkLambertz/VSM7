@@ -31,7 +31,7 @@ is stored, nothing is authored here; every chip deep-links back to the step that
 
 ## 3 · What the page does (so the vm makes sense)
 
-- **Bands** in the method’s own order: S5 Normative Guidelines · S4 Now & Then · S3 Inside & Now ·
+- **Bands** in the method’s own order: S5 Normative Guidelines · S4 Outside & Then · S3 Inside & Now ·
   **S3\* Auditing & Real-Life Information as its own lane** (never folded into S3) · S2 Coordination
   Functions, plus a toggleable S1 context strip.
 - **The shared VSM diagram is reused as a library** — `vsm.html` embedded and driven through its documented

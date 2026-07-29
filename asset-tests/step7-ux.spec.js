@@ -749,3 +749,99 @@ test('STEP7.select accepts every vessel kind the 7.1 Edit link can reach', async
   await page.evaluate((id) => window.STEP7.select({ kind: 'role', id }), ids.fn);
   expect(await page.evaluate(() => window.STEP7.getState().ui.selRole)).toBe(ids.role);
 });
+
+// ---- 7.1 Merge ----
+// A half-merged vessel is worse than the duplicate it replaces: a RASIC letter or a charter seat left
+// pointing at a deleted id silently loses accountability. These specs check that NOTHING dangles.
+const rasicKeysFor = (model, vid) => Object.keys(model.rasic).filter((k) => k.slice(k.lastIndexOf('|') + 1) === vid);
+
+test('7.1 Merge moves every reference that names the absorbed vessel, and leaves none dangling', async ({ page }) => {
+  await page.locator('.substep-button[data-step="7.1"]').click();
+  // r-au carries a RASIC letter, a membership, vessel-specific aspects and (seeded) an org child
+  await page.evaluate(() => window.STEP7.loadModel({ orgHierarchy: { 'r-au': { parent: 'root', order: 1 }, 'kid-1': { parent: 'r-au', order: 2 } } }));
+  await page.locator('.substep-button[data-step="7.1"]').click();
+  const before = await page.evaluate(() => window.STEP7.getState().model);
+  expect(rasicKeysFor(before, 'r-au')).toHaveLength(1);
+
+  await page.locator('.vcard[data-vid="r-au"] [data-act="vmerge"]').click();
+  await expect(page.locator('.vcard[data-vid="r-au"] .mergebox')).toBeVisible();
+  await page.selectOption('.vcard[data-vid="r-au"] [data-mergesel]', 'r-st');
+  await page.locator('.vcard[data-vid="r-au"] [data-act="vmergego"]').click();
+
+  const after = await page.evaluate(() => window.STEP7.getState().model);
+  expect(after.vessels.some((v) => v.id === 'r-au')).toBe(false);      // absorbed
+  expect(rasicKeysFor(after, 'r-au')).toEqual([]);                     // no orphaned accountability
+  expect(rasicKeysFor(after, 'r-st')).toContain('c4|r-st');            // it moved, not vanished
+  expect(after.membership['r-au']).toBeUndefined();
+  expect(after.membership['r-st']).toContain('m-audit');
+  expect(after.vesselAspects['r-au']).toBeUndefined();
+  expect(after.vesselAspects['r-st'].artifacts.map((x) => x.text)).toContain('Audit findings tracker');
+  expect(after.orgHierarchy['kid-1'].parent).toBe('r-st');             // children reparent
+  expect(after.orgHierarchy['r-au']).toBeUndefined();
+});
+
+test('7.1 Merge is undoable — one click restores the whole authoring layer', async ({ page }) => {
+  await page.locator('.substep-button[data-step="7.1"]').click();
+  const before = await page.evaluate(() => JSON.stringify(window.STEP7.getState().model));
+  await page.locator('.vcard[data-vid="r-au"] [data-act="vmerge"]').click();
+  await page.selectOption('.vcard[data-vid="r-au"] [data-mergesel]', 'r-st');
+  await page.locator('.vcard[data-vid="r-au"] [data-act="vmergego"]').click();
+  expect(await page.evaluate(() => window.STEP7.getState().model.vessels.some((v) => v.id === 'r-au'))).toBe(false);
+  await page.locator('#rtoast [data-a2]').click();                     // Undo
+  expect(await page.evaluate(() => JSON.stringify(window.STEP7.getState().model))).toBe(before);
+});
+
+test('7.1 Merge retargets charter seats and decision rights, collapsing a duplicate seat', async ({ page }) => {
+  await page.locator('.substep-button[data-step="7.6"]').click();      // opening 7.6 materialises the charter
+  const mid = await page.evaluate(() => window.STEP7.getState().ui.selMtg);
+  const seat = await page.evaluate((m) => (window.STEP7.getState().model.meetings[m].participants || [])[0], mid);
+  await page.locator('.substep-button[data-step="7.1"]').click();
+  await page.locator(`.vcard[data-vid="${seat.ref}"] [data-act="vmerge"]`).click();
+  await page.selectOption(`.vcard[data-vid="${seat.ref}"] [data-mergesel]`, 'r-co');
+  await page.locator(`.vcard[data-vid="${seat.ref}"] [data-act="vmergego"]`).click();
+  const charter = await page.evaluate((m) => window.STEP7.getState().model.meetings[m], mid);
+  expect((charter.participants || []).some((p) => p.ref === seat.ref)).toBe(false);
+  expect((charter.participants || []).some((p) => p.ref === 'r-co')).toBe(true);
+  expect((charter.rights || []).some((r) => r.owner === seat.ref)).toBe(false);
+  // r-co already sat in this charter, so the seat count must not grow
+  const refs = (charter.participants || []).map((p) => p.ref);
+  expect(new Set(refs).size).toBe(refs.length);
+});
+
+test('7.1 Merge keeps the survivor\'s RASIC letter when both hold one on the same contribution', async ({ page }) => {
+  await page.locator('.substep-button[data-step="7.1"]').click();
+  const shared = await page.evaluate(() => {
+    const m = window.STEP7.getState().model, by = {};
+    Object.keys(m.rasic).forEach((k) => { const i = k.lastIndexOf('|'); (by[k.slice(i + 1)] = by[k.slice(i + 1)] || []).push(k.slice(0, i)); });
+    const c = (by['r-mob'] || []).find((x) => (by['r-co'] || []).includes(x));
+    return { contrib: c, survivor: m.rasic[c + '|r-co'], absorbed: m.rasic[c + '|r-mob'] };
+  });
+  expect(shared.contrib).toBeTruthy();
+  await page.locator('.vcard[data-vid="r-mob"] [data-act="vmerge"]').click();
+  await page.selectOption('.vcard[data-vid="r-mob"] [data-mergesel]', 'r-co');
+  await page.locator('.vcard[data-vid="r-mob"] [data-act="vmergego"]').click();
+  const after = await page.evaluate(() => window.STEP7.getState().model);
+  expect(after.rasic[shared.contrib + '|r-co']).toBe(shared.survivor);  // survivor wins, not overwritten
+  expect(rasicKeysFor(after, 'r-mob')).toEqual([]);
+  await expect(page.locator('#rtoast')).toContainText('kept on target');  // and the clash is reported
+});
+
+test('7.1 Merge only offers vessels of the same type, and tells the host the model changed', async ({ page }) => {
+  await page.locator('.substep-button[data-step="7.1"]').click();
+  await page.locator('.vcard[data-vid="r-au"] [data-act="vmerge"]').click();
+  const opts = await page.locator('.vcard[data-vid="r-au"] [data-mergesel] option').evaluateAll((n) => n.map((o) => o.value));
+  const types = await page.evaluate((ids) => {
+    const v = window.STEP7.getState().model.vessels;
+    return [...new Set(ids.map((id) => (v.find((x) => x.id === id) || {}).type))];
+  }, opts);
+  expect(types).toEqual(['role']);
+  expect(opts).not.toContain('r-au');                                   // never itself
+  const emitted = await page.evaluate(async () => {
+    const out = []; window.STEP7.onEmit = (m) => out.push(m.evt);
+    document.querySelector('.vcard[data-vid="r-au"] [data-act="vmergego"]').click();
+    await new Promise((r) => setTimeout(r, 250));
+    return out;
+  });
+  expect(emitted).toContain('vessel');
+  expect(emitted).toContain('change');                                  // so the host persists it
+});

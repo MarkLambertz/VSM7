@@ -131,6 +131,11 @@ body[data-skin="deck"] .warn{color:var(--amber)} body[data-skin="deck"] .warn.re
 .vid-main .vsub{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
 .vcard .vpp{margin:0;font-size:11.5px;color:var(--ink);line-height:1.45;overflow-wrap:anywhere}
 .vcard .vpp.tbd{color:var(--muted);font-style:italic}
+.mergebox{margin:8px 0 2px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-soft);display:flex;flex-direction:column;gap:7px}
+.mergebox label{font-size:11px;color:var(--muted)}
+.mergebox select{font:inherit;font-size:12px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff;max-width:100%}
+.mergebox .row{display:flex;gap:6px}
+.mergebox .hint{font-size:10.5px;line-height:1.45}
 .vcard .acts{display:flex;gap:6px;flex-wrap:wrap}
 .vcol-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
 .vcol-head h3{margin:0}
@@ -517,7 +522,8 @@ const STEPS=[
 ];
 function defaultFilters(){return {scope:'sif',sys:'',prio:'',unit:'',vtype:'',attn:false,q:''};}
 const state={step:'7.2',selContrib:'c4',selVessel:null,selRole:'r-au',selFn:'f-strat',selNode:null,selAspect:'s1',
-  collapsed:{}, filter:defaultFilters(), vsort:{}, rolePreview:false, focusStep:'7.2', tileFs:null};
+  collapsed:{}, filter:defaultFilters(), vsort:{}, rolePreview:false, focusStep:'7.2', tileFs:null,
+  mergeFrom:null};   // the 7.1 card whose merge picker is open
 
 /* ============================ HELPERS ============================ */
 const $=s=>document.querySelector(s), ce=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
@@ -598,11 +604,12 @@ function vcard(v){
       <div class="vid-main"><strong>${esc(v.name)}</strong><span class="vsub">${esc(v.prov||'')}${v.alg?' · <span class="alg" title="Algedonic / escalation right">▲ algedonic</span>':''}</span></div></div>
     <p class="vpp${v.purpose?'':' tbd'}">${v.purpose?esc(v.purpose):'(purpose to be written)'}</p>
     ${v.id==='r-rc'?'<div class="dupe">⚠ Possible duplicate of “Resource Allocation Board” — review / merge.</div>':''}
+    ${state.mergeFrom===v.id?mergeBox(v):''}
     <div class="acts">
       ${acc?`<button class="mini" data-act="vstate" data-vid="${v.id}">↩ Back to candidate</button>`
             :`<button class="mini go" data-act="vstate" data-vid="${v.id}">✓ Accept</button>`}
       <button class="mini" data-act="vedit" data-vid="${v.id}" title="Open its description in ${esc(VESSEL_STEP_LABEL[v.type]||'its substep')}">✎ Edit</button>
-      <button class="mini" data-act="noop">⇄ Merge</button>
+      <button class="mini" data-act="vmerge" data-vid="${v.id}" title="Absorb this vessel into another of the same type">⇄ Merge</button>
       <button class="mini no" data-act="vreject" data-vid="${v.id}">✕ Reject</button>
     </div>
   </div>`;
@@ -920,6 +927,95 @@ function curDescV(){ return state.step==='7.5'?state.selFn:state.selRole; }
 const RLABEL={A:'Accountable for',R:'Responsible for',S:'Support',C:'Consulted',I:'Informed'};
 /* 7.1 lists every vessel, but each TYPE is described in its own substep. The Edit button opens the
    substep that owns that description and selects the vessel there — 7.1 itself owns no editor. */
+/* ---- 7.1 merge: absorb one vessel into another and move EVERY reference that names it.
+   A half-merged vessel is worse than a duplicate — a RASIC letter or a charter seat left pointing at
+   a deleted id silently loses accountability. Undo-first: the whole authoring layer is snapshotted
+   before the merge, so one click puts it all back. ---- */
+function mergeTargets(v){ return sortVessels(VESSELS.filter(x=>x.type===v.type&&x.id!==v.id),'name'); }
+function mergeBox(v){
+  const opts=mergeTargets(v);
+  if(!opts.length) return `<div class="mergebox"><span class="hint">No other ${esc(v.type)} to merge into.</span>
+    <button class="mini" data-act="vmergecancel">Close</button></div>`;
+  return `<div class="mergebox">
+    <label>Merge <b>${esc(v.name)}</b> into</label>
+    <select data-mergesel>${opts.map(o=>`<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select>
+    <div class="row">
+      <button class="mini go" data-act="vmergego" data-vid="${esc(v.id)}">⇄ Merge</button>
+      <button class="mini" data-act="vmergecancel">Cancel</button>
+    </div>
+    <span class="hint">Its RASIC letters, memberships, aspects, notes, charter seats and org-chart children move over. This one is then removed.</span>
+  </div>`;
+}
+const _mergeSnap=()=>JSON.stringify({V:VESSELS,R:RASIC,M:MEMBERSHIP,VA:VASPECTS,H:HUMAN,MT:MEETINGS,OH:ORGHIER});
+function _mergeRestore(j){ const d=JSON.parse(j);
+  _replArr(VESSELS,d.V); _replObj(RASIC,d.R); _replObj(MEMBERSHIP,d.M);
+  _replObj(VASPECTS,d.VA); _replObj(HUMAN,d.H); _replObj(MEETINGS,d.MT); ORGHIER=d.OH||{}; }
+function mergeVessels(fromId,intoId){
+  const from=vessel(fromId), into=vessel(intoId);
+  if(!from||!into||fromId===intoId||from.type!==into.type) return null;
+  const undo=_mergeSnap(), moved={rasic:0,clash:0,members:0,aspects:0,notes:0,seats:0,rights:0,children:0};
+
+  /* RASIC — the survivor's letter wins where both already carry one, and the clash is reported */
+  Object.keys(RASIC).forEach(k=>{ const i=k.lastIndexOf('|'); if(k.slice(i+1)!==fromId)return;
+    const tgt=k.slice(0,i)+'|'+intoId;
+    if(RASIC[tgt])moved.clash++; else { RASIC[tgt]=RASIC[k]; moved.rasic++; }
+    delete RASIC[k]; });
+
+  /* meeting membership — both directions: the vessel's own list, and every list that names it */
+  if(MEMBERSHIP[fromId]){ const t=ensureMembership(intoId);
+    MEMBERSHIP[fromId].forEach(m=>{ if(m!==intoId&&!t.includes(m)){ t.push(m); moved.members++; } });
+    delete MEMBERSHIP[fromId]; }
+  Object.keys(MEMBERSHIP).forEach(k=>{ const arr=MEMBERSHIP[k], i=arr.indexOf(fromId); if(i<0)return;
+    arr.splice(i,1); if(k!==intoId&&!arr.includes(intoId)){ arr.push(intoId); } moved.members++; });
+
+  /* vessel-specific aspects — union by text, so a duplicate KPI does not arrive twice */
+  if(VASPECTS[fromId]){ const t=ensureVAspects(intoId);
+    ['kpis','artifacts','tools'].forEach(k=>(VASPECTS[fromId][k]||[]).forEach(x=>{
+      if(!t[k].some(y=>itxt(y)===itxt(x))){ t[k].push(x); moved.aspects++; } }));
+    delete VASPECTS[fromId]; }
+
+  /* authored prose is the one thing that cannot be re-derived — keep both */
+  if(HUMAN[fromId]!=null){ const a=String(HUMAN[intoId]||'').trim(), b=String(HUMAN[fromId]).trim();
+    if(b){ HUMAN[intoId]= a ? a+'\n\n— merged from "'+from.name+'" —\n'+b : b; moved.notes++; }
+    delete HUMAN[fromId]; }
+
+  /* charters: participant seats, decision-right owners, and meeting-to-meeting references */
+  Object.keys(MEETINGS).forEach(mid=>{ const c=MEETINGS[mid]; if(!c)return;
+    (c.participants||[]).forEach(p=>{ if(p.ref===fromId){ p.ref=intoId; p.label=into.name; p.sys=into.sys; moved.seats++; } });
+    if(c.participants){ const seen=new Set(); c.participants=c.participants.filter(p=>{ if(seen.has(p.ref))return false; seen.add(p.ref); return true; }); }
+    (c.rights||[]).forEach(r=>{ if(r.owner===fromId){ r.owner=intoId; r.ownerLabel=into.name; moved.rights++; } });
+    ['inputs','outputs'].forEach(bk=>(c[bk]||[]).forEach(x=>{ if(x.kind==='meeting'&&x.ref===fromId){ x.ref=intoId; x.label=into.name; moved.seats++; } }));
+  });
+  delete MEETINGS[fromId];                       // an absorbed meeting's own charter goes with it
+
+  /* 7.7 hierarchy: the absorbed node's children reparent onto the survivor */
+  Object.keys(ORGHIER).forEach(id=>{ const n=ORGHIER[id]; if(n&&n.parent===fromId){ n.parent=intoId; moved.children++; } });
+  delete ORGHIER[fromId];
+
+  /* the vessel itself — never let an escalation right or a written purpose disappear with it */
+  if(from.alg&&!into.alg)into.alg=true;
+  if(!String(into.purpose||'').trim()&&from.purpose)into.purpose=from.purpose;
+  const vi=VESSELS.findIndex(x=>x.id===fromId); if(vi>=0)VESSELS.splice(vi,1);
+  ['selRole','selFn','selMtg','selVessel'].forEach(k=>{ if(state[k]===fromId)state[k]=intoId; });
+  return {undo,moved,from,into};
+}
+function doMerge(fromId,intoId){
+  const r=mergeVessels(fromId,intoId); if(!r)return;
+  const m=r.moved, bits=[];
+  if(m.rasic)bits.push(m.rasic+' RASIC');
+  if(m.clash)bits.push(m.clash+' kept on target');
+  if(m.seats)bits.push(m.seats+' charter seat'+(m.seats===1?'':'s'));
+  if(m.rights)bits.push(m.rights+' decision right'+(m.rights===1?'':'s'));
+  if(m.members)bits.push(m.members+' membership'+(m.members===1?'':'s'));
+  if(m.aspects)bits.push(m.aspects+' aspect'+(m.aspects===1?'':'s'));
+  if(m.children)bits.push(m.children+' org child'+(m.children===1?'':'ren'));
+  if(m.notes)bits.push('notes');
+  state.mergeFrom=null; _mtgVer++; render();
+  emit('vessel',{op:'merged',from:{id:fromId},into:{id:intoId},moved:m});
+  emitChange();
+  mFlashAction(`Merged into "${r.into.name}"`+(bits.length?' · '+bits.join(', '):' · nothing to move'),'Undo',()=>{
+    _mergeRestore(r.undo); _mtgVer++; render(); emitChange(); });
+}
 const VESSEL_STEP={role:'7.4', function:'7.5', meeting:'7.6'};
 const VESSEL_STEP_LABEL={role:'7.4 Role Descriptions', function:'7.5 Function Descriptions', meeting:'7.6 Meetings & Agendas'};
 function openVesselEditor(id){
@@ -1460,6 +1556,10 @@ document.addEventListener('click',e=>{
   if(['aspadd','asprm','rmmeeting','vaspadd','vasprm','vstate','vreject'].includes(act))_mtgVer++;   // graph inputs a charter derives from changed → invalidate cached charters
   if(act==='cycle'){const k=a.dataset.c+'|'+a.dataset.v;const cur=RASIC[k]||'';const seq=['','R','A','S','I','C'];RASIC[k]=seq[(seq.indexOf(cur)+1)%seq.length];if(!RASIC[k])delete RASIC[k];state.selContrib=a.dataset.c;_mtgVer++;renderPreservingScroll();emit('rasic',{contribId:a.dataset.c,vesselId:a.dataset.v,letter:RASIC[k]||null,prev:cur||null});emitChange();}
   else if(act==='vedit'){ openVesselEditor(a.dataset.vid); }
+  else if(act==='vmerge'){ state.mergeFrom = state.mergeFrom===a.dataset.vid ? null : a.dataset.vid; render(); }
+  else if(act==='vmergecancel'){ state.mergeFrom=null; render(); }
+  else if(act==='vmergego'){ const sel=document.querySelector(`.vcard[data-vid="${a.dataset.vid}"] [data-mergesel]`);
+    if(sel&&sel.value)doMerge(a.dataset.vid,sel.value); }
   else if(act==='selcontrib'){state.selContrib=a.dataset.c;renderPreservingScroll();emit('select',{ref:{kind:'contrib',id:a.dataset.c}});}
   else if(act==='togglegroup'){state.collapsed[a.dataset.grp]=!state.collapsed[a.dataset.grp];render();}
   else if(act==='filter'){/* select filters are committed on change */}

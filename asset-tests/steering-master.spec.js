@@ -62,7 +62,7 @@ test('five bands in the method order, with S3* as its OWN lane (never folded int
   // the epithets are the method's, not invented UI labels
   const titles = await page.locator('.band-title b').allTextContents();
   expect(titles.slice(0, 5)).toEqual([
-    'Normative Guidelines', 'Now & Then', 'Inside & Now', 'Auditing & Real-Life Information', 'Coordination Functions',
+    'Normative Guidelines', 'Outside & Then', 'Inside & Now', 'Auditing & Real-Life Information', 'Coordination Functions',
   ]);
 });
 
