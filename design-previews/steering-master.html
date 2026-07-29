@@ -706,7 +706,7 @@ const S=55, X=x=>(x-500)/S, Y=y=>(430-y)/S, R=v=>v/S;
 /* ---- Z-DISCIPLINE (audit 2026-07-28): the model is a shallow BAS-RELIEF, not scattered depth.
    Every element lives in a ±0.7 band and its layer mirrors the 2D paint order, so the picture stays
    coherent from any angle or zoom — edge-on it reads as one slab, not a cloud of floating parts. */
-const Z={ env:0, envLens:.72, feed:-.24, chan:0, unit:0, bars:0, eye:-.08, squiggle:0,
+const Z={ env:0, envLens:.72, feed:0, chan:0, unit:0, bars:0, eye:-.08, squiggle:0,
           homeo:.58, arms:.62, alg:.58, label:.56 };
 const DEPTH={ bar:.95, tri:.85, unit:.55, env:1.5 };
 const rowY=i=>L.row0+i*L.rowH;
