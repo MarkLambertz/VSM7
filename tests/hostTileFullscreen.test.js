@@ -115,7 +115,7 @@ test("host fullscreen modules use one cache label", () => {
   const starter = readFileSync(new URL("../start.command", import.meta.url), "utf8");
 
   assert.match(appSource, /renderHostTileFullscreenLayer/);
-  assert.match(appSource, /20260729-brand-home-link/);
-  assert.match(index, /app\.js\?v=20260729-brand-home-link/);
-  assert.match(starter, /VERSION="20260729-brand-home-link"/);
+  assert.match(appSource, /20260729-steering-master-nav-audit/);
+  assert.match(index, /app\.js\?v=20260729-steering-master-nav-audit/);
+  assert.match(starter, /VERSION="20260729-steering-master-nav-audit"/);
 });

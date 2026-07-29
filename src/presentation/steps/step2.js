@@ -1,5 +1,5 @@
-import { evaluateStep2Variety } from "../../domain/vsm.js?v=20260729-brand-home-link";
-import { escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, textarea, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260729-brand-home-link";
+import { evaluateStep2Variety } from "../../domain/vsm.js?v=20260729-steering-master-nav-audit";
+import { escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, textarea, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260729-steering-master-nav-audit";
 
 export const step2Subpages = [
   {

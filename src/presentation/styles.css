@@ -6003,16 +6003,23 @@ html[data-skin="command-deck"] .channel-variety-frame-shell {
 
 /* Standalone VSM iframe view */
 .steering-master-page {
-  min-height: calc(100vh - 92px);
-  min-height: calc(100svh - 92px);
+  --steering-master-chrome-height: 119px;
+  min-height: calc(100vh - var(--steering-master-chrome-height));
+  min-height: calc(100svh - var(--steering-master-chrome-height));
 }
 
 .steering-master-frame-shell {
-  height: calc(100vh - 92px);
-  height: calc(100svh - 92px);
-  min-height: 680px;
+  height: calc(100vh - var(--steering-master-chrome-height, 119px));
+  height: calc(100svh - var(--steering-master-chrome-height, 119px));
+  min-height: 0;
   overflow: hidden;
   background: var(--surface);
+}
+
+@media (max-width: 1240px) {
+  .steering-master-page {
+    --steering-master-chrome-height: 203px;
+  }
 }
 
 .steering-master-frame {

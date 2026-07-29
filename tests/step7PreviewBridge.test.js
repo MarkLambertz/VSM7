@@ -36,9 +36,9 @@ test("Step VII host iframe uses the current Step VII cache label", () => {
   const index = readProjectFile("index.html");
   const starter = readProjectFile("start.command");
 
-  assert.match(step7Host, /20260729-brand-home-link/);
-  assert.match(app, /step7\.js\?v=20260729-brand-home-link/);
-  assert.match(app, /domain\/vsm\.js\?v=20260729-brand-home-link/);
-  assert.match(index, /app\.js\?v=20260729-brand-home-link/);
-  assert.match(starter, /VERSION="20260729-brand-home-link"/);
+  assert.match(step7Host, /20260729-steering-master-nav-audit/);
+  assert.match(app, /step7\.js\?v=20260729-steering-master-nav-audit/);
+  assert.match(app, /domain\/vsm\.js\?v=20260729-steering-master-nav-audit/);
+  assert.match(index, /app\.js\?v=20260729-steering-master-nav-audit/);
+  assert.match(starter, /VERSION="20260729-steering-master-nav-audit"/);
 });

@@ -1,5 +1,5 @@
-import { renderMethodVisual } from "./methodVisuals.js?v=20260729-brand-home-link";
-import { formatSctNumber } from "../../domain/vsm.js?v=20260729-brand-home-link";
+import { renderMethodVisual } from "./methodVisuals.js?v=20260729-steering-master-nav-audit";
+import { formatSctNumber } from "../../domain/vsm.js?v=20260729-steering-master-nav-audit";
 
 export function stepHeader(token, title, description, guidance = "", actions = "") {
   const visual = getStepVisual(token, title);

@@ -11,7 +11,7 @@ import {
   getStep7EditorContext,
   getStep7EditorModel,
   getWeakSegmentationSignals
-} from "../domain/vsm.js?v=20260729-brand-home-link";
+} from "../domain/vsm.js?v=20260729-steering-master-nav-audit";
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 

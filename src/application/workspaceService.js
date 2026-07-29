@@ -1,4 +1,4 @@
-import { ensureWorkspaceShape, syncAllocations } from "../domain/vsm.js?v=20260729-brand-home-link";
+import { ensureWorkspaceShape, syncAllocations } from "../domain/vsm.js?v=20260729-steering-master-nav-audit";
 
 export function loadWorkspace(repository) {
   return ensureWorkspaceShape(repository.load());

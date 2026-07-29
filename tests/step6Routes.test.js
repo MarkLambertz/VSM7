@@ -334,7 +334,7 @@ test("Step VI normal view exposes its two substeps and the static route editor",
   assert.match(html, /data-e2e-related-picker/);
   assert.match(html, /data-step6-related-sct/);
   assert.match(html, new RegExp(`value="${related.id}"`));
-  assert.match(html, /src="\.\/e2e-robustness-check\.html\?v=20260729-brand-home-link"/);
+  assert.match(html, /src="\.\/e2e-robustness-check\.html\?v=20260729-steering-master-nav-audit"/);
   assert.match(html, /data-action="open-export-panel"/);
   assert.match(html, /data-export-step="step6"/);
   assert.match(html, /data-export-tile="step6-e2e"/);
@@ -343,7 +343,7 @@ test("Step VI normal view exposes its two substeps and the static route editor",
 
   const channels = renderStep6(workspace, { activeSubpage: "channels", selectedSctId: task.id });
   assert.match(channels, /Communication Variety Checks/);
-  assert.match(channels, /src="\.\/channel-variety-check\.html\?vsm=\/vsm\.html%3Fv%3D20260729-brand-home-link&assetVersion=20260729-brand-home-link"/);
+  assert.match(channels, /src="\.\/channel-variety-check\.html\?vsm=\/vsm\.html%3Fv%3D20260729-steering-master-nav-audit&assetVersion=20260729-steering-master-nav-audit"/);
   assert.match(channels, /data-channel-variety-frame/);
   assert.match(channels, /channel-variety-frame-shell/);
   assert.match(channels, /allow="fullscreen"/);
@@ -362,10 +362,10 @@ test("Step VI host and focus mode use one current module cache label", () => {
   const app = readFileSync(new URL("../src/presentation/app.js", import.meta.url), "utf8");
   const focusMode = readFileSync(new URL("../src/presentation/steps/focusMode.js", import.meta.url), "utf8");
 
-  assert.match(app, /steps\/step6\.js\?v=20260729-brand-home-link/);
-  assert.match(focusMode, /\.\/step6\.js\?v=20260729-brand-home-link/);
-  assert.match(app, /shared\/e2eRouteExport\.js\?v=20260729-brand-home-link/);
-  assert.match(app, /shared\/channelVarietyExport\.js\?v=20260729-brand-home-link/);
+  assert.match(app, /steps\/step6\.js\?v=20260729-steering-master-nav-audit/);
+  assert.match(focusMode, /\.\/step6\.js\?v=20260729-steering-master-nav-audit/);
+  assert.match(app, /shared\/e2eRouteExport\.js\?v=20260729-steering-master-nav-audit/);
+  assert.match(app, /shared\/channelVarietyExport\.js\?v=20260729-steering-master-nav-audit/);
 });
 
 test("Step VI route view explains when no SCT is available", () => {

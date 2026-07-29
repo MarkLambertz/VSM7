@@ -1,4 +1,4 @@
-import PptxGenJS from "../vendor/pptxgen.bundle.js?v=20260729-brand-home-link";
+import PptxGenJS from "../vendor/pptxgen.bundle.js?v=20260729-steering-master-nav-audit";
 
 const pdfMimeType = "application/pdf";
 const pptxMimeType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";

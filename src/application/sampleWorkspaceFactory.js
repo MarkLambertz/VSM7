@@ -12,7 +12,7 @@ import {
   markAllStep2SlidersAssessed,
   sixPackOfControl,
   syncAllocations
-} from "../domain/vsm.js?v=20260729-brand-home-link";
+} from "../domain/vsm.js?v=20260729-steering-master-nav-audit";
 
 export function createSampleWorkspace() {
   const sample = createWorkspace();

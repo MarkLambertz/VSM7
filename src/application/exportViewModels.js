@@ -6,7 +6,7 @@ import {
   getStep5MappingDiagnostics,
   getStep6ChannelVarietyContext,
   getWeakSegmentationSignals
-} from "../domain/vsm.js?v=20260729-brand-home-link";
+} from "../domain/vsm.js?v=20260729-steering-master-nav-audit";
 
 const step1TileTitles = {
   "step1-sif": "System-in-Focus",

@@ -1,5 +1,5 @@
-import { getStep5MappingDiagnostics } from "../../domain/vsm.js?v=20260729-brand-home-link";
-import { field, fullscreenTile, metric, textarea, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260729-brand-home-link";
+import { getStep5MappingDiagnostics } from "../../domain/vsm.js?v=20260729-steering-master-nav-audit";
+import { field, fullscreenTile, metric, textarea, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260729-steering-master-nav-audit";
 
 export function renderOverview(workspace) {
   const step5Diagnostics = getStep5MappingDiagnostics(workspace);

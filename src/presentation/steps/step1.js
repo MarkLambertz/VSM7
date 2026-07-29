@@ -10,8 +10,8 @@ import {
   tableHeader,
   tileExportButton,
   textarea
-} from "../shared/renderHelpers.js?v=20260729-brand-home-link";
-import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260729-brand-home-link";
+} from "../shared/renderHelpers.js?v=20260729-steering-master-nav-audit";
+import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260729-steering-master-nav-audit";
 
 export const step1Subpages = [
   {

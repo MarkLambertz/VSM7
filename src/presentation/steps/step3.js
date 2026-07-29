@@ -1,5 +1,5 @@
-import { cellInput, cellSelect, escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260729-brand-home-link";
-import { formatSctNumber, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js?v=20260729-brand-home-link";
+import { cellInput, cellSelect, escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260729-steering-master-nav-audit";
+import { formatSctNumber, getManageabilityLeverSignals, getWeakSegmentationSignals } from "../../domain/vsm.js?v=20260729-steering-master-nav-audit";
 
 const complexityDriverExamples = {
   environmentOperation: {

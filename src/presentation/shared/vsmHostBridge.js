@@ -1,7 +1,7 @@
-import { getRecursionOrganizations, vsmSystems } from "../../domain/vsm.js?v=20260729-brand-home-link";
-import { escapeAttr } from "./renderHelpers.js?v=20260729-brand-home-link";
+import { getRecursionOrganizations, vsmSystems } from "../../domain/vsm.js?v=20260729-steering-master-nav-audit";
+import { escapeAttr } from "./renderHelpers.js?v=20260729-steering-master-nav-audit";
 
-export const vsmFrameSource = "./vsm.html?v=20260729-brand-home-link";
+export const vsmFrameSource = "./vsm.html?v=20260729-steering-master-nav-audit";
 
 export function renderVsmHostFrame(context, title = "VSM7 system map") {
   return `

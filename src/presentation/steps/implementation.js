@@ -3,8 +3,8 @@ import {
   getStep6ChannelVarietyContext,
   getStep6ChannelVarietyWeaknessCandidates,
   getStep6FindingCandidates
-} from "../../domain/vsm.js?v=20260729-brand-home-link";
-import { cellInput, cellSelect, escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260729-brand-home-link";
+} from "../../domain/vsm.js?v=20260729-steering-master-nav-audit";
+import { cellInput, cellSelect, escapeAttr, escapeHtml, fullscreenTile, removeButton, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260729-steering-master-nav-audit";
 
 export function renderImplementation(workspace) {
   return `

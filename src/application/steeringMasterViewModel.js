@@ -7,7 +7,7 @@ import {
   getStep7RasicAssignment,
   getStep7SctContributions,
   getStep7Vessels
-} from "../domain/vsm.js?v=20260729-brand-home-link";
+} from "../domain/vsm.js?v=20260729-steering-master-nav-audit";
 
 const steeringSystems = new Set(["S2", "S3", "S3*", "S4", "S5"]);
 
@@ -91,7 +91,6 @@ function buildMappedScts(workspace, taskById) {
         did: formatSctNumber(task.number),
         name: String(task.title || "Untitled SCT"),
         sys: group.system,
-        state: task.state === "candidate" ? "candidate" : "accepted",
         taskId: group.taskId,
         contributionIds: [...new Set(group.contributionIds)]
       };
@@ -128,7 +127,7 @@ function buildAccountability(workspace, mappedEntries) {
         }
       }
     }
-    return [entry.id, names.size > 0 ? [...names].join(" / ") : null];
+    return [entry.id, names.size === 1 ? [...names][0] : null];
   }));
 }
 
@@ -140,7 +139,7 @@ function buildSteeringMeetings(
   modelIdsByTask
 ) {
   const allContributions = getStep7SctContributions(workspace);
-  const taskIdByContribution = new Map(allContributions.map((contribution) => [contribution.id, contribution.taskId]));
+  const knownContributionIds = new Set(allContributions.map((contribution) => contribution.id));
   const modelById = new Map(mappedEntries.map((entry) => [entry.id, entry]));
   const rawMeetings = workspace?.step7?.meetings || {};
 
@@ -150,7 +149,7 @@ function buildSteeringMeetings(
       && (hasOwn(rawMeeting, "contribs") || hasOwn(rawMeeting, "steering"));
     const references = hasExplicitCoverage ? meetingCoverageReferences(meeting) : [];
     const covers = hasExplicitCoverage
-      ? resolveMeetingCoverage(references, modelIdByContribution, modelIdsByTask, taskIdByContribution)
+      ? resolveMeetingCoverage(references, modelIdByContribution, modelIdsByTask, knownContributionIds)
       : null;
     const coveredSystems = new Set((covers || [])
       .map((modelId) => modelById.get(modelId)?.sys)
@@ -194,7 +193,7 @@ function meetingCoverageReferences(meeting) {
   return [...new Set(references.map((reference) => String(reference || "")).filter(Boolean))];
 }
 
-function resolveMeetingCoverage(references, modelIdByContribution, modelIdsByTask, taskIdByContribution) {
+function resolveMeetingCoverage(references, modelIdByContribution, modelIdsByTask, knownContributionIds) {
   const covers = new Set();
   for (const reference of references) {
     const exactModelId = modelIdByContribution.get(reference);
@@ -203,9 +202,13 @@ function resolveMeetingCoverage(references, modelIdByContribution, modelIdsByTas
       continue;
     }
 
-    const taskId = taskIdByContribution.get(reference) || reference;
-    for (const modelId of modelIdsByTask.get(taskId) || []) {
-      covers.add(modelId);
+    if (knownContributionIds.has(reference)) {
+      continue;
+    }
+
+    const legacyTaskMatches = modelIdsByTask.get(reference) || [];
+    if (legacyTaskMatches.length === 1) {
+      covers.add(legacyTaskMatches[0]);
     }
   }
   return [...covers];
@@ -217,6 +220,9 @@ function meetingParticipantCount(meeting) {
     ...(Array.isArray(meeting.participations) ? meeting.participations : []),
     ...(Array.isArray(meeting.participants) ? meeting.participants : [])
   ]) {
+    if (item && typeof item === "object" && item.ghost === true) {
+      continue;
+    }
     const id = typeof item === "object"
       ? item.vesselId || item.vesselRef || item.ref || item.roleId
       : item;

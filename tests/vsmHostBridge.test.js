@@ -14,7 +14,7 @@ test("VSM iframe host frame renders the shared vsm.html entry point", () => {
 
   assert.match(html, /data-vsm-frame/);
   assert.match(html, /data-vsm-context="step5"/);
-  assert.match(html, /src="\.\/vsm\.html\?v=20260729-brand-home-link"/);
+  assert.match(html, /src="\.\/vsm\.html\?v=20260729-steering-master-nav-audit"/);
 });
 
 test("VSM host tree uses stable recursion organization ids", () => {

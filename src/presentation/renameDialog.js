@@ -1,4 +1,4 @@
-import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260729-brand-home-link";
+import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260729-steering-master-nav-audit";
 
 export function renderRenameDialog(target) {
   if (!target) {
