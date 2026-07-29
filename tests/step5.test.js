@@ -98,7 +98,7 @@ test("Step V renders the shared VSM iframe without invented candidates", () => {
 
   assert.match(html, /class="vsm-host-frame"/);
   assert.match(html, /data-vsm-context="step5"/);
-  assert.match(html, /src="\.\/vsm\.html\?v=20260725-step3-aspects-org-units"/);
+  assert.match(html, /src="\.\/vsm\.html\?v=20260729-brand-home-link"/);
   assert.match(html, /data-action="toggle-step5-assignment"/);
   assert.match(html, /data-action="open-export-panel"/);
   assert.match(html, /data-export-step="step5"/);

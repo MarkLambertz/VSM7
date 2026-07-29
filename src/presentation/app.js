@@ -42,7 +42,7 @@ import {
   toggleStep5ContributionAssignment,
   vsmSystems,
   workflowStepOrder
-} from "../domain/vsm.js?v=20260725-step3-aspects-org-units";
+} from "../domain/vsm.js?v=20260729-brand-home-link";
 import {
   deleteOrganization,
   deleteWorkspace,
@@ -53,37 +53,38 @@ import {
   renameWorkspace,
   replaceWorkspace,
   saveWorkspace
-} from "../application/workspaceService.js?v=20260725-step3-aspects-org-units";
-import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?v=20260725-step3-aspects-org-units";
-import { getExportViewModel } from "../application/exportViewModels.js?v=20260725-step3-aspects-org-units";
+} from "../application/workspaceService.js?v=20260729-brand-home-link";
+import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?v=20260729-brand-home-link";
+import { getExportViewModel } from "../application/exportViewModels.js?v=20260729-brand-home-link";
+import { getSteeringMasterViewModel } from "../application/steeringMasterViewModel.js?v=20260729-brand-home-link";
 import { createWorkspaceRepository } from "../infrastructure/fileBackedRepository.js?v=20260717-file-storage";
-import { exportExportIntent } from "../infrastructure/exporters.js?v=20260725-step3-aspects-org-units";
-import { buildE2ERouteDocument } from "../infrastructure/e2eRouteDocuments.js?v=20260725-step3-aspects-org-units";
-import { renderRenameDialog } from "./renameDialog.js?v=20260725-step3-aspects-org-units";
-import { destructiveActionMessage } from "./shared/destructiveActions.js?v=20260725-step3-aspects-org-units";
-import { createE2ERouteExportCoordinator } from "./shared/e2eRouteExport.js?v=20260725-step3-aspects-org-units";
-import { createChannelVarietyExportCoordinator } from "./shared/channelVarietyExport.js?v=20260725-step3-aspects-org-units";
-import { buildAppHash, parseAppHash } from "./shared/appRouting.js?v=20260725-step3-aspects-org-units";
-import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260725-step3-aspects-org-units";
-import { renderProjectManagement } from "./projectManagement.js?v=20260725-step3-aspects-org-units";
-import { applySkinPreference, defaultSkin, readSkinPreference } from "./skinSettings.js?v=20260725-step3-aspects-org-units";
-import { renderStartPage } from "./startPage.js?v=20260725-step3-aspects-org-units";
-import { renderOverview, renderOverviewFullscreenTile } from "./steps/overview.js?v=20260725-step3-aspects-org-units";
-import { renderImplementation, renderImplementationFullscreenTile } from "./steps/implementation.js?v=20260725-step3-aspects-org-units";
-import { getStep1FullscreenTileCount, renderStep1, renderStep1FullscreenTile } from "./steps/step1.js?v=20260725-step3-aspects-org-units";
-import { normalizeStep2Subpage, renderStep2, renderStep2FullscreenTile } from "./steps/step2.js?v=20260725-step3-aspects-org-units";
-import { filterScts, normalizeStep3Subpage, renderStep3, renderStep3FullscreenTile } from "./steps/step3.js?v=20260725-step3-aspects-org-units";
-import { renderStep4, renderStep4FullscreenTile } from "./steps/step4.js?v=20260725-step3-aspects-org-units";
-import { renderStep5, renderStep5FullscreenTile } from "./steps/step5.js?v=20260725-step3-aspects-org-units";
-import { getActiveStep6SctId, renderStep6, renderStep6FullscreenTile } from "./steps/step6.js?v=20260725-step3-aspects-org-units";
-import { renderStep7 } from "./steps/step7.js?v=20260725-step3-aspects-org-units";
-import { renderVsmStandalone } from "./vsmStandalone.js?v=20260725-step3-aspects-org-units";
+import { exportExportIntent } from "../infrastructure/exporters.js?v=20260729-brand-home-link";
+import { buildE2ERouteDocument } from "../infrastructure/e2eRouteDocuments.js?v=20260729-brand-home-link";
+import { renderRenameDialog } from "./renameDialog.js?v=20260729-brand-home-link";
+import { destructiveActionMessage } from "./shared/destructiveActions.js?v=20260729-brand-home-link";
+import { createE2ERouteExportCoordinator } from "./shared/e2eRouteExport.js?v=20260729-brand-home-link";
+import { createChannelVarietyExportCoordinator } from "./shared/channelVarietyExport.js?v=20260729-brand-home-link";
+import { buildAppHash, parseAppHash } from "./shared/appRouting.js?v=20260729-brand-home-link";
+import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260729-brand-home-link";
+import { renderProjectManagement } from "./projectManagement.js?v=20260729-brand-home-link";
+import { applySkinPreference, defaultSkin, readSkinPreference } from "./skinSettings.js?v=20260729-brand-home-link";
+import { renderStartPage } from "./startPage.js?v=20260729-brand-home-link";
+import { renderOverview, renderOverviewFullscreenTile } from "./steps/overview.js?v=20260729-brand-home-link";
+import { renderImplementation, renderImplementationFullscreenTile } from "./steps/implementation.js?v=20260729-brand-home-link";
+import { getStep1FullscreenTileCount, renderStep1, renderStep1FullscreenTile } from "./steps/step1.js?v=20260729-brand-home-link";
+import { normalizeStep2Subpage, renderStep2, renderStep2FullscreenTile } from "./steps/step2.js?v=20260729-brand-home-link";
+import { filterScts, normalizeStep3Subpage, renderStep3, renderStep3FullscreenTile } from "./steps/step3.js?v=20260729-brand-home-link";
+import { renderStep4, renderStep4FullscreenTile } from "./steps/step4.js?v=20260729-brand-home-link";
+import { renderStep5, renderStep5FullscreenTile } from "./steps/step5.js?v=20260729-brand-home-link";
+import { getActiveStep6SctId, renderStep6, renderStep6FullscreenTile } from "./steps/step6.js?v=20260729-brand-home-link";
+import { renderStep7 } from "./steps/step7.js?v=20260729-brand-home-link";
+import { renderVsmStandalone } from "./vsmStandalone.js?v=20260729-brand-home-link";
 import {
   buildVsmHostTree,
   getVsmSystemType,
   recursionLevelLabel,
   recursionLevelValue
-} from "./shared/vsmHostBridge.js?v=20260725-step3-aspects-org-units";
+} from "./shared/vsmHostBridge.js?v=20260729-brand-home-link";
 
 const app = document.querySelector("#app");
 const repository = createWorkspaceRepository();
@@ -108,6 +109,9 @@ let activeStep5System = "3";
 let activeStep6Subpage = "e2e";
 let selectedStep6SctId = "";
 let activeStep7Substep = "7.1";
+let activeSteeringMasterSystem = null;
+let activeSteeringMasterView = "2d";
+let isSteeringMasterFullscreen = false;
 let isSettingsOpen = false;
 let renameTarget = null;
 let isNavCollapsed = false;
@@ -133,6 +137,7 @@ const e2eRouteExportCoordinator = createE2ERouteExportCoordinator({ send: postTo
 const channelVarietyExportCoordinator = createChannelVarietyExportCoordinator({ send: postToChannelVarietyFrame });
 
 window.addEventListener("message", handleVsmBridgeMessage);
+window.addEventListener("message", handleSteeringMasterBridgeMessage);
 window.addEventListener("message", handleE2EBridgeMessage);
 window.addEventListener("message", handleChannelVarietyBridgeMessage);
 window.addEventListener("message", handleStep7BridgeMessage);
@@ -294,10 +299,10 @@ function render() {
 
   app.innerHTML = `
     <header class="topbar">
-      <div class="brand-block">
+      <a class="brand-block" href="#/start" aria-label="Go to the VSM7 start page" title="Go to start page">
         ${renderBrandMark()}
         <strong class="brand-name">VSM7</strong>
-      </div>
+      </a>
       <div class="topbar-context">
         ${headerContextItem("Organization", workspace.organization.name || "New Organization")}
         ${headerContextItem("Project", workspace.project.name || "New VSM Project")}
@@ -322,6 +327,7 @@ function render() {
     ${renderRenameDialog(renameTarget)}
   `;
   syncVisibleVsmFrames();
+  syncVisibleSteeringMasterFrames();
   syncVisibleE2EFrames();
   syncVisibleChannelVarietyFrames();
   syncVisibleStep7Frames();
@@ -351,6 +357,80 @@ function renderAfterInPlaceAction(anchorSctId = "") {
   } else {
     renderPreservingViewport(anchorSctId);
   }
+}
+
+function syncVisibleSteeringMasterFrames() {
+  document.querySelectorAll("[data-steering-master-frame]").forEach((frame) => {
+    if (!(frame instanceof HTMLIFrameElement)) {
+      return;
+    }
+
+    if (!frame.dataset.steeringMasterHostWired) {
+      frame.dataset.steeringMasterHostWired = "true";
+      frame.addEventListener("load", () => syncSteeringMasterFrame(frame));
+    }
+  });
+}
+
+function handleSteeringMasterBridgeMessage(event) {
+  const frame = findSteeringMasterFrameForSource(event.source);
+  const message = event.data;
+
+  if (
+    !frame
+    || !isTrustedFrameMessage(event, frame)
+    || !message
+    || typeof message !== "object"
+    || message.api !== 1
+    || !message.evt
+  ) {
+    return;
+  }
+
+  if (message.evt === "ready") {
+    syncSteeringMasterFrame(frame);
+    return;
+  }
+
+  if (message.evt === "select") {
+    activeSteeringMasterSystem = message.system || null;
+    return;
+  }
+
+  if (message.evt === "view") {
+    activeSteeringMasterView = message.view === "3d" ? "3d" : "2d";
+    return;
+  }
+
+  if (message.evt === "requestExportPanel") {
+    openExportPanel("app", null, "step", "app");
+    return;
+  }
+
+  if (message.evt === "fullscreenchange") {
+    isSteeringMasterFullscreen = message.fullscreen === true;
+  }
+}
+
+function findSteeringMasterFrameForSource(source) {
+  return [...document.querySelectorAll("[data-steering-master-frame]")]
+    .find((frame) => frame instanceof HTMLIFrameElement && frame.contentWindow === source) || null;
+}
+
+function syncSteeringMasterFrame(frame) {
+  const vm = getSteeringMasterViewModel(workspace);
+  postToSteeringMasterFrame(frame, { cmd: "setContext", ...vm.context });
+  postToSteeringMasterFrame(frame, { cmd: "setModel", model: vm.model });
+  postToSteeringMasterFrame(frame, {
+    cmd: "skin",
+    skin: activeSkin === "command-deck" ? "deck" : "workshop"
+  });
+  postToSteeringMasterFrame(frame, { cmd: "select", system: activeSteeringMasterSystem });
+}
+
+function postToSteeringMasterFrame(frame, message) {
+  const targetOrigin = getFrameTargetOrigin(frame);
+  frame.contentWindow?.postMessage(message, targetOrigin);
 }
 
 function syncVisibleVsmFrames() {
@@ -863,7 +943,7 @@ function ensureExportPanelFrame() {
   frame.dataset.exportPanelFrame = "true";
   frame.title = "VSM7 export panel";
   frame.setAttribute("aria-hidden", "true");
-  frame.src = "./design-previews/export-panel.html?host=vsm7&embed=1&v=20260725-step3-aspects-org-units";
+  frame.src = "./design-previews/export-panel.html?host=vsm7&embed=1&v=20260729-brand-home-link";
   exportPanelFrame = frame;
   document.body.appendChild(frame);
   return frame;
@@ -1436,8 +1516,8 @@ function renderTopbarVsmButton() {
       class="ghost-button topbar-vsm-button ${activeView === "vsm" ? "is-active" : ""}"
       data-action="navigate"
       data-view="vsm"
-      title="Open VSM system map"
-      aria-label="Open standalone VSM system map"
+      title="Open Steering Master"
+      aria-label="Open Steering Master"
     >VSM</button>
   `;
 }

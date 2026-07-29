@@ -1,4 +1,4 @@
-import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260725-step3-aspects-org-units";
+import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260729-brand-home-link";
 
 export function renderStartPage(workspace, projects) {
   const organizations = groupOrganizations(projects);

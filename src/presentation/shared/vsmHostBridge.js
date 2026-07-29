@@ -1,7 +1,7 @@
-import { getRecursionOrganizations, vsmSystems } from "../../domain/vsm.js?v=20260725-step3-aspects-org-units";
-import { escapeAttr } from "./renderHelpers.js?v=20260725-step3-aspects-org-units";
+import { getRecursionOrganizations, vsmSystems } from "../../domain/vsm.js?v=20260729-brand-home-link";
+import { escapeAttr } from "./renderHelpers.js?v=20260729-brand-home-link";
 
-export const vsmFrameSource = "./vsm.html?v=20260725-step3-aspects-org-units";
+export const vsmFrameSource = "./vsm.html?v=20260729-brand-home-link";
 
 export function renderVsmHostFrame(context, title = "VSM7 system map") {
   return `

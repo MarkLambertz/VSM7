@@ -81,6 +81,18 @@ button:disabled {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 10px;
+}
+
+.brand-block:hover .brand-name {
+  color: var(--blue);
+}
+
+.brand-block:focus-visible {
+  outline: 3px solid rgba(47, 140, 198, 0.38);
+  outline-offset: 4px;
 }
 
 .brand-name {
@@ -5990,6 +6002,27 @@ html[data-skin="command-deck"] .channel-variety-frame-shell {
 }
 
 /* Standalone VSM iframe view */
+.steering-master-page {
+  min-height: calc(100vh - 92px);
+  min-height: calc(100svh - 92px);
+}
+
+.steering-master-frame-shell {
+  height: calc(100vh - 92px);
+  height: calc(100svh - 92px);
+  min-height: 680px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.steering-master-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--surface);
+}
+
 .vsm-standalone-page {
   display: grid;
   gap: 14px;

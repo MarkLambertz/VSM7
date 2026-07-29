@@ -10,8 +10,8 @@ import {
   tableHeader,
   tileExportButton,
   textarea
-} from "../shared/renderHelpers.js?v=20260725-step3-aspects-org-units";
-import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260725-step3-aspects-org-units";
+} from "../shared/renderHelpers.js?v=20260729-brand-home-link";
+import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260729-brand-home-link";
 
 export const step1Subpages = [
   {

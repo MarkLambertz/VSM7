@@ -1,5 +1,5 @@
-import { renderMethodVisual } from "./methodVisuals.js?v=20260725-step3-aspects-org-units";
-import { formatSctNumber } from "../../domain/vsm.js?v=20260725-step3-aspects-org-units";
+import { renderMethodVisual } from "./methodVisuals.js?v=20260729-brand-home-link";
+import { formatSctNumber } from "../../domain/vsm.js?v=20260729-brand-home-link";
 
 export function stepHeader(token, title, description, guidance = "", actions = "") {
   const visual = getStepVisual(token, title);

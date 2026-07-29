@@ -4,9 +4,9 @@ import {
   getStep5MappingDiagnostics,
   isStep5ContributionAssigned,
   vsmSystems
-} from "../../domain/vsm.js?v=20260725-step3-aspects-org-units";
-import { emptyState, escapeAttr, escapeHtml, fullscreenTile, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260725-step3-aspects-org-units";
-import { renderVsmHostFrame } from "../shared/vsmHostBridge.js?v=20260725-step3-aspects-org-units";
+} from "../../domain/vsm.js?v=20260729-brand-home-link";
+import { emptyState, escapeAttr, escapeHtml, fullscreenTile, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260729-brand-home-link";
+import { renderVsmHostFrame } from "../shared/vsmHostBridge.js?v=20260729-brand-home-link";
 
 export function renderStep5(workspace, context = {}) {
   return `

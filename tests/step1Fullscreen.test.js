@@ -60,7 +60,7 @@ test("Step I evaluation opens fullscreen from the matrix tile, not the global he
   assert.doesNotMatch(appSource, /function renderTopbarFocusButton/);
   assert.doesNotMatch(appSource, /focus-fullscreen-/);
   assert.doesNotMatch(appSource, /step1-fullscreen-(open|prev|next)/);
-  assert.match(appSource, /steps\/step1\.js\?v=20260725-step3-aspects-org-units/);
+  assert.match(appSource, /steps\/step1\.js\?v=20260729-brand-home-link/);
   assert.doesNotMatch(stylesSource, /topbar-focus-button/);
 });
 

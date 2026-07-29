@@ -5,21 +5,21 @@ import {
   getStep7EditorModel,
   getStep7SctContributions,
   getWeakSegmentationSignals
-} from "../../domain/vsm.js?v=20260725-step3-aspects-org-units";
+} from "../../domain/vsm.js?v=20260729-brand-home-link";
 import {
   emptyState,
   escapeAttr,
   escapeHtml,
   stepExportButton,
   textarea
-} from "../shared/renderHelpers.js?v=20260725-step3-aspects-org-units";
-import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260725-step3-aspects-org-units";
-import { renderStep2Assessment, renderStep2Remedies } from "./step2.js?v=20260725-step3-aspects-org-units";
-import { renderStep3Register } from "./step3.js?v=20260725-step3-aspects-org-units";
-import { renderStep4ContributionMatrix, renderStep4DecisionGuide } from "./step4.js?v=20260725-step3-aspects-org-units";
-import { renderStep5Mapping } from "./step5.js?v=20260725-step3-aspects-org-units";
-import { renderStep6Channels, renderStep6E2ECheck } from "./step6.js?v=20260725-step3-aspects-org-units";
-import { renderImplementationWorkspace } from "./implementation.js?v=20260725-step3-aspects-org-units";
+} from "../shared/renderHelpers.js?v=20260729-brand-home-link";
+import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260729-brand-home-link";
+import { renderStep2Assessment, renderStep2Remedies } from "./step2.js?v=20260729-brand-home-link";
+import { renderStep3Register } from "./step3.js?v=20260729-brand-home-link";
+import { renderStep4ContributionMatrix, renderStep4DecisionGuide } from "./step4.js?v=20260729-brand-home-link";
+import { renderStep5Mapping } from "./step5.js?v=20260729-brand-home-link";
+import { renderStep6Channels, renderStep6E2ECheck } from "./step6.js?v=20260729-brand-home-link";
+import { renderImplementationWorkspace } from "./implementation.js?v=20260729-brand-home-link";
 
 const focusStepMetadata = {
   step2: {

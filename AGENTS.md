@@ -29,8 +29,8 @@ The app must not feel like a naked data collector or generic SAP/Bootstrap templ
 - Do not introduce a required Node.js backend for normal app usage.
 - Browser localStorage is currently the persistence mechanism.
 - Node.js is allowed only for developer activities such as tests or local tooling.
-- Keep `start.command` aligned with the static/local serving approach if it changes.
-- When frontend JS or CSS changes should be visible in the browser, update the cache-busting labels in both `index.html` and `start.command`. Otherwise Safari may keep loading an older app module even though the source files changed.
+- Keep `start.command` and `start.bat` aligned with the static/local serving approach if it changes.
+- When frontend JS or CSS changes should be visible in the browser, update the cache-busting labels in `index.html`, `start.command`, and `start.bat`. Otherwise a browser may keep loading an older app module even though the source files changed.
 
 ## Architecture Principles
 
@@ -223,29 +223,36 @@ Current step labels:
 
 ### GitHub Push Procedure
 
-The canonical local project folder is `/Users/mark/Documents/VSM7`. It has repeatedly been a plain project folder, not a git checkout. Do not waste time trying `git push` from that folder unless `git rev-parse --show-toplevel` proves it is a repository.
+The canonical local project folder is `/Users/mark/Documents/VSM7`. It is now the working git checkout for `https://github.com/MarkLambertz/VSM7.git`; still verify this with `git rev-parse --show-toplevel` before any git operation.
 
 Use this procedure for pushing to `MarkLambertz/VSM7`:
 
 1. Verify the local state first:
    - Run `npm test`.
-   - Check the app still targets port `4173` via `start.command`.
+   - Check the app still targets port `4173` via `start.command` and `start.bat`.
    - If browser verification is practical, open `http://localhost:4173/?v=<current-cache-version>`.
 2. Check GitHub CLI explicitly:
    - Use `/opt/homebrew/bin/gh --version`.
    - Use `/opt/homebrew/bin/gh auth status`.
    - If the token is invalid, stop and ask the user to run:
-     `/opt/homebrew/bin/gh auth login -h github.com -s repo -w`
-3. If `/Users/mark/Documents/VSM7` is not a git repo, use a temporary checkout:
+     `/opt/homebrew/bin/gh auth login -h github.com -p https -s repo -w`
+   - The user's refreshed macOS credential may remain invisible to the sandboxed Codex process. If `gh auth status` still reports the old invalid token after the user has successfully logged in, do not repeat the login loop. Confirm that local `main` is ahead of `origin/main`, then ask the user to run from Terminal:
+     `cd /Users/mark/Documents/VSM7 && git push origin main`
+   - After the user reports success, verify locally with `git status -sb` and `git log -1 --oneline origin/main`. Only report success when `main` is no longer ahead and `origin/main` contains the intended commit.
+3. If `/Users/mark/Documents/VSM7` is unexpectedly not a git repo, use a temporary checkout:
    - Create a temp folder under `/private/tmp`, for example `/private/tmp/vsm7-push.<id>`.
    - Clone the repo with `/opt/homebrew/bin/gh repo clone MarkLambertz/VSM7 <temp-folder>`.
    - Mirror the local project into the temp checkout with `rsync`, excluding `.git`, `node_modules`, and system junk files.
    - Inspect `git status -sb` in the temp checkout before committing.
-4. Commit and push from the temporary checkout:
+4. In the normal local-checkout path:
+   - Stage only the intended tracked files. Do not add unrelated untracked concept documents, PDFs, or generated `output/` content.
+   - Commit with a clear change summary.
+   - Push with `git push origin main`, either from Codex when credentials are available or from the user's Terminal using the fallback above.
+5. In the temporary-checkout fallback path:
    - `git add -A`
    - `git commit -m "<clear change summary>"`
    - `git push origin main`
-5. Report the result:
+6. Report the result:
    - Mention the commit hash or GitHub confirmation.
    - Mention tests run.
    - If push is blocked by auth or network, say exactly which blocker occurred and do not imply it succeeded.

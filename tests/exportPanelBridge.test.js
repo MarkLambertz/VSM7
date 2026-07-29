@@ -13,7 +13,7 @@ test("host mounts the Claude export panel through window.EXPORT api:1", () => {
   const starter = readProjectFile("start.command");
 
   assert.match(app, /handleExportBridgeMessage/);
-  assert.match(app, /design-previews\/export-panel\.html\?host=vsm7&embed=1&v=20260725-step3-aspects-org-units/);
+  assert.match(app, /design-previews\/export-panel\.html\?host=vsm7&embed=1&v=20260729-brand-home-link/);
   assert.match(app, /getExportViewModel\(workspace, getExportAppState\(\)/);
   assert.match(app, /function normalizeExportTileId/);
   assert.match(app, /tileId: normalizedTileId/);
@@ -30,8 +30,8 @@ test("host mounts the Claude export panel through window.EXPORT api:1", () => {
   assert.match(app, /message\.api !== 1/);
   assert.match(styles, /\.export-panel-host-frame/);
   assert.match(styles, /\.tile-export-button/);
-  assert.match(index, /app\.js\?v=20260725-step3-aspects-org-units/);
-  assert.match(starter, /VERSION="20260725-step3-aspects-org-units"/);
+  assert.match(index, /app\.js\?v=20260729-brand-home-link/);
+  assert.match(starter, /VERSION="20260729-brand-home-link"/);
 });
 
 test("host relays Step VII nested export panel events back through the Step VII frame", () => {
