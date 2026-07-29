@@ -218,6 +218,8 @@ body[data-skin="deck"] .pop .warnrow{background:#2b1a18;color:var(--red)}
 <script>
 "use strict";
 const $=(s,r=document)=>r.querySelector(s);
+/* join only the parts that exist — 7.6 carries no cadence field today, and a dangling ' · ' reads as a bug */
+const join=(parts,sep=' · ')=>parts.filter(x=>x!=null&&String(x).trim()!=='').join(sep);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clip=(s,n)=>{s=String(s||'');return s.length>n?s.slice(0,n-1)+'…':s;};
 
@@ -347,7 +349,6 @@ const SCT_FILTERS=[
   {k:'all',       lab:'All',              att:false, n:()=>SCTS.length,                                        f:()=>true},
   {k:'unsteered', lab:'Unsteered',        att:true,  n:()=>{const c=coveredIds();return SCTS.filter(s=>!c.has(s.id)).length;}, f:s=>!coveredIds().has(s.id)},
   {k:'noacc',     lab:'No accountable',   att:true,  n:()=>SCTS.filter(s=>!ACC[s.id]).length,                   f:s=>!ACC[s.id]},
-  {k:'candidate', lab:'Candidates',       att:false, n:()=>SCTS.filter(s=>s.state==='candidate').length,        f:s=>s.state==='candidate'},
 ];
 const ORG_FILTERS=[
   {k:'all',       lab:'All',              att:false, n:()=>ORGANS.length,                                       f:()=>true},
@@ -379,7 +380,6 @@ function stats(){
     {g:'Steps III & V', rows:[
       ['Success-critical tasks', SCTS.length],
       ['… mapped to a system', SCTS.filter(s=>s.sys).length],
-      ['… still candidates', SCTS.filter(s=>s.state==='candidate').length],
       ['… steered by a meeting', SCTS.filter(s=>c.has(s.id)).length, SCTS.filter(s=>!c.has(s.id)).length?'warn':''],
     ]},
     {g:'Step 7.6', rows:[
@@ -486,7 +486,7 @@ function slotOrgans(sys){
   if(!list.length) return `<div class="slot"><h4>Steering meetings <span class="src">7.6</span></h4><div class="empty">None of the <b>${all.length}</b> meeting${all.length===1?'':'s'} here match the active filter.</div></div>`;
   return `<div class="slot"><h4>Steering meetings <span class="src">7.6</span></h4>`+
     list.map(o=>{const gc=!o.alg&&(!o.covers||!o.covers.length);
-      return `<button class="chip organ ${gc?'gc':''}" data-organ="${esc(o.id)}" title="${esc(o.name)} · ${esc(o.cad)}${gc?' — steers no SCT: review or abolish':''}">${o.alg?'<span class="did" style="color:var(--alg)">▲</span>':'<span class="did">◇</span>'}<span class="nm">${esc(clip(o.name,22))}</span><span class="cad">${esc(o.cad)}</span></button>`;
+      return `<button class="chip organ ${gc?'gc':''}" data-organ="${esc(o.id)}" title="${esc(join([o.name,o.cad]))}${gc?' — steers no SCT: review or abolish':''}">${o.alg?'<span class="did" style="color:var(--alg)">▲</span>':'<span class="did">◇</span>'}<span class="nm">${esc(clip(o.name,22))}</span><span class="cad">${esc(o.cad)}</span></button>`;
     }).join('')+filtNote(list.length,all.length,'org')+`</div>`;
 }
 function slotInstruments(sys){
@@ -638,7 +638,7 @@ function popSct(id,anchor){
   const organs=ORGANS.filter(o=>(o.covers||[]).includes(id));
   const a=ASPECTS[id]||{kpis:[],artifacts:[],tools:[]}, who=ACC[id];
   openPop(`<h3>${esc(s.did)} · ${esc(s.name)}</h3><div class="sub">${esc(s.sys)} · ${esc(sysOf(s.sys)?sysOf(s.sys).epithet:'')}${s.state==='candidate'?' · candidate':''}</div>
-    ${organs.length?`<div class="kv"><label>Steered in</label>${organs.map(o=>esc(o.name)+' <span style="color:var(--muted)">('+esc(o.cad)+')</span>').join('<br>')}</div>`
+    ${organs.length?`<div class="kv"><label>Steered in</label>${organs.map(o=>esc(o.name)+(o.cad?' <span style="color:var(--muted)">('+esc(o.cad)+')</span>':'')).join('<br>')}</div>`
                    :`<div class="warnrow">No meeting steers this task — it would fall through the steering structure.</div>`}
     <div class="kv"><label>Accountable (7.2)</label>${who?esc(who):'<span style="color:var(--red)">no accountable role yet</span>'}</div>
     ${(a.kpis.length||a.artifacts.length||a.tools.length)?`<div class="kv"><label>Instruments (7.3)</label>${[...a.kpis.map(v=>'KPI · '+esc(v)),...a.artifacts.map(v=>'Artifact · '+esc(v)),...a.tools.map(v=>'Tool · '+esc(v))].join('<br>')}</div>`:''}
@@ -647,7 +647,7 @@ function popSct(id,anchor){
 function popOrgan(id,anchor){
   const o=ORGANS.find(x=>x.id===id); if(!o)return;
   const covers=SCTS.filter(s=>(o.covers||[]).includes(s.id));
-  openPop(`<h3>${o.alg?'▲ ':'◇ '}${esc(o.name)}</h3><div class="sub">${esc(o.sys)} · ${esc(o.cad)}${o.people?' · '+o.people+' participants':''}</div>
+  openPop(`<h3>${o.alg?'▲ ':'◇ '}${esc(o.name)}</h3><div class="sub">${esc(join([o.sys||'no system yet', o.cad, o.people?o.people+' participants':'']))}</div>
     ${covers.length?`<div class="kv"><label>Steers</label>${covers.map(s=>esc(s.did)+' · '+esc(s.name)).join('<br>')}</div>`
       :(o.alg?`<div class="kv"><label>Purpose</label>The algedonic line carries pain and lust signals directly — it steers no task by design.</div>`
              :`<div class="warnrow">This meeting steers no success-critical task. What would happen if it were abolished?</div>`)}
