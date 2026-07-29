@@ -1510,7 +1510,7 @@ if(inFrame)document.body.classList.add('embed');   // host provides brand/org/pr
 let _rid=0, _emitT=null;
 function step7Ctx(){ return JSON.parse(JSON.stringify({ units:UNITS, scts:SCTS, contribs:CONTRIBS, meta:CTX_META })); }
 function step7Model(){ return JSON.parse(JSON.stringify({ vessels:VESSELS, rasic:RASIC, aspects:ASPECTS, descriptions:HUMAN, membership:MEMBERSHIP, vesselAspects:VASPECTS, meetings:mtgModel(), orgHierarchy:ORGHIER })); }
-function step7State(){ return { ctx:step7Ctx(), model:step7Model(), ui:{ step:state.step, selContrib:state.selContrib, selVessel:state.selVessel, selNode:state.selNode, filter:state.filter, skin:document.body.dataset.skin } }; }
+function step7State(){ return { ctx:step7Ctx(), model:step7Model(), ui:{ step:state.step, selContrib:state.selContrib, selVessel:state.selVessel, selNode:state.selNode, selMtg:state.selMtg, filter:state.filter, skin:document.body.dataset.skin } }; }
 function postToHost(msg){ try{ if(inFrame) window.parent.postMessage(msg,'*'); }catch(_){ } try{ if(window.STEP7&&typeof window.STEP7.onEmit==='function') window.STEP7.onEmit(msg); }catch(_){ } }
 function emit(evt,extra){ postToHost(Object.assign({evt},extra||{})); }
 function emitChange(){ clearTimeout(_emitT); _emitT=setTimeout(()=>emit('change',{model:step7Model()}),120); }   // authoritative, debounced; fired only on genuine user edits
@@ -1525,7 +1525,12 @@ window.STEP7={
   setVessels:v=>{ if(Array.isArray(v))_replArr(VESSELS,v); render(); },
   setRasic:r=>{ if(r&&typeof r==='object')_replObj(RASIC,r); render(); },
   goto:s=>{ const map={vessels:'7.1',rasic:'7.2',aspects:'7.3',roles:'7.4',functions:'7.5',meetings:'7.6',org:'7.7'}; const id=map[s]||s; if(STEPS.some(x=>x.id===id)){mClosePicker();mCloseRt();mCloseRc();state.useEdit=null;if(state.tileFs)exitTileFs();state.step=id;render();} },
-  select:ref=>{ if(ref&&ref.kind==='contrib')state.selContrib=ref.id||ref.contribId; else if(ref&&ref.kind==='node')state.selNode=ref.id; else if(ref==null){state.selContrib=null;state.selNode=null;} render(); },
+  /* 'meeting' resolves against mtgList(), not MEETINGS: a charter derived from a meeting vessel is
+     only serialized into MEETINGS once it has been opened, so an unopened one would fail that test */
+  select:ref=>{ if(ref&&ref.kind==='contrib')state.selContrib=ref.id||ref.contribId;
+    else if(ref&&ref.kind==='node')state.selNode=ref.id;
+    else if(ref&&ref.kind==='meeting'&&ref.id&&mtgList().some(m=>m.id===ref.id))state.selMtg=ref.id;
+    else if(ref==null){state.selContrib=null;state.selNode=null;} render(); },
   filter:spec=>{ state.filter=Object.assign(defaultFilters(),spec||{}); render(); },
   fullscreen:on=>{ if(on===false){const fn=document.exitFullscreen||document.webkitExitFullscreen;fn&&fn.call(document);} else if(on===true){const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;fn&&fn.call(el);} else toggleFs(); },
   isFullscreen:()=>isFs(),

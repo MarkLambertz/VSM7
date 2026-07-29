@@ -626,7 +626,12 @@ function openPop(html,anchor){
   const r=anchor.getBoundingClientRect(), w=d.offsetWidth, h=d.offsetHeight;
   d.style.left=Math.min(Math.max(8,r.left), innerWidth-w-8)+'px';
   d.style.top=(r.bottom+8+h>innerHeight ? Math.max(8,r.top-h-8) : r.bottom+8)+'px';
-  d.addEventListener('click',ev=>{ if(ev.target.closest('[data-close]'))closePop(); });
+  /* a jump button asks the HOST to navigate — this page never touches the parent DOM or its hash */
+  d.addEventListener('click',ev=>{
+    const nav=ev.target.closest('[data-nav]');
+    if(nav){ try{ emit('navigate',JSON.parse(nav.dataset.nav)); }catch(_){} }
+    if(ev.target.closest('[data-close]'))closePop();
+  });
 }
 function popSct(id,anchor){
   const s=SCTS.find(x=>x.id===id); if(!s)return;
@@ -637,7 +642,7 @@ function popSct(id,anchor){
                    :`<div class="warnrow">No meeting steers this task — it would fall through the steering structure.</div>`}
     <div class="kv"><label>Accountable (7.2)</label>${who?esc(who):'<span style="color:var(--red)">no accountable role yet</span>'}</div>
     ${(a.kpis.length||a.artifacts.length||a.tools.length)?`<div class="kv"><label>Instruments (7.3)</label>${[...a.kpis.map(v=>'KPI · '+esc(v)),...a.artifacts.map(v=>'Artifact · '+esc(v)),...a.tools.map(v=>'Tool · '+esc(v))].join('<br>')}</div>`:''}
-    <button class="jump" data-close="1">Open in Step V →</button>`,anchor);
+    <button class="jump" data-close="1" data-nav="${esc(JSON.stringify({stepId:'step5',system:s.sys,sctId:s.id}))}">Open in Step V →</button>`,anchor);
 }
 function popOrgan(id,anchor){
   const o=ORGANS.find(x=>x.id===id); if(!o)return;
@@ -645,8 +650,8 @@ function popOrgan(id,anchor){
   openPop(`<h3>${o.alg?'▲ ':'◇ '}${esc(o.name)}</h3><div class="sub">${esc(o.sys)} · ${esc(o.cad)}${o.people?' · '+o.people+' participants':''}</div>
     ${covers.length?`<div class="kv"><label>Steers</label>${covers.map(s=>esc(s.did)+' · '+esc(s.name)).join('<br>')}</div>`
       :(o.alg?`<div class="kv"><label>Purpose</label>The algedonic line carries pain and lust signals directly — it steers no task by design.</div>`
-             :`<div class="warnrow">This organ steers no success-critical task. What would happen if it were abolished?</div>`)}
-    <button class="jump" data-close="1">Open the charter in 7.6 →</button>`,anchor);
+             :`<div class="warnrow">This meeting steers no success-critical task. What would happen if it were abolished?</div>`)}
+    <button class="jump" data-close="1" data-nav="${esc(JSON.stringify({stepId:'step7',substep:'7.6',meetingId:o.id}))}">Open the charter in 7.6 →</button>`,anchor);
 }
 /* ---- Steering Stats: hover panel, aggregated from the canonical model only ---- */
 let _statsT=null;
