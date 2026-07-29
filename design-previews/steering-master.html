@@ -674,8 +674,15 @@ window.addEventListener('message',e=>{ const m=e.data; if(!m||typeof m!=='object
      A SPATIAL reading of the very same model: the metasystem stacked S5→S4→S3 over its operative units, S3* and S2
      on their own flanks, the environment as a body to the side. It never replaces the perfected 2D diagram — the
      2D/3D switch chooses the reading. Colour grammar is the locked VSM one. Orbit is hand-rolled (no extra deps). -->
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/jsm/" } }
+</script>
 <script type="module">
-import * as THREE from './vendor/three.module.min.js';
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }     from 'three/addons/postprocessing/RenderPass.js';
+import { SSAOPass }       from 'three/addons/postprocessing/SSAOPass.js';
+import { OutputPass }     from 'three/addons/postprocessing/OutputPass.js';
 
 /* ============================ 3D = A FAITHFUL TRANSFER OF THE 2D DIAGRAM ============================
    No new visual language (PO): the scene reproduces vsm.html's OWN layout constants, shapes and routing —
@@ -705,7 +712,22 @@ const DEPTH={ bar:.95, tri:.85, unit:.55, env:1.5 };
 const rowY=i=>L.row0+i*L.rowH;
 
 const api={started:false};
-let renderer,scene,camera,raf,picker,canvas,onPick,sel=null;
+let renderer,scene,camera,raf,picker,canvas,onPick,sel=null,composer,ssaoPass;
+/* an inverted-hull shell per body: back faces, pushed out along the normal — a clean dark silhouette
+   that keeps the 3D reading like the 2D line drawing (and costs one extra draw, no postprocessing). */
+const OUTLINE=new THREE.MeshBasicMaterial({color:0x2b3440,side:THREE.BackSide});
+function outline(mesh,worldT){
+  const t=worldT==null?.030:worldT;
+  mesh.geometry.computeBoundingBox();
+  const bb=mesh.geometry.boundingBox, sz=new THREE.Vector3(); bb.getSize(sz);
+  const o=new THREE.Mesh(mesh.geometry,OUTLINE.clone());
+  o.material.opacity=1; o.material.transparent=false;
+  o.userData.outlineFor=mesh; o.renderOrder=-2;
+  /* constant stand-off on every axis, so a long bar and a small cone get the SAME line weight */
+  o.scale.set((sz.x+2*t)/Math.max(1e-4,sz.x),(sz.y+2*t)/Math.max(1e-4,sz.y),(sz.z+2*t)/Math.max(1e-4,sz.z));
+  o.position.copy(mesh.position); o.rotation.copy(mesh.rotation);
+  mesh.parent?mesh.parent.add(o):scene.add(o);
+  return o; }
 let sysMeshes={},chMeshes=[],unitMeshes=[],envMeshes=[],algMeshes=[],pulsePaths=[],pulses=[],flowOn=true,algOn=false,clock=0;
 const VIEW0={yaw:-0.38,pitch:0.18,dist:22.5,tx:-0.5,ty:-0.5};   // opening frame: the whole model, orbiting its true centroid
 let yaw=VIEW0.yaw, pitch=VIEW0.pitch, dist=VIEW0.dist, target=new THREE.Vector3(VIEW0.tx,VIEW0.ty,0);
@@ -713,7 +735,8 @@ let yaw=VIEW0.yaw, pitch=VIEW0.pitch, dist=VIEW0.dist, target=new THREE.Vector3(
 function mat(c,op){ const t=(op!=null&&op<1);
   return new THREE.MeshStandardMaterial({color:c,roughness:.62,metalness:.03,transparent:t,opacity:op==null?1:op}); }
 /* opacity changes must flip .transparent with them, else depth sorting misplaces the geometry */
-function setOp(m,v){ if(!m||!m.material)return; m.material.opacity=v; m.material.transparent=(v<1); m.material.needsUpdate=true; }
+function setOp(m,v){ if(!m||!m.material)return; m.material.opacity=v; m.material.transparent=(v<1); m.material.needsUpdate=true;
+  if(m.parent){ m.parent.children.forEach(ch=>{ if(ch.userData&&ch.userData.outlineFor===m){ ch.visible=v>.5; } }); } }
 /* the 2D's own name wrapping (wrapName(nm,16)) so the 3D breaks lines the same way */
 function wrapName(nm,max){ const w=String(nm||'').split(/\s+/), out=[]; let cur='';
   w.forEach(x=>{ const t=cur?cur+' '+x:x; if(t.length<=max){cur=t;} else { if(cur)out.push(cur); cur=x; } });
@@ -725,7 +748,7 @@ function nameCanvas(nm){
   /* printed ON the management box: the canvas IS the box face — opaque white ground, black ink, two lines */
   const lines=wrapName(nm,18), c=document.createElement('canvas'), W=768,H=362;
   c.width=W; c.height=H; const x=c.getContext('2d');
-  x.font='800 76px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.font='600 74px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
   x.fillStyle='#000000';
   if(lines.length===1) x.fillText(lines[0],W/2,H/2);
   else { x.fillText(lines[0],W/2,H/2-44); x.fillText(lines[1],W/2,H/2+44); }
@@ -760,7 +783,7 @@ function box3(w,h,d,colour){
   return new THREE.Mesh(g,mat(colour));
 }
 function bar3(cfg,colour,sysId,txt){ const g=new THREE.Group();
-  const m=box3(R(cfg.w),R(cfg.h),DEPTH.bar,colour); g.add(m);
+  const m=box3(R(cfg.w),R(cfg.h),DEPTH.bar,colour); g.add(m); outline(m,.028);
   const l=plate(textCanvas(txt,'#ffffff'),R(cfg.h)*1.1,R(cfg.h)*0.55,faceZ(DEPTH.bar)); g.add(l);
   g.position.set(X(cfg.x+cfg.w/2),Y(cfg.y+cfg.h/2),0);
   g.userData={sys:sysId,mesh:m}; sysMeshes[sysId]=g; scene.add(g); return g; }
@@ -772,7 +795,7 @@ function tri3(cx,topY,botY,colour,sysId,txt,pointDown){ const g=new THREE.Group(
   const d=DEPTH.tri;
   const geo=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:.09,bevelSize:.07,bevelSegments:8,curveSegments:16});
   geo.translate(0,0,-d/2); geo.computeVertexNormals();
-  const m=new THREE.Mesh(geo,mat(colour)); g.add(m);
+  const m=new THREE.Mesh(geo,mat(colour)); g.add(m); outline(m,.028);
   const l=plate(textCanvas(txt,'#ffffff'),.46,.23,faceZ(d,.09)); l.position.y=pointDown?h/2-.30:-h/2+.30; g.add(l);
   g.position.set(X(cx),Y((topY+botY)/2),0); g.userData={sys:sysId,mesh:m}; sysMeshes[sysId]=g; scene.add(g); return g; }
 
@@ -796,7 +819,9 @@ function potato(points2d,colour,op,depth,z,shell){
   mm.roughness=.86; mm.flatShading=false;                        // organic, not plastic
   if(shell){ mm.depthWrite=false; mm.side=THREE.DoubleSide; }   // an enclosing body must not hide what it contains
   const m=new THREE.Mesh(g,mm);
-  m.position.z=z||0; m.renderOrder=shell?-1:0; envMeshes.push(m); scene.add(m); return m;
+  m.position.z=z||0; m.renderOrder=shell?-1:0; envMeshes.push(m); scene.add(m);
+  if(!shell){ const o=outline(m,.022); o.material.color.setHex(0x6b7784); }
+  return m;
 }
 /* the 2D's own outline generators, verbatim in maths so the silhouettes match */
 function blobPts(cx,cy,rx,ry,seed,amp){ amp=amp==null?1:amp; const n=26,p=[];
@@ -890,8 +915,8 @@ function build(units){
 
   /* vertical channels on their 2D lanes */
   seg(L.cmdL,L.s3.y+L.s3.h,L.cmdL,lastY,COL.s3,.05,0,{ch:'e',sys:['S3']});
-  seg(L.cmdR,L.s3.y+L.s3.h,L.cmdR,lastY,COL.s3,.05,0,{ch:'d',sys:['S3']});
-  seg(L.s3star.cx,L.s3star.botY-2,L.s3star.cx,lastY,COL.s3,.045,0,{ch:'b',sys:['S3*']});
+  seg(L.cmdR,L.s3.y+L.s3.h,L.cmdR,lastY,COL.s3,.05,0,{ch:'d',sys:['S3'],dir:-1});   // accountability travels UP
+  seg(L.s3star.cx,L.s3star.botY-2,L.s3star.cx,lastY,COL.s3,.045,0,{ch:'b',sys:['S3*'],dir:-1});   // audit information rises
   seg(L.s2.cx,L.s2.botY,L.s2.cx,lastY,COL.s2,.05,0,{ch:'f',sys:['S2']});
 
   /* channel c — operational dependencies: the yellow squiggle running between the operations */
@@ -906,12 +931,12 @@ function build(units){
 
   /* S1 rows: operation circle + management square + the local environment eye loops */
   units.forEach((u,i)=>{ const y=rowY(i);
-    seg(L.s3star.cx,y,463,y,COL.s3,.035,0,{ch:'b',sys:['S3*']});
-    seg(621,y,L.s2.cx,y,COL.s2,.04,0,{ch:'f',sys:['S2']});
+    seg(L.s3star.cx,y,463,y,COL.s3,.035,0,{ch:'b',sys:['S3*'],dir:-1});   // from the operation back to 3*
+    seg(621,y,L.s2.cx,y,COL.s2,.04,0,{ch:'f',sys:['S2'],dir:-1});   // coordination reaches into the unit
     const g=new THREE.Group();
     const circ=new THREE.Mesh(new THREE.CylinderGeometry(R(L.r),R(L.r),DEPTH.unit,56),mat(COL.white));
-    circ.rotation.x=Math.PI/2; circ.position.set(X(L.circleX),Y(y),0); g.add(circ);
-    const sq=box3(R(L.sqW),R(L.sqH),DEPTH.unit,COL.white); sq.position.set(X(L.sqCx),Y(y),Z.unit); g.add(sq);
+    circ.rotation.x=Math.PI/2; circ.position.set(X(L.circleX),Y(y),0); g.add(circ); outline(circ,.026);
+    const sq=box3(R(L.sqW),R(L.sqH),DEPTH.unit,COL.white); sq.position.set(X(L.sqCx),Y(y),Z.unit); g.add(sq); outline(sq,.026);
     seg(515,y,L.sqCx-L.sqW/2,y,COL.stroke,.02,0,{sys:['S1']});
     const nm=plate(nameCanvas(u),R(L.sqW)*0.96,R(L.sqH)*0.90,0);                          // glyphs only — printed on the box face
     nm.position.set(X(L.sqCx),Y(y),faceZ(DEPTH.unit)); g.add(nm);
@@ -948,7 +973,8 @@ function buildPulses(){
         depthWrite:false,depthTest:true,opacity:1}));
       const sc=.42+Math.random()*.12; sp.scale.set(sc,sc,1); sp.renderOrder=16;
       sp.userData={ch:p.ud.ch,sys:p.ud.sys||[]};
-      pulses.push({sp,curve:p.curve,t:(i/n)+Math.random()*.12,speed:(.10+Math.random()*.10)/Math.max(1,len/3.2),ud:p.ud});
+      pulses.push({sp,curve:p.curve,t:(i/n)+Math.random()*.12,speed:(.10+Math.random()*.10)/Math.max(1,len/3.2),
+        dir:(p.ud.dir==null?1:p.ud.dir),ud:p.ud});
       scene.add(sp);
     }
   });
@@ -960,7 +986,7 @@ function stepPulses(dt){
     const dim=(sel&&!(p.ud.sys||[]).includes(sel)) || (isAlg&&!algOn);
     if(!vis||dim){ p.sp.visible=false; return; }
     p.sp.visible=true;
-    p.t+=p.speed*dt; if(p.t>1)p.t-=1;
+    p.t+=p.dir*p.speed*dt; if(p.t>1)p.t-=1; else if(p.t<0)p.t+=1;
     p.sp.position.copy(p.curve.getPoint(p.t));
     /* fade in/out at the ends + a gentle heartbeat so it reads as a travelling signal, not a bead */
     const edge=Math.min(p.t,1-p.t)*7, puls=.72+.28*Math.sin(clock*7+p.t*10);
@@ -970,7 +996,8 @@ function stepPulses(dt){
   });
 }
 function fit(){ const st=canvas.parentElement, w=st.clientWidth, h=st.clientHeight;
-  renderer.setSize(w,h,false); camera.aspect=w/Math.max(1,h); camera.updateProjectionMatrix(); }
+  renderer.setSize(w,h,false); camera.aspect=w/Math.max(1,h); camera.updateProjectionMatrix();
+  if(composer){ composer.setSize(w,h); if(ssaoPass)ssaoPass.setSize(w,h); } }
 function place(){ camera.position.set(
     target.x+dist*Math.cos(pitch)*Math.sin(yaw), target.y+dist*Math.sin(pitch), target.z+dist*Math.cos(pitch)*Math.cos(yaw));
   camera.lookAt(target); }
@@ -988,9 +1015,18 @@ api.start=function({units,onPick:pick}){
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
   renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
   camera=new THREE.PerspectiveCamera(40,1,.1,300);
+  renderer.setClearColor(0x000000,0);
   build(units);
   envMeshes.forEach(m=>{ m.userData.base=m.material.opacity; });
   buildPulses();
+  /* ambient occlusion — the depth cue the literature calls essential for shape perception */
+  composer=new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene,camera));
+  ssaoPass=new SSAOPass(scene,camera,1,1);
+  ssaoPass.kernelRadius=0.42; ssaoPass.minDistance=0.0006; ssaoPass.maxDistance=0.10;
+  ssaoPass.output=SSAOPass.OUTPUT.Default;
+  composer.addPass(ssaoPass);
+  composer.addPass(new OutputPass());
   fit(); place(); applySel();
   picker=new THREE.Raycaster();
   let drag=false,px=0,py=0,moved=0;
@@ -1010,7 +1046,8 @@ api.start=function({units,onPick:pick}){
   let _last=performance.now();
   (function loop(){ raf=requestAnimationFrame(loop);
     const now=performance.now(), dt=Math.min(.05,(now-_last)/1000); _last=now;
-    if(document.body.classList.contains('view3d')){ clock+=dt; stepPulses(dt); renderer.render(scene,camera); } })();
+    if(document.body.classList.contains('view3d')){ clock+=dt; stepPulses(dt);
+      if(composer)composer.render(dt); else renderer.render(scene,camera); } })();
 };
 api.select=function(sys){ sel=sys||null; if(api.started)applySel(); };
 api.highlightLoop=function(l){ if(!api.started)return;
