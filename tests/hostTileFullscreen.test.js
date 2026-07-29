@@ -109,13 +109,13 @@ test("host-owned implementation tiles expose local fullscreen surfaces", () => {
   assertFullscreenTile(backlogFullscreen, "Transformation Backlog");
 });
 
-test("host fullscreen modules use one cache label", () => {
+test("host fullscreen entry points use the current app cache label", () => {
   const appSource = readFileSync(new URL("../src/presentation/app.js", import.meta.url), "utf8");
   const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   const starter = readFileSync(new URL("../start.command", import.meta.url), "utf8");
 
   assert.match(appSource, /renderHostTileFullscreenLayer/);
   assert.match(appSource, /20260729-steering-master-nav-audit/);
-  assert.match(index, /app\.js\?v=20260729-steering-master-nav-audit/);
-  assert.match(starter, /VERSION="20260729-steering-master-nav-audit"/);
+  assert.match(index, /app\.js\?v=20260729-step7-starting-tile/);
+  assert.match(starter, /VERSION="20260729-step7-starting-tile"/);
 });

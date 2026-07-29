@@ -78,7 +78,7 @@ import { filterScts, normalizeStep3Subpage, renderStep3, renderStep3FullscreenTi
 import { renderStep4, renderStep4FullscreenTile } from "./steps/step4.js?v=20260729-steering-master-nav-audit";
 import { renderStep5, renderStep5FullscreenTile } from "./steps/step5.js?v=20260729-steering-master-nav-audit";
 import { getActiveStep6SctId, renderStep6, renderStep6FullscreenTile } from "./steps/step6.js?v=20260729-steering-master-nav-audit";
-import { renderStep7 } from "./steps/step7.js?v=20260729-steering-master-nav-audit";
+import { renderStep7 } from "./steps/step7.js?v=20260729-step7-starting-tile";
 import { renderVsmStandalone } from "./vsmStandalone.js?v=20260729-steering-master-nav-audit";
 import {
   buildVsmHostTree,

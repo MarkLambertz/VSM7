@@ -30,8 +30,8 @@ test("host mounts the Claude export panel through window.EXPORT api:1", () => {
   assert.match(app, /message\.api !== 1/);
   assert.match(styles, /\.export-panel-host-frame/);
   assert.match(styles, /\.tile-export-button/);
-  assert.match(index, /app\.js\?v=20260729-steering-master-nav-audit/);
-  assert.match(starter, /VERSION="20260729-steering-master-nav-audit"/);
+  assert.match(index, /app\.js\?v=20260729-step7-starting-tile/);
+  assert.match(starter, /VERSION="20260729-step7-starting-tile"/);
 });
 
 test("host relays Step VII nested export panel events back through the Step VII frame", () => {
