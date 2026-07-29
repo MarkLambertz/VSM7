@@ -52,6 +52,17 @@ body[data-skin="deck"] .tile-export-button,body[data-skin="deck"] .tile-fullscre
 /* ---------- sub bar: lenses + honesty headline ---------- */
 .main{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 16px 22px}
 .subbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+/* filter row: narrow the chips inside every band without ever changing the counts in the band head */
+.fbreak{flex-basis:100%;height:0}
+.fgroup{display:flex;align-items:center;gap:6px}
+.fgroup .flab{font:700 10px/1 Inter,system-ui,sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-right:1px}
+.fpill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 9px;font:500 12px/1 Inter,system-ui,sans-serif;color:#3d4756;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.fpill b{font-weight:700}
+.fpill:hover{border-color:#b9c4d2}
+.fpill.on{background:#eef4ff;border-color:#9dbcf5;color:#1b4fa8}
+.fpill.att.on{background:#fdecec;border-color:#f0a7a7;color:#a52222}
+.fpill.zero{opacity:.42;cursor:default}
+.slot .filtered{font:500 11px/1.5 Inter,system-ui,sans-serif;color:var(--muted);margin-top:6px}
 .tog{border:1px solid var(--line-strong);background:var(--surface);border-radius:999px;padding:5px 13px;font-size:12.5px;font-weight:700;color:var(--muted)}
 .tog.on{border-color:var(--blue);color:var(--blue);background:var(--blue-soft)}
 .tog .sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
@@ -176,10 +187,6 @@ body[data-skin="deck"] .pop .warnrow{background:#2b1a18;color:var(--red)}
       <div><label>System-in-Focus</label><strong id="ctxSif">EU AI Solutions SE · R0</strong></div>
       <div><label>View</label><strong>Steering Master — the control organization</strong></div>
     </div>
-    <div class="tools">
-      <button class="tile-export-button" data-act="export" title="Export the steering overview" aria-label="Export"><span aria-hidden="true">⬇</span></button>
-      <button class="tile-fullscreen-button" id="fsBtn" title="Full screen (F)" aria-label="Full screen"><span class="fullscreen-corners" aria-hidden="true"><span></span></span></button>
-    </div>
   </header>
 
   <main class="main">
@@ -188,6 +195,12 @@ body[data-skin="deck"] .pop .warnrow{background:#2b1a18;color:var(--red)}
       <div class="diagram-card">
         <div class="diagram-head"><b>Steering systems</b><span class="hint">click a system to focus its band</span>
           <span class="viewseg" id="viewSeg"><button data-view="2d" class="on">2D</button><button data-view="3d">3D</button></span>
+          <!-- house pattern: export sits next to the tile-specific fullscreen button, and BOTH live in the
+               tile head — the topbar is collapsed when the page is embedded, so nothing may hide in it -->
+          <span class="tools">
+            <button class="tile-export-button" data-act="export" title="Export the steering overview" aria-label="Export"><span aria-hidden="true">⬇</span></button>
+            <button class="tile-fullscreen-button" id="fsBtn" title="Full screen (F)" aria-label="Full screen"><span class="fullscreen-corners" aria-hidden="true"><span></span></span></button>
+          </span>
         </div>
         <div class="stage">
           <iframe id="vsmframe" title="VSM system diagram"></iframe>
@@ -298,7 +311,9 @@ const UNITS=['Industrial AI Copilot','Sovereign AI Assistant Platform','Public S
 const CTX={sif:'EU AI Solutions SE', level:'R0'};
 
 /* ============================ STATE ============================ */
-const state={sel:null, lens:{instruments:true, accountability:true, channels:true}, collapsed:{}, s1:true, loop:null, view:'2d', alg:false, flow:true};
+const state={sel:null, lens:{instruments:true, accountability:true, channels:true}, collapsed:{}, s1:true, loop:null, view:'2d', alg:false, flow:true,
+  /* chip filters — they narrow what the slots LIST, never what the band heads COUNT */
+  fSct:'all', fOrg:'all'};
 
 /* ============================ DERIVATIONS (the honesty spine) ============================
    Everything below is COMPUTED from the canonical data — this page asserts nothing of its own. */
@@ -310,6 +325,12 @@ const coveredIds = () => new Set(ORGANS.flatMap(o=>o.covers));
 const orphansOf  = sys => { const c=coveredIds(); return sctsOf(sys).filter(s=>!c.has(s.id)); };
 /* "systematic garbage collection": an organ that steers no SCT at all — a candidate for abolition, never an assertion */
 const gcOf       = sys => organsOf(sys).filter(o=>!o.alg && (!o.covers||!o.covers.length));
+/* 7.6 may hold a meeting that carries NO system yet. It belongs to no band, so it would silently vanish
+   from this page — the one thing an honesty instrument must never do. Surface it as its own finding. */
+const unassignedOrgans = () => ORGANS.filter(o=>!SYSTEMS.some(s=>s.id===o.sys));
+/* every meeting that steers nothing, wherever it sits. The ribbon and Steering Stats must count the
+   SAME set — a per-system tally silently drops the unassigned ones and the two disagree. */
+const gcAll      = () => ORGANS.filter(o=>!o.alg && (!o.covers||!o.covers.length));
 /* an empty seat: a system with neither SCTs nor organs — shown honestly, never hidden */
 const isEmptySeat= sys => !sctsOf(sys).length && !organsOf(sys).length;
 const instrumentsOf = sys => { const acc={kpis:[],artifacts:[],tools:[]};
@@ -320,12 +341,32 @@ const acctOf = sys => { const map={};
     (map[key]=map[key]||{who,scts:[]}).scts.push(s); });
   return Object.values(map); };
 const loopsOf = sys => LOOPS.filter(l=>l.sys.includes(sys));
+/* ---- chip filters. Each is a plain predicate over the SAME canonical arrays the counts use, so a
+       filtered view can never disagree with the band head — the head keeps showing the true total. ---- */
+const SCT_FILTERS=[
+  {k:'all',       lab:'All',              att:false, n:()=>SCTS.length,                                        f:()=>true},
+  {k:'unsteered', lab:'Unsteered',        att:true,  n:()=>{const c=coveredIds();return SCTS.filter(s=>!c.has(s.id)).length;}, f:s=>!coveredIds().has(s.id)},
+  {k:'noacc',     lab:'No accountable',   att:true,  n:()=>SCTS.filter(s=>!ACC[s.id]).length,                   f:s=>!ACC[s.id]},
+  {k:'candidate', lab:'Candidates',       att:false, n:()=>SCTS.filter(s=>s.state==='candidate').length,        f:s=>s.state==='candidate'},
+];
+const ORG_FILTERS=[
+  {k:'all',       lab:'All',              att:false, n:()=>ORGANS.length,                                       f:()=>true},
+  {k:'gc',        lab:'Steers nothing',   att:true,  n:()=>gcAll().length,                                      f:o=>!o.alg&&!(o.covers||[]).length},
+  {k:'unplaced',  lab:'No system',        att:true,  n:()=>unassignedOrgans().length,                           f:o=>!SYSTEMS.some(s=>s.id===o.sys)},
+  {k:'alg',       lab:'Algedonic',        att:false, n:()=>ORGANS.filter(o=>o.alg).length,                      f:o=>!!o.alg},
+];
+const sctFilter = () => (SCT_FILTERS.find(x=>x.k===state.fSct)||SCT_FILTERS[0]).f;
+const orgFilter = () => (ORG_FILTERS.find(x=>x.k===state.fOrg)||ORG_FILTERS[0]).f;
+/* the honest footer a slot shows when a filter hides part of its content */
+const filtNote = (shown,total,what) => (state.fSct==='all'&&what==='sct')||(state.fOrg==='all'&&what==='org')||shown===total
+  ? '' : `<div class="filtered">showing <b>${shown}</b> of ${total} — filter active</div>`;
 function headline(){
-  let orphans=0,gc=0,seats=0,redLoops=0,noAcc=0;
-  SYSTEMS.forEach(s=>{ orphans+=orphansOf(s.id).length; gc+=gcOf(s.id).length; if(isEmptySeat(s.id))seats++; });
+  let orphans=0,seats=0,redLoops=0,noAcc=0;
+  SYSTEMS.forEach(s=>{ orphans+=orphansOf(s.id).length; if(isEmptySeat(s.id))seats++; });
   LOOPS.forEach(l=>{ if(loopVerdict(l).rag==='r')redLoops++; });
   SCTS.forEach(s=>{ if(!ACC[s.id])noAcc++; });
-  return {orphans,gc,seats,redLoops,noAcc};
+  /* gc is counted over ALL meetings, not per band — see gcAll */
+  return {orphans, gc:gcAll().length, unassigned:unassignedOrgans().length, seats, redLoops, noAcc};
 }
 /* ---- Steering Stats: aggregate ONLY what the seven steps actually hold. Never invent a number. ---- */
 function stats(){
@@ -339,13 +380,13 @@ function stats(){
       ['Success-critical tasks', SCTS.length],
       ['… mapped to a system', SCTS.filter(s=>s.sys).length],
       ['… still candidates', SCTS.filter(s=>s.state==='candidate').length],
-      ['… steered by an organ', SCTS.filter(s=>c.has(s.id)).length, SCTS.filter(s=>!c.has(s.id)).length?'warn':''],
+      ['… steered by a meeting', SCTS.filter(s=>c.has(s.id)).length, SCTS.filter(s=>!c.has(s.id)).length?'warn':''],
     ]},
     {g:'Step 7.6', rows:[
-      ['Steering organs', ORGANS.length],
+      ['Steering meetings', ORGANS.length],
       ['… algedonic lines', ORGANS.filter(o=>o.alg).length],
       ['… steering no task', ORGANS.filter(o=>!o.alg&&!(o.covers||[]).length).length, ORGANS.some(o=>!o.alg&&!(o.covers||[]).length)?'warn':''],
-      ['Participants (max per organ)', ORGANS.reduce((m,o)=>Math.max(m,o.people||0),0)],
+      ['Participants (max per meeting)', ORGANS.reduce((m,o)=>Math.max(m,o.people||0),0)],
     ]},
     {g:'Step 7.2', rows:[
       ['Distinct accountable roles', roles.size],
@@ -396,7 +437,7 @@ window.addEventListener('message',e=>{
 function renderSubbar(){
   const h=headline();
   const lens=(k,label,title)=>`<button class="tog ${state.lens[k]?'on':''}" data-lens="${k}" title="${esc(title)}">${esc(label)}</button>`;
-  const attn=h.orphans+h.redLoops+h.noAcc>0;
+  const attn=h.orphans+h.redLoops+h.noAcc+h.unassigned>0;
   $('#subbar').innerHTML=
     lens('instruments','Instruments','Show the KPIs, artifacts and tools behind each system (7.3)')+
     lens('accountability','Accountability','Show who is Accountable (A in 7.2 RASIC) per system')+
@@ -404,31 +445,49 @@ function renderSubbar(){
     `<span class="divider"></span>`+
     `<button class="tog ${state.s1?'on':''}" data-s1="1" title="Show the operative units as context — this page is about the metasystem">S1 context</button>`+
     `<button class="tog ${state.alg?'on':''}" data-alg="1" title="Show the algedonic channel — the direct alarm path from operations to S5"><span class="sw" style="background:var(--alg)"></span>Algedonic</button>`+
-    `<button class="tog ${state.flow?'on':''}" data-flow="1" title="Animate the information flowing through the channels (3D)">✳ Flow</button>`+
+    /* Flow animates the pulses travelling the channels — it exists only in the 3D scene, so it is only
+       offered there. A control that does nothing in the current view is worse than no control. */
+    (state.view==='3d'
+      ? `<button class="tog ${state.flow?'on':''}" data-flow="1" title="Animate the signals travelling the channels: each pulse runs in the real direction of that channel — command down, resource bargain and accountability up, audit up, algedonic straight to S5">✳ Signal flow</button>`
+      : '')+
     `<button class="tog" id="statsBtn" data-stats="1" title="Everything the seven steps actually hold — hover">▦ Steering Stats</button>`+
     `<div class="hpill ${attn?'attn':''}" data-act="walk" title="What the canonical model says is still open">`+
       (h.orphans?`<span><b>${h.orphans}</b> unsteered SCT${h.orphans>1?'s':''}</span><span class="sep">·</span>`:'')+
       (h.noAcc?`<span><b>${h.noAcc}</b> without accountable</span><span class="sep">·</span>`:'')+
       (h.redLoops?`<span><b>${h.redLoops}</b> broken loop${h.redLoops>1?'s':''}</span>`:'')+
-      (h.gc?`<span class="sep">·</span><span><b>${h.gc}</b> organ${h.gc>1?'s':''} to review</span>`:'')+
+      (h.gc?`<span class="sep">·</span><span><b>${h.gc}</b> meeting${h.gc>1?'s':''} to review</span>`:'')+
+      (h.unassigned?`<span class="sep">·</span><span><b>${h.unassigned}</b> meeting${h.unassigned>1?'s':''} without a system</span>`:'')+
       (attn?'':'<span>every mapped SCT is steered</span>')+
-    `</div>`;
+    `</div>`+
+    `<div class="fbreak"></div>`+
+    fgroup('SCTs','fsct',state.fSct,SCT_FILTERS)+
+    fgroup('Meetings','forg',state.fOrg,ORG_FILTERS);
+}
+/* a filter group: each pill carries its own live count, so the filter row doubles as a second, quieter
+   read of the honesty spine. A zero-count pill is shown but inert — never hidden, never clickable. */
+function fgroup(label,attr,cur,defs){
+  return `<span class="fgroup"><span class="flab">${esc(label)}</span>`+
+    defs.map(d=>{ const n=d.n(), zero=n===0&&d.k!=='all';
+      return `<button class="fpill ${d.att?'att':''} ${cur===d.k?'on':''} ${zero?'zero':''}" ${zero?'disabled':''} data-${attr}="${d.k}" title="${esc(d.k==='all'?'Show every entry':'Show only: '+d.lab)}">${esc(d.lab)} <b>${n}</b></button>`;
+    }).join('')+`</span>`;
 }
 function slotSCTs(sys){
-  const list=sctsOf(sys), c=coveredIds();
-  if(!list.length) return `<div class="slot"><h4>Success-critical tasks <span class="src">Step V</span></h4><div class="empty">No SCT is mapped to <b>${sys}</b> yet — Step V decides which contributions this system performs.</div></div>`;
+  const all=sctsOf(sys), c=coveredIds(), list=all.filter(sctFilter());
+  if(!all.length) return `<div class="slot"><h4>Success-critical tasks <span class="src">Step V</span></h4><div class="empty">No SCT is mapped to <b>${sys}</b> yet — Step V decides which contributions this system performs.</div></div>`;
+  if(!list.length) return `<div class="slot"><h4>Success-critical tasks <span class="src">Step V</span></h4><div class="empty">None of the <b>${all.length}</b> SCT${all.length===1?'':'s'} here match the active filter.</div></div>`;
   return `<div class="slot"><h4>Success-critical tasks <span class="src">Step V</span></h4>`+
     list.map(s=>{const orphan=!c.has(s.id);
-      return `<button class="chip ${s.state==='candidate'?'cand':''} ${orphan?'orphan':''}" data-sct="${esc(s.id)}" title="${esc(s.name)}${orphan?' — no organ steers this task':''}"><span class="did">${esc(s.did)}</span><span class="nm">${esc(clip(s.name,26))}</span>${orphan?'<span class="flag" title="steered by no organ">⚑</span>':''}</button>`;
-    }).join('')+`</div>`;
+      return `<button class="chip ${s.state==='candidate'?'cand':''} ${orphan?'orphan':''}" data-sct="${esc(s.id)}" title="${esc(s.name)}${orphan?' — no meeting steers this task':''}"><span class="did">${esc(s.did)}</span><span class="nm">${esc(clip(s.name,26))}</span>${orphan?'<span class="flag" title="steered by no meeting">⚑</span>':''}</button>`;
+    }).join('')+filtNote(list.length,all.length,'sct')+`</div>`;
 }
 function slotOrgans(sys){
-  const list=organsOf(sys);
-  if(!list.length) return `<div class="slot"><h4>Steering meetings <span class="src">7.6</span></h4><div class="empty">No board, committee or meeting carries <b>${sys}</b> yet.</div></div>`;
+  const all=organsOf(sys), list=all.filter(orgFilter());
+  if(!all.length) return `<div class="slot"><h4>Steering meetings <span class="src">7.6</span></h4><div class="empty">No board, committee or meeting carries <b>${sys}</b> yet.</div></div>`;
+  if(!list.length) return `<div class="slot"><h4>Steering meetings <span class="src">7.6</span></h4><div class="empty">None of the <b>${all.length}</b> meeting${all.length===1?'':'s'} here match the active filter.</div></div>`;
   return `<div class="slot"><h4>Steering meetings <span class="src">7.6</span></h4>`+
     list.map(o=>{const gc=!o.alg&&(!o.covers||!o.covers.length);
       return `<button class="chip organ ${gc?'gc':''}" data-organ="${esc(o.id)}" title="${esc(o.name)} · ${esc(o.cad)}${gc?' — steers no SCT: review or abolish':''}">${o.alg?'<span class="did" style="color:var(--alg)">▲</span>':'<span class="did">◇</span>'}<span class="nm">${esc(clip(o.name,22))}</span><span class="cad">${esc(o.cad)}</span></button>`;
-    }).join('')+`</div>`;
+    }).join('')+filtNote(list.length,all.length,'org')+`</div>`;
 }
 function slotInstruments(sys){
   if(!state.lens.instruments) return '';
@@ -469,7 +528,7 @@ function renderBands(){
         <div class="band-title"><b>${esc(s.epithet)}</b><span>${esc(s.band)} management</span></div>
         <div class="band-counts">
           <span class="cnt"><b>${sc.length}</b> SCT${sc.length===1?'':'s'}</span>
-          <span class="cnt"><b>${og.length}</b> organ${og.length===1?'':'s'}</span>
+          <span class="cnt"><b>${og.length}</b> meeting${og.length===1?'':'s'}</span>
           ${orph?`<span class="cnt warn"><b>${orph}</b> unsteered</span>`:''}
           ${gc?`<span class="cnt warn" style="border-color:var(--amber);color:#8a5b04;background:#fdf6e3"><b>${gc}</b> to review</span>`:''}
         </div>
@@ -480,10 +539,26 @@ function renderBands(){
       </div>
     </section>`;
   }).join('')+
+  /* meetings 7.6 holds that no band can show — named out loud, in the same place, so they can be placed */
+  (()=>{ const ua=unassignedOrgans(); if(!ua.length) return '';
+    return `<section class="band unassigned" style="--sysc:var(--muted);border-left-color:var(--muted)">
+      <div class="band-head" style="cursor:default">
+        <span class="sysdot" style="background:#e7ebf0;color:#5b6673">?</span>
+        <div class="band-title"><b>Not assigned to a system</b><span>7.6 holds ${ua.length} steering meeting${ua.length===1?'':'s'} that no band can show</span></div>
+        <div class="band-counts"><span class="cnt warn"><b>${ua.length}</b> unplaced</span></div>
+      </div>
+      <div class="band-body">
+        <div class="slot" style="grid-column:1/-1">
+          <h4>Steering meetings <span class="src">7.6</span></h4>
+          ${ua.map(o=>`<button class="chip organ" data-organ="${esc(o.id)}" title="${esc(o.name)} — carries no system yet, so it appears in no band"><span class="did">◇</span><span class="nm">${esc(clip(o.name,28))}</span></button>`).join('')}
+          <div class="empty" style="margin-top:8px">Give each one a system in <b>7.6</b> and it moves into that band. Until then this page cannot say which part of the metasystem it serves.</div>
+        </div>
+      </div>
+    </section>`; })()+
   (state.s1?`<div class="s1strip"><span class="lab">S1 · operative units</span>${UNITS.map(u=>`<span class="s1chip">${esc(clip(u,28))}</span>`).join('')}<span class="lab" style="margin-left:auto">their own steering lives one recursion down</span></div>`:'');
 }
 function renderNote(){
-  $('#note').innerHTML=`This page is a <b>view over the canonical model</b> — it never stores steering data. Tasks come from Step V, organs from 7.6, instruments from 7.3, accountability from 7.2, channel health from Step VI. Nothing here is a completeness score: an empty seat is an honest result of where the workshop stands.`;
+  $('#note').innerHTML=`This page is a <b>view over the canonical model</b> — it never stores steering data. Tasks come from Step V, steering meetings from 7.6, instruments from 7.3, accountability from 7.2, channel health from Step VI. Nothing here is a completeness score: an empty seat is an honest result of where the workshop stands.`;
 }
 function render(){ renderSubbar(); renderBands(); renderNote(); }
 
@@ -498,6 +573,7 @@ function setView(v){
     ? 'A spatial reading of the same model — the metasystem stacked over its operative units. Same data, same selection.'
     : 'The shared VSM diagram — reused as-is. Selecting here filters the bands; selecting a band highlights here.';
   if(state.view==='3d'){ ensure3D().then(d=>{ if(d){ d.resize(); d.select(state.sel); d.setAlg(state.alg); d.setFlow(state.flow); } }); }
+  renderSubbar();          // Signal flow is a 3D-only control, so the toolbar changes with the view
   emit('view',{view:state.view});
 }
 let _d3p=null;
@@ -516,6 +592,9 @@ function selectBand(sys,opts){
 }
 document.addEventListener('click',e=>{
   const lens=e.target.closest('[data-lens]'); if(lens){ state.lens[lens.dataset.lens]=!state.lens[lens.dataset.lens]; render(); return; }
+  /* a filter pill: clicking the active one returns to All, so the row is never a trap */
+  const fs=e.target.closest('[data-fsct]'); if(fs){ state.fSct = state.fSct===fs.dataset.fsct?'all':fs.dataset.fsct; render(); return; }
+  const fo=e.target.closest('[data-forg]'); if(fo){ state.fOrg = state.fOrg===fo.dataset.forg?'all':fo.dataset.forg; render(); return; }
   const s1=e.target.closest('[data-s1]'); if(s1){ state.s1=!state.s1; render(); return; }
   const ag=e.target.closest('[data-alg]'); if(ag){ state.alg=!state.alg;
     vsmSend({cmd:'setChannels', shown:{a:true,b:true,c:true,d:true,e:true,f:true,g:state.alg}});
@@ -555,7 +634,7 @@ function popSct(id,anchor){
   const a=ASPECTS[id]||{kpis:[],artifacts:[],tools:[]}, who=ACC[id];
   openPop(`<h3>${esc(s.did)} · ${esc(s.name)}</h3><div class="sub">${esc(s.sys)} · ${esc(sysOf(s.sys)?sysOf(s.sys).epithet:'')}${s.state==='candidate'?' · candidate':''}</div>
     ${organs.length?`<div class="kv"><label>Steered in</label>${organs.map(o=>esc(o.name)+' <span style="color:var(--muted)">('+esc(o.cad)+')</span>').join('<br>')}</div>`
-                   :`<div class="warnrow">No organ steers this task — it would fall through the steering structure.</div>`}
+                   :`<div class="warnrow">No meeting steers this task — it would fall through the steering structure.</div>`}
     <div class="kv"><label>Accountable (7.2)</label>${who?esc(who):'<span style="color:var(--red)">no accountable role yet</span>'}</div>
     ${(a.kpis.length||a.artifacts.length||a.tools.length)?`<div class="kv"><label>Instruments (7.3)</label>${[...a.kpis.map(v=>'KPI · '+esc(v)),...a.artifacts.map(v=>'Artifact · '+esc(v)),...a.tools.map(v=>'Tool · '+esc(v))].join('<br>')}</div>`:''}
     <button class="jump" data-close="1">Open in Step V →</button>`,anchor);
@@ -857,7 +936,17 @@ function bez(pts,z){ return new THREE.CubicBezierCurve3(
   new THREE.Vector3(X(pts[0][0]),Y(pts[0][1]),z||0), new THREE.Vector3(X(pts[1][0]),Y(pts[1][1]),z||0),
   new THREE.Vector3(X(pts[2][0]),Y(pts[2][1]),z||0), new THREE.Vector3(X(pts[3][0]),Y(pts[3][1]),z||0)); }
 function poly(pts,z){ return new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(X(p[0]),Y(p[1]),z||0))); }
-function headed(curve,colour,w,ud,size){ tubeFrom(curve,colour,w,ud);
+/* cut `d` world-units off the end of a curve, arc-length accurate (getPointAt, not getPoint) */
+function trimEnd(curve,d){
+  const L=curve.getLength(); if(!(d>0)||L<=d*1.15) return curve;
+  const u=1-d/L, N=64, pts=[];
+  for(let i=0;i<=N;i++) pts.push(curve.getPointAt(u*i/N));
+  return new THREE.CatmullRomCurve3(pts); }
+/* a headed channel: the shaft must STOP at the arrowhead's base. Drawn to the full length it runs on
+   through the cone and re-emerges at the tip, because the cone tapers to nothing while the tube does not. */
+function headed(curve,colour,w,ud,size){
+  const h=(size||.16)*1.7;
+  tubeFrom(trimEnd(curve,h*0.9),colour,w,ud);
   arrowAt(curve.getPoint(1),curve.getTangent(1),colour,size,ud); }
 /* channel c: the operational-dependency squiggle between consecutive operations (2D wave(), same maths) */
 function wavePts(x,y1,y2,amp){ const pts=[[x,y1]],steps=Math.max(3,Math.round((y2-y1)/12)); let dir=1;
@@ -994,10 +1083,12 @@ function place(){ camera.position.set(
   camera.lookAt(target); }
 function applySel(){
   const on=id=>!sel||sel===id;
-  Object.entries(sysMeshes).forEach(([id,g])=>{ setOp(g.userData.mesh,on(id)?1:.15); });
-  chMeshes.forEach(c=>{ const sys=c.userData.sys||[]; setOp(c,(!sel||sys.includes(sel))?1:.06); });
-  unitMeshes.forEach(g=>{ g.traverse(o=>{ if(o.material&&o.material.opacity!=null)setOp(o,sel?.3:1); }); });
-  envMeshes.forEach(m=>{ setOp(m,(!sel||sel==='S4')?(m.userData.base||.5):.08); });
+  /* focus ATTENUATES, it never erases: the unfocused model is what gives the focused system its meaning.
+     Floors are set so the whole VSM still reads as a body at workshop distance. */
+  Object.entries(sysMeshes).forEach(([id,g])=>{ setOp(g.userData.mesh,on(id)?1:.42); });
+  chMeshes.forEach(c=>{ const sys=c.userData.sys||[]; setOp(c,(!sel||sys.includes(sel))?1:.24); });
+  unitMeshes.forEach(g=>{ g.traverse(o=>{ if(o.material&&o.material.opacity!=null)setOp(o,sel?.5:1); }); });
+  envMeshes.forEach(m=>{ const b=m.userData.base||.5; setOp(m,(!sel||sel==='S4')?b:Math.max(.22,b*.55)); });
   algMeshes.forEach(m=>{ m.visible=algOn; });
 }
 api.start=function({units,onPick:pick}){
@@ -1060,9 +1151,9 @@ api.start=function({units,onPick:pick}){
 api.select=function(sys){ sel=sys||null; if(api.started)applySel(); };
 api.highlightLoop=function(l){ if(!api.started)return;
   if(!l){ applySel(); return; }
-  chMeshes.forEach(c=>{ setOp(c,(c.userData.ch===l.ch)?1:.05); });
-  Object.values(sysMeshes).forEach(g=>{ setOp(g.userData.mesh,(l.sys||[]).includes(g.userData.sys)?1:.15); });
-  unitMeshes.forEach(g=>{ g.traverse(o=>{ if(o.material&&o.material.opacity!=null)setOp(o,.45); }); });
+  chMeshes.forEach(c=>{ setOp(c,(c.userData.ch===l.ch)?1:.20); });
+  Object.values(sysMeshes).forEach(g=>{ setOp(g.userData.mesh,(l.sys||[]).includes(g.userData.sys)?1:.42); });
+  unitMeshes.forEach(g=>{ g.traverse(o=>{ if(o.material&&o.material.opacity!=null)setOp(o,.55); }); });
 };
 api.resetView=function(){ yaw=VIEW0.yaw; pitch=VIEW0.pitch; dist=VIEW0.dist; target.set(VIEW0.tx,VIEW0.ty,0); if(api.started)place(); };   // also undoes a pan
 api.setAlg=function(on){ algOn=!!on; if(api.started)applySel(); };

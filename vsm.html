@@ -208,6 +208,23 @@ const SHAPE_DEF={
 let shapes; try{shapes=JSON.parse(localStorage.getItem('vsmShapes3'));}catch(e){}
 if(!shapes||!shapes.red) shapes=JSON.parse(JSON.stringify(SHAPE_DEF));
 const shapeD=p=>`M ${p[0][0]} ${p[0][1]} C ${p[1][0]} ${p[1][1]} ${p[2][0]} ${p[2][1]} ${p[3][0]} ${p[3][1]}`;
+/* De Casteljau: split the cubic at t and keep the first part */
+const _lp=(a,b,t)=>[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
+function _cut(p,t){ const A=_lp(p[0],p[1],t),B=_lp(p[1],p[2],t),Cc=_lp(p[2],p[3],t),
+  D=_lp(A,B,t),E=_lp(B,Cc,t),F=_lp(D,E,t); return {pt:F, head:[p[0],A,D,F]}; }
+/* An arm that carries a marker-end must STOP where the arrowhead begins. Drawn to its full length the
+   stroke keeps its own width (and round cap) while the marker tapers to a point, so the shaft shows as
+   ears and a blob past the tip. HEAD_LEN matches the aRh/aGh triangle, whose refX is 0 for this reason. */
+const HEAD_LEN=18;
+function shapeDHead(p,cut){
+  const N=160, pts=[]; let L=0;
+  for(let i=0;i<=N;i++){ const q=_cut(p,i/N).pt; pts.push(q); if(i)L+=Math.hypot(q[0]-pts[i-1][0],q[1]-pts[i-1][1]); }
+  if(!(cut>0)||L<=cut*1.25) return shapeD(p);
+  let acc=0,t=1;
+  for(let i=N;i>0;i--){ acc+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]); if(acc>=cut){ t=(i-1)/N; break; } }
+  const h=_cut(p,t).head;
+  return `M ${h[0][0]} ${h[0][1]} C ${h[1][0]} ${h[1][1]} ${h[2][0]} ${h[2][1]} ${h[3][0]} ${h[3][1]}`;
+}
 function editHandles(){let h='';for(const k in shapes){const p=shapes[k];
   h+=`<line x1="${p[0][0]}" y1="${p[0][1]}" x2="${p[1][0]}" y2="${p[1][1]}" stroke="#6b7480" stroke-width="0.8" stroke-dasharray="3 2"/>`
     +`<line x1="${p[3][0]}" y1="${p[3][1]}" x2="${p[2][0]}" y2="${p[2][1]}" stroke="#6b7480" stroke-width="0.8" stroke-dasharray="3 2"/>`;
@@ -335,8 +352,8 @@ function render(){
   s+=`<g data-hl="s4box">${bar('4',C.s4,L.s4)}</g>`;   // …same for S4
   s+=`<g data-hl="s3">${bar('3',C.s3,L.s3)}</g>`;   // wrapped so a channel highlight can dim S3 (visible only in the default view)
   // 3<->4 HOMEOSTAT (editable shapes red / green) drawn ON TOP of the bars so arrowheads stay visible
-  s+=`<path id="shp-red" d="${shapeD(shapes.red)}" fill="none" stroke="${C.s3}" stroke-width="7" marker-end="url(#aRh)" stroke-linecap="round"/>`;
-  s+=`<path id="shp-green" d="${shapeD(shapes.green)}" fill="none" stroke="${C.s4}" stroke-width="7" marker-end="url(#aGh)" stroke-linecap="round"/>`;
+  s+=`<path id="shp-red" d="${shapeDHead(shapes.red,HEAD_LEN)}" fill="none" stroke="${C.s3}" stroke-width="7" marker-end="url(#aRh)" stroke-linecap="round"/>`;
+  s+=`<path id="shp-green" d="${shapeDHead(shapes.green,HEAD_LEN)}" fill="none" stroke="${C.s4}" stroke-width="7" marker-end="url(#aGh)" stroke-linecap="round"/>`;
   // S4 <-> future cloud eye (thin green, two-way). Top arrow (S4 -> environment) approaches the cloud's edge horizontally so its tip lands cleanly.
   s+=`<g data-hl="s4env"><path d="M 499 126 C 451 107 ${L.envX+96} 107 ${L.envX+48} 126" fill="none" stroke="${C.s4}" stroke-width="2.3" marker-end="url(#aG)"/>`
     +`<path d="M ${L.envX+48} 136 C ${L.envX+96} 155 451 155 499 136" fill="none" stroke="${C.s4}" stroke-width="2.3" marker-end="url(#aGr)"/></g>`;
@@ -416,8 +433,8 @@ function defs(){return `<defs>
   <marker id="aY" markerWidth="8" markerHeight="8" refX="6.3" refY="3.45" orient="auto"><path d="M0,0V6.9L6.9,3.45Z" fill="${C.s2}"/></marker>
   <marker id="aS" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0,0V6L6,3Z" fill="${C.stroke}"/></marker>
   <marker id="aA" markerWidth="8" markerHeight="8" refX="6.3" refY="3.45" orient="auto"><path d="M0,0V6.9L6.9,3.45Z" fill="${C.alg}"/></marker>
-  <marker id="aRh" markerWidth="22" markerHeight="22" refX="14" refY="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0L18,9L0,18Z" fill="${C.s3}"/></marker>
-  <marker id="aGh" markerWidth="22" markerHeight="22" refX="14" refY="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0L18,9L0,18Z" fill="${C.s4}"/></marker>
+  <marker id="aRh" markerWidth="22" markerHeight="22" refX="0" refY="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0L18,9L0,18Z" fill="${C.s3}"/></marker>
+  <marker id="aGh" markerWidth="22" markerHeight="22" refX="0" refY="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0L18,9L0,18Z" fill="${C.s4}"/></marker>
   <marker id="aS5" markerWidth="14" markerHeight="14" refX="9.2" refY="5.75" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0L11.5,5.75L0,11.5Z" fill="${C.s5}"/></marker>
 </defs>`;}
 const esc=t=>(t||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -680,7 +697,8 @@ window.addEventListener('mousemove',e=>{
   const m=svg.getScreenCTM().inverse();
   const x=Math.round(e.clientX*m.a+e.clientY*m.c+m.e), y=Math.round(e.clientX*m.b+e.clientY*m.d+m.f);
   shapes[drag.shp][drag.pt]=[x,y];
-  const pe=document.getElementById('shp-'+drag.shp);if(pe)pe.setAttribute('d',shapeD(shapes[drag.shp]));
+  const pe=document.getElementById('shp-'+drag.shp);
+  if(pe)pe.setAttribute('d',(drag.shp==='red'||drag.shp==='green')?shapeDHead(shapes[drag.shp],HEAD_LEN):shapeD(shapes[drag.shp]));
   const el=document.getElementById('editlayer');if(el)el.innerHTML=editHandles();
   updateShapeOut();
 });
