@@ -192,7 +192,7 @@ body[data-skin="deck"] .pop .warnrow{background:#2b1a18;color:var(--red)}
         <div class="stage">
           <iframe id="vsmframe" title="VSM system diagram"></iframe>
           <canvas id="three"></canvas>
-          <div class="d3hint">drag to orbit · scroll to zoom · click a system <button data-resetview="1" style="margin-left:8px;border:1px solid var(--line-strong);background:var(--surface);border-radius:5px;padding:1px 7px;font-size:10.5px;font-weight:700">⟲ Reset view</button></div>
+          <div class="d3hint">drag to orbit · shift- or right-drag to pan · scroll to zoom · click a system <button data-resetview="1" style="margin-left:8px;border:1px solid var(--line-strong);background:var(--surface);border-radius:5px;padding:1px 7px;font-size:10.5px;font-weight:700">⟲ Reset view</button></div>
         </div>
         <div class="diagram-foot" id="dfoot">The shared VSM diagram — reused as-is. Selecting here filters the bands; selecting a band highlights here.</div>
       </div>
@@ -707,7 +707,7 @@ const S=55, X=x=>(x-500)/S, Y=y=>(430-y)/S, R=v=>v/S;
    Every element lives in a ±0.7 band and its layer mirrors the 2D paint order, so the picture stays
    coherent from any angle or zoom — edge-on it reads as one slab, not a cloud of floating parts. */
 const Z={ env:0, envLens:.72, feed:0, chan:0, unit:0, bars:0, eye:-.08, squiggle:0,
-          homeo:.58, arms:.62, alg:.58, label:.56 };
+          homeo:0, arms:0, alg:.28, label:.56 };
 const DEPTH={ bar:.95, tri:.85, unit:.55, env:1.5 };
 const rowY=i=>L.row0+i*L.rowH;
 
@@ -1012,12 +1012,29 @@ api.start=function({units,onPick:pick}){
   composer.addPass(new OutputPass());
   fit(); place(); applySel();
   picker=new THREE.Raycaster();
-  let drag=false,px=0,py=0,moved=0;
-  canvas.addEventListener('pointerdown',e=>{drag=true;moved=0;px=e.clientX;py=e.clientY;canvas.setPointerCapture(e.pointerId);});
+  let drag=false,panning=false,px=0,py=0,moved=0;
+  const _f=new THREE.Vector3(),_r=new THREE.Vector3(),_u=new THREE.Vector3();
+  /* pan moves the orbit TARGET across the camera plane, scaled by distance so it feels the same at any zoom;
+     the scene follows the cursor, which is what every 3D tool does */
+  function pan(dx,dy){
+    camera.getWorldDirection(_f);
+    _r.crossVectors(_f,camera.up).normalize();
+    _u.crossVectors(_r,_f).normalize();
+    const k=dist*0.0016;
+    target.addScaledVector(_r,-dx*k).addScaledVector(_u,dy*k);
+    place();
+  }
+  canvas.addEventListener('contextmenu',e=>e.preventDefault());          // right-drag is a pan, not a menu
+  canvas.addEventListener('pointerdown',e=>{drag=true;moved=0;px=e.clientX;py=e.clientY;
+    panning=(e.button===1||e.button===2||e.shiftKey);                    // middle · right · Shift = pan
+    canvas.style.cursor=panning?'grabbing':'grabbing';
+    canvas.setPointerCapture(e.pointerId);});
   canvas.addEventListener('pointermove',e=>{ if(!drag)return; const dx=e.clientX-px,dy=e.clientY-py; px=e.clientX;py=e.clientY;
-    moved+=Math.abs(dx)+Math.abs(dy); yaw-=dx*.006; pitch=Math.max(-.3,Math.min(1.2,pitch+dy*.005)); place(); });
-  canvas.addEventListener('pointerup',e=>{ drag=false;
-    if(moved<4){ const r=canvas.getBoundingClientRect();
+    moved+=Math.abs(dx)+Math.abs(dy);
+    if(panning){ pan(dx,dy); }
+    else { yaw-=dx*.006; pitch=Math.max(-.3,Math.min(1.2,pitch+dy*.005)); place(); } });
+  canvas.addEventListener('pointerup',e=>{ drag=false; canvas.style.cursor='';
+    if(moved<4&&!panning){ const r=canvas.getBoundingClientRect();
       const nd=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1);
       picker.setFromCamera(nd,camera);
       const hits=picker.intersectObjects(scene.children,true);
@@ -1039,7 +1056,7 @@ api.highlightLoop=function(l){ if(!api.started)return;
   Object.values(sysMeshes).forEach(g=>{ setOp(g.userData.mesh,(l.sys||[]).includes(g.userData.sys)?1:.15); });
   unitMeshes.forEach(g=>{ g.traverse(o=>{ if(o.material&&o.material.opacity!=null)setOp(o,.45); }); });
 };
-api.resetView=function(){ yaw=VIEW0.yaw; pitch=VIEW0.pitch; dist=VIEW0.dist; target.set(VIEW0.tx,VIEW0.ty,0); if(api.started)place(); };
+api.resetView=function(){ yaw=VIEW0.yaw; pitch=VIEW0.pitch; dist=VIEW0.dist; target.set(VIEW0.tx,VIEW0.ty,0); if(api.started)place(); };   // also undoes a pan
 api.setAlg=function(on){ algOn=!!on; if(api.started)applySel(); };
 api.setFlow=function(on){ flowOn=!!on; };
 api.resize=function(){ if(api.started){fit();place();} };
