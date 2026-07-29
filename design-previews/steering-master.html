@@ -725,17 +725,18 @@ function setOp(m,v){ if(!m||!m.material)return; m.material.opacity=v; m.material
 function wrapName(nm,max){ const w=String(nm||'').split(/\s+/), out=[]; let cur='';
   w.forEach(x=>{ const t=cur?cur+' '+x:x; if(t.length<=max){cur=t;} else { if(cur)out.push(cur); cur=x; } });
   if(cur)out.push(cur);
-  if(out.length>2){ const rest=out.slice(1).join(' '); out.length=1; out.push(rest.length>max?rest.slice(0,max-1)+'…':rest); }
+  if(out.length>3){ const rest=out.slice(2).join(' '); out.length=2; out.push(rest.length>max?rest.slice(0,max-1)+'…':rest); }
   return out.length?out:['']; }
 /* a unit-name plate: dark ink on a soft white card, two lines, high-res — legible at workshop distance */
 function nameCanvas(nm){
   /* printed ON the management box: the canvas IS the box face — opaque white ground, black ink, two lines */
-  const lines=wrapName(nm,18), c=document.createElement('canvas'), W=768,H=362;
+  const lines=wrapName(nm,16), c=document.createElement('canvas'), W=768,H=362;
   c.width=W; c.height=H; const x=c.getContext('2d');
-  x.font='600 74px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.font='500 92px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
   x.fillStyle='#000000';
-  if(lines.length===1) x.fillText(lines[0],W/2,H/2);
-  else { x.fillText(lines[0],W/2,H/2-44); x.fillText(lines[1],W/2,H/2+44); }
+  const n=lines.length, step=n>2?86:104, y0=H/2-((n-1)/2)*step;
+  if(n>2) x.font='500 76px Inter,system-ui,sans-serif';
+  lines.forEach((t,i)=>x.fillText(t,W/2,y0+i*step));
   return c; }
 const faceZ=(d,bt)=>d/2+(bt==null?d*0.14:bt)+0.014;   // true outer surface of a bevelled extrusion
 function plate(canvas,w,h,z,opaque){
@@ -747,7 +748,7 @@ function plate(canvas,w,h,z,opaque){
 function textCanvas(text,color,bg){ const c=document.createElement('canvas'),W=512,H=256; c.width=W;c.height=H;
   const x=c.getContext('2d');
   if(bg){ x.fillStyle=bg; x.fillRect(0,0,W,H); }
-  x.font='800 132px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.font='600 168px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
   x.fillStyle=color||'#ffffff'; x.fillText(text,W/2,H/2); return c; }
 function label(t,color,w){ const c=document.createElement('canvas'); c.width=512;c.height=128;
   const x=c.getContext('2d'); x.font='700 72px Inter,system-ui,sans-serif'; x.textAlign='center'; x.textBaseline='middle';
@@ -768,19 +769,19 @@ function box3(w,h,d,colour){
 }
 function bar3(cfg,colour,sysId,txt){ const g=new THREE.Group();
   const m=box3(R(cfg.w),R(cfg.h),DEPTH.bar,colour); g.add(m);
-  const l=plate(textCanvas(txt,'#ffffff'),R(cfg.h)*1.1,R(cfg.h)*0.55,faceZ(DEPTH.bar)); g.add(l);
+  const l=plate(textCanvas(txt,'#ffffff'),R(cfg.h)*1.6,R(cfg.h)*0.80,faceZ(DEPTH.bar)); g.add(l);
   g.position.set(X(cfg.x+cfg.w/2),Y(cfg.y+cfg.h/2),0);
   g.userData={sys:sysId,mesh:m}; sysMeshes[sysId]=g; scene.add(g); return g; }
 function tri3(cx,topY,botY,colour,sysId,txt,pointDown){ const g=new THREE.Group();
-  const wHalf=R(30), h=R(botY-topY), sh=new THREE.Shape();
-  if(pointDown){ sh.moveTo(-wHalf,h/2); sh.lineTo(wHalf,h/2); sh.lineTo(0,-h/2); }
-  else { sh.moveTo(-wHalf,-h/2); sh.lineTo(wHalf,-h/2); sh.lineTo(0,h/2); }
-  sh.closePath();
-  const d=DEPTH.tri;
-  const geo=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:.09,bevelSize:.07,bevelSegments:8,curveSegments:16});
-  geo.translate(0,0,-d/2); geo.computeVertexNormals();
-  const m=new THREE.Mesh(geo,mat(colour)); g.add(m);
-  const l=plate(textCanvas(txt,'#ffffff'),.46,.23,faceZ(d,.09)); l.position.y=pointDown?h/2-.30:-h/2+.30; g.add(l);
+  const h=R(botY-topY), rad=R(34);
+  /* a four-sided pyramid: S3* points DOWN into the operations it audits, S2 points UP (PO 2026-07-29) */
+  const geo=new THREE.ConeGeometry(rad,h,4,1);
+  geo.rotateY(Math.PI/4);                       // square base squared to the viewer
+  if(pointDown) geo.rotateZ(Math.PI);           // apex down for the audit channel
+  geo.computeVertexNormals();
+  const m=new THREE.Mesh(geo,mat(colour)); m.material.flatShading=true; g.add(m);
+  const l=plate(textCanvas(txt,'#ffffff'),.60,.30,rad*0.80);   // riding just off the front face
+  l.position.y=pointDown?h*0.20:-h*0.20; g.add(l);
   g.position.set(X(cx),Y((topY+botY)/2),0); g.userData={sys:sysId,mesh:m}; sysMeshes[sysId]=g; scene.add(g); return g; }
 
 /* ---- POTATO: the 2D outline given real body — heavy bevel on both faces ---- */
