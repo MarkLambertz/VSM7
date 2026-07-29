@@ -192,7 +192,7 @@ body[data-skin="deck"] .pop .warnrow{background:#2b1a18;color:var(--red)}
         <div class="stage">
           <iframe id="vsmframe" title="VSM system diagram"></iframe>
           <canvas id="three"></canvas>
-          <div class="d3hint">drag to orbit · shift- or right-drag to pan · scroll to zoom · click a system <button data-resetview="1" style="margin-left:8px;border:1px solid var(--line-strong);background:var(--surface);border-radius:5px;padding:1px 7px;font-size:10.5px;font-weight:700">⟲ Reset view</button></div>
+          <div class="d3hint">drag to orbit · shift- or right-drag to pan · scroll to zoom · click a system <button data-resetview="1" title="Reset the camera and clear the focus — show every system again" style="margin-left:8px;border:1px solid var(--line-strong);background:var(--surface);border-radius:5px;padding:1px 7px;font-size:10.5px;font-weight:700">⟲ Reset view</button></div>
         </div>
         <div class="diagram-foot" id="dfoot">The shared VSM diagram — reused as-is. Selecting here filters the bands; selecting a band highlights here.</div>
       </div>
@@ -523,7 +523,10 @@ document.addEventListener('click',e=>{
   const fl=e.target.closest('[data-flow]'); if(fl){ state.flow=!state.flow; if(window.__d3)window.__d3.setFlow(state.flow); render(); return; }
   const hb=e.target.closest('[data-headband]'); if(hb){ selectBand(hb.dataset.headband); return; }
   const vw=e.target.closest('[data-view]'); if(vw){ setView(vw.dataset.view); return; }
-  if(e.target.closest('[data-resetview]')){ if(window.__d3)window.__d3.resetView(); return; }
+  if(e.target.closest('[data-resetview]')){
+    state.sel=null; state.loop=null; render(); syncDiagram();
+    if(window.__d3){ window.__d3.select(null); window.__d3.highlightLoop(null); window.__d3.resetView(); }
+    emit('select',{system:null}); return; }
   /* a loop chip lights its OWN channel in the shared diagram — 6.2 already stores which one (vsmChannel) */
   const lp=e.target.closest('[data-loop]'); if(lp){ const l=LOOPS.find(x=>x.id===lp.dataset.loop);
     if(l){ state.loop = state.loop===l.id ? null : l.id;
@@ -795,16 +798,18 @@ function smoothShape(points2d){
     sh.quadraticCurveTo(X(cur[0]),Y(cur[1]),X(m[0]),Y(m[1])); }
   sh.closePath(); return sh;
 }
-function potato(points2d,colour,op,depth,z,shell){
+function potato(points2d,colour,op,depth,z,shell,order){
   const sh=smoothShape(points2d);
   const d=depth||1.2;
   const g=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:d*0.44,bevelSize:d*0.36,bevelSegments:14,curveSegments:36});
   g.translate(0,0,-d/2); g.computeVertexNormals();
   const mm=mat(colour,op==null?.55:op);
   mm.roughness=.86; mm.flatShading=false;                        // organic, not plastic
-  if(shell){ mm.depthWrite=false; mm.side=THREE.DoubleSide; }   // an enclosing body must not hide what it contains
+  mm.depthWrite=false;                                           // stable blending between overlapping bodies
+  if(shell){ mm.side=THREE.DoubleSide; }                        // an enclosing body must not hide what it contains
   const m=new THREE.Mesh(g,mm);
-  m.position.z=z||0; m.renderOrder=shell?-1:0; envMeshes.push(m); scene.add(m); return m;
+  m.position.z=z||0; m.renderOrder=(order==null?-10:order);      // explicit order beats the camera-distance sort
+  envMeshes.push(m); scene.add(m); return m;
 }
 /* the 2D's own outline generators, verbatim in maths so the silhouettes match */
 function blobPts(cx,cy,rx,ry,seed,amp){ amp=amp==null?1:amp; const n=26,p=[];
@@ -843,9 +848,10 @@ function tubeFrom(curve,colour,w,ud,dashed){
   return m; }
 /* the 2D's arrow markers, as cones on the curve's own tangent */
 function arrowAt(pos,tangent,colour,size,ud){
-  const s=size||.16;
-  const m=new THREE.Mesh(new THREE.ConeGeometry(s*.62,s*1.7,22),mat(colour));
-  m.position.copy(pos); m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),tangent.clone().normalize());
+  const s=size||.16, h=s*1.7, dir=tangent.clone().normalize();
+  const m=new THREE.Mesh(new THREE.ConeGeometry(s*.62,h,22),mat(colour));
+  m.position.copy(pos).addScaledVector(dir,-h/2);        // apex lands ON the end point, not past it
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
   m.userData=ud||{}; chMeshes.push(m); scene.add(m); if(ud&&ud.ch==='g')algMeshes.push(m); return m; }
 function bez(pts,z){ return new THREE.CubicBezierCurve3(
   new THREE.Vector3(X(pts[0][0]),Y(pts[0][1]),z||0), new THREE.Vector3(X(pts[1][0]),Y(pts[1][1]),z||0),
@@ -866,9 +872,10 @@ function build(units){
   const N=Math.max(1,units.length), lastY=rowY(N-1);
 
   /* ENVIRONMENT — the surrounding body first, then the per-unit sub-environments, then the future cloud */
-  potato(envSilPts(L.envX,70,lastY+90,2),COL.envOuter,.26,DEPTH.env*1.9,Z.env,true);      // the surrounding environment: a shell
-  for(let i=0;i<N;i++) potato(blobPts(L.envX,rowY(i),40,80,i+3,0.6),COL.envBlob,.62,DEPTH.env*0.72,Z.env);   // sub-environments nested inside it
-  potato(blobPts(L.envX,150,42,36,7),COL.envF,.92,DEPTH.env*0.72,Z.env);                   // the future / unknown environment
+  potato(envSilPts(L.envX,70,lastY+90,2),COL.envOuter,.26,DEPTH.env*1.9,Z.env,true,-40);   // the surrounding environment: a shell, drawn first
+  /* sub-environments: top-to-bottom draw order, so the overlaps read the same from every angle */
+  for(let i=0;i<N;i++) potato(blobPts(L.envX,rowY(i),40,80,i+3,0.6),COL.envBlob,.62,DEPTH.env*0.72,Z.env,false,-30+i);
+  potato(blobPts(L.envX,150,42,36,7),COL.envF,.92,DEPTH.env*0.72,Z.env,false,-20);          // the future / unknown environment
   const el=label('Environment','#667482',2.2); el.position.set(X(L.envX),Y(50),Z.env+DEPTH.env/2+.1); scene.add(el);
 
   /* METASYSTEM bars + the two command-axis spines */
@@ -909,6 +916,7 @@ function build(units){
   /* channel a — environmental overlaps: the amber lenses between neighbouring sub-environments */
   for(let i=0;i<N-1;i++){ const ym=(rowY(i)+rowY(i+1))/2;
     const m=new THREE.Mesh(new THREE.SphereGeometry(R(27),32,24),mat(COL.s2,.72));
+    m.material.depthWrite=false; m.renderOrder=-15;               // always above the sub-environments it joins
     m.scale.set(1,11/27,.42); m.position.set(X(L.envX),Y(ym),Z.envLens);
     m.userData={ch:'a',sys:['S1']}; chMeshes.push(m); scene.add(m); }
 
