@@ -7,14 +7,23 @@ VSM7-Workspaces/
 !/README.md
 !/README-LINUX.md
 
+# Generated documents and working archives stay local.
+*.[pP][dD][fF]
+*.[zZ][iI][pP]
+
+# Local-only Step VI editor assets.
+/channel-variety-check.html
+/e2e-robustness-check.html
+
+# Local-only design and agent workspaces.
+/.claude/
+/design-previews/
+
 # Installed dependencies and generated test output.
 node_modules/
 **/node_modules/
 test-results/
 **/test-results/
-
-# Machine-local editor and agent settings.
-.claude/settings.local.json
 
 # macOS and Python-generated files.
 .DS_Store
