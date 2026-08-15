@@ -123,6 +123,23 @@ No Node.js backend or database is required for normal app usage.
 - `scripts`: local file-backed server
 - `tests`: domain, integration, export, routing, launcher, and bridge checks
 
+## Technical Stack
+
+VSM7 is implemented as a browser-first application with a deliberately small runtime footprint:
+
+- **HTML5 and CSS3** provide the application shell, responsive workshop layouts, interface skins, tile-level fullscreen views, and print/export presentation rules.
+- **Modern JavaScript with native ES modules** implements the domain model, application services, routing, rendering, persistence adapters, embedded-tool bridges, and export orchestration. The current interface is framework-free and uses browser-native DOM and event APIs.
+- **Python 3 standard library** powers the optional local file service. It uses the built-in HTTP server and filesystem APIs, so normal workshop use does not require a Python package installation, database, or cloud service.
+- **Vite 5** is used for local development and production bundling. It is a development dependency only; the application itself remains deployable as static browser assets.
+- **Node.js's built-in test runner** executes the automated domain, integration, routing, persistence, bridge, launcher, and export tests without introducing a separate test framework.
+- **PptxGenJS 4** is vendored locally for genuine PowerPoint generation. Word and Excel exports use lightweight OOXML writers, while PDF, SVG, PNG, and JSON generation is selected only where the underlying artifact supports the format.
+
+The code follows a clean/onion architecture. Method rules and canonical VSM data live in the domain layer; application services coordinate use cases and build view models; infrastructure adapters handle persistence and document generation; presentation modules render the workshop experience. This keeps the same structured workspace record reusable across normal views, fullscreen tiles, the Steering Master, exports, and embedded specialist tools.
+
+Embedded visual editors communicate with the host through versioned `postMessage` bridge contracts. Stable entity IDs are used across steps so that SCTs, contributions, roles, meetings, communication routes, and organizational placements are referenced and enriched instead of copied into disconnected records.
+
+The runtime relies on standard browser capabilities including `localStorage`, `fetch`, `Blob` downloads, the Fullscreen API, hash-based routing, and iframe messaging. The local file-backed repository and browser-local repository implement the same application boundary, allowing the app to degrade gracefully when the Python service is unavailable.
+
 ## Development
 
 Install the development dependencies and run the test suite:
