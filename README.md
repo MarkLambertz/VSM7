@@ -1,6 +1,6 @@
-# VSM7 Workshop Workspace
+# VSM7 Design MVP
 
-VSM7 is a browser-based workspace for designing organizations with the Viable System Model. It supports facilitators through a structured VSM workshop, keeps the consolidated project record in one place, and turns workshop results into reusable corporate documents.
+VSM7 is a browser-based workspace for designing organizations with the Viable System Model. It supports facilitators through a structured VSM workshop series, keeps the consolidated project record in one place, and turns workshop results into reusable corporate documents.
 
 The canonical project structure is:
 
