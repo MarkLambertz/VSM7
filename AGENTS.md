@@ -220,6 +220,7 @@ Current step labels:
 - Run `npm test` after behavior-relevant changes.
 - For frontend changes, verify in the browser when practical and check for layout overflow.
 - Do not claim a GitHub push succeeded unless the push command or GitHub connector confirms it.
+- Keep GitHub Markdown documentation minimal. The `.gitignore` Markdown allowlist is the permanent source of truth: commit only the product/platform READMEs, `AGENTS.md`, the asset-test README, and active integration contracts explicitly listed there. Treat handovers, status reports, dated collaboration notes, and concept drafts as local working material. A new Markdown file may be transferred only after it is deliberately added to that allowlist because the application or its maintenance genuinely depends on it.
 
 ### GitHub Push Procedure
 

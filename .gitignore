@@ -1,6 +1,20 @@
 # Canonical workshop/project data stays local and is backed up separately.
 VSM7-Workspaces/
 
+# Keep GitHub documentation intentional. Markdown is local by default; only
+# the product READMEs, agent rules, and active embedded-component contracts
+# below are transferred.
+*.md
+!README.md
+!README-LINUX.md
+!AGENTS.md
+!asset-tests/README.md
+!CHANNEL-VARIETY-BRIEFING.md
+!FLIGHT-ROUTE-BRIEFING.md
+!MEETING-LANDSCAPE-BRIEFING.md
+!STEP7-REPRESENTATION-BRIEFING.md
+!VSM-VISUALIZATION-BRIEFING.md
+
 # Installed dependencies and generated test output.
 node_modules/
 **/node_modules/
