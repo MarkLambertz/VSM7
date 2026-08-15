@@ -2,10 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createImplementationItem,
+  createKeyBuyingCriterion,
   createOperativeUnit,
   createNumberedSuccessCriticalTask,
   createSegmentationOption,
   createStep7Vessel,
+  createStrategicField,
   createSuccessCriticalTask,
   createWorkspace,
   evaluateStep2Variety,
@@ -232,6 +234,39 @@ test("Step I tile exports produce scoped, editable Word records", () => {
     });
     assertDocxArtifact(artifact, artifact.filename, [heading, content]);
   }
+});
+
+test("Step I evaluation export includes weighted and unweighted totals", () => {
+  const workspace = createWorkspace();
+  const option = createSegmentationOption("Product");
+  const criterion = createKeyBuyingCriterion();
+  const strategicField = createStrategicField("Market Position");
+  criterion.name = "Quality";
+  criterion.weight = "50";
+  workspace.step1.segmentationOptions = [option];
+  workspace.step1.keyBuyingCriteria = [criterion];
+  workspace.step1.strategicFields = [strategicField];
+  workspace.step1.evaluation.scores = {
+    [criterion.id]: { [option.id]: "4" },
+    [strategicField.id]: { [option.id]: "3" }
+  };
+
+  const artifact = buildExportIntentArtifact(workspace, {
+    evt: "export",
+    api: 1,
+    stepId: "step1",
+    tileId: "step1-evaluation",
+    scope: "tile",
+    target: {},
+    format: "docx"
+  });
+  const documentXml = assertDocxArtifact(artifact, artifact.filename, [
+    /Unweighted total/,
+    /Weighted total \(KBC weights applied\)/
+  ]).documentXml;
+
+  assert.match(documentXml, />7</);
+  assert.match(documentXml, />5</);
 });
 
 test("Step III supporting tiles produce editable Word records", () => {
@@ -556,6 +591,15 @@ test("project overview leaves completion judgment to the workshop expert", () =>
   assert.match(html, /Success-critical tasks/);
   assert.match(html, /SCT contribution assignments/);
   assert.match(html, /Representation entities/);
+});
+
+test("project overview keeps project creation actions on the start page", () => {
+  const html = renderOverview(createWorkspace());
+
+  assert.doesNotMatch(html, /Load sample/);
+  assert.doesNotMatch(html, /New blank project/);
+  assert.doesNotMatch(html, /data-action="load-sample"/);
+  assert.doesNotMatch(html, /data-action="new-workspace"/);
 });
 
 test("project overview counts current Step VII role vessels instead of legacy roles", () => {

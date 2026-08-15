@@ -11,10 +11,6 @@ export function renderOverview(workspace) {
         <h1>VSM project workspace</h1>
         <p>The app captures the consolidated essence of the workshop and generates the downstream files from canonical project data.</p>
       </div>
-      <div class="header-actions">
-        <button class="primary-button" data-action="load-sample">Load sample</button>
-        <button class="ghost-button" data-action="new-workspace">New blank project</button>
-      </div>
     </section>
     <section class="summary-strip">
       ${metric("SCTs", workspace.step3.successCriticalTasks.length, "Success-critical tasks")}

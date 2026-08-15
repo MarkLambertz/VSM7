@@ -12,6 +12,7 @@ import {
   textarea
 } from "../shared/renderHelpers.js?v=20260729-steering-master-nav-audit";
 import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260729-steering-master-nav-audit";
+import { calculateSegmentationEvaluationTotals } from "../../domain/segmentationEvaluation.js?v=20260814-step1-weighted-evaluation";
 
 export const step1Subpages = [
   {
@@ -578,7 +579,7 @@ function renderStep1Evaluation(workspace) {
 function renderEvaluationSection(workspace) {
   const options = workspace.step1.segmentationOptions;
   const rows = getStep1EvaluationRows(workspace);
-  const totals = calculateSegmentationTotals(workspace, rows, options);
+  const totals = calculateSegmentationEvaluationTotals(workspace);
 
   return `
     <section class="work-section">
@@ -752,7 +753,7 @@ function renderFullscreenBriefContent(_workspace, subpage) {
 function renderFullscreenEvaluationMatrix(workspace) {
   const options = workspace.step1.segmentationOptions;
   const rows = getStep1EvaluationRows(workspace);
-  const totals = calculateSegmentationTotals(workspace, rows, options);
+  const totals = calculateSegmentationEvaluationTotals(workspace);
 
   return `
     <section class="work-section fullscreen-matrix-section">
@@ -815,8 +816,13 @@ function renderSegmentationEvaluationMatrix(workspace, rows, options, totals) {
         <tbody>
           ${rows.map((row) => renderEvaluationRow(workspace, row, options)).join("")}
           <tr class="evaluation-total-row">
-            <td colspan="4">Total</td>
-            ${options.map((option) => `<td>${totals[option.id] || 0}</td>`).join("")}
+            <td colspan="4">Unweighted total</td>
+            ${options.map((option) => `<td>${formatEvaluationTotal(totals[option.id]?.unweighted)}</td>`).join("")}
+            <td></td>
+          </tr>
+          <tr class="evaluation-total-row evaluation-weighted-total-row">
+            <td colspan="4">Weighted total <small>(KBC weights applied)</small></td>
+            ${options.map((option) => `<td>${formatEvaluationTotal(totals[option.id]?.weighted)}</td>`).join("")}
             <td></td>
           </tr>
         </tbody>
@@ -891,16 +897,9 @@ function getStep1EvaluationRows(workspace) {
   return [...criteriaRows, ...strategicRows];
 }
 
-function calculateSegmentationTotals(workspace, rows, options) {
-  const totals = Object.fromEntries(options.map((option) => [option.id, 0]));
-
-  for (const row of rows) {
-    for (const option of options) {
-      totals[option.id] += Number(getEvaluationScore(workspace, row.id, option.id) || 0);
-    }
-  }
-
-  return totals;
+function formatEvaluationTotal(value) {
+  const total = Number(value || 0);
+  return Number.isInteger(total) ? String(total) : total.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
 }
 
 function getEvaluationScore(workspace, rowId, optionId) {

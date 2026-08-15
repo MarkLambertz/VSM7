@@ -12,6 +12,7 @@ import {
   getStep7EditorModel,
   getWeakSegmentationSignals
 } from "../domain/vsm.js?v=20260729-steering-master-nav-audit";
+import { calculateSegmentationEvaluationTotals } from "../domain/segmentationEvaluation.js?v=20260814-step1-weighted-evaluation";
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -635,11 +636,10 @@ function segmentationEvaluationTable(workspace) {
       relativePosition: ""
     }))
   ];
-  const totals = Object.fromEntries(options.map((option) => [option.id, 0]));
+  const totals = calculateSegmentationEvaluationTotals(workspace);
   const tableRows = rows.map((row) => {
     const values = options.map((option) => {
       const value = Number(workspace.step1.evaluation?.scores?.[row.id]?.[option.id] || 0);
-      totals[option.id] += value;
       return value || "";
     });
     return [
@@ -652,7 +652,22 @@ function segmentationEvaluationTable(workspace) {
     ];
   });
 
-  tableRows.push(["Total", "", "", "", ...options.map((option) => totals[option.id]), ""]);
+  tableRows.push([
+    "Unweighted total",
+    "",
+    "",
+    "",
+    ...options.map((option) => totals[option.id]?.unweighted || 0),
+    ""
+  ]);
+  tableRows.push([
+    "Weighted total (KBC weights applied)",
+    "",
+    "",
+    "",
+    ...options.map((option) => totals[option.id]?.weighted || 0),
+    ""
+  ]);
 
   return simpleTable(
     ["Group", "Criterion", "Weight", "Relative Position to Competition", ...options.map((option) => option.name || "Unnamed option"), "Comments"],

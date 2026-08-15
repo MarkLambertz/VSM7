@@ -116,6 +116,6 @@ test("host fullscreen entry points use the current app cache label", () => {
 
   assert.match(appSource, /renderHostTileFullscreenLayer/);
   assert.match(appSource, /20260729-steering-master-nav-audit/);
-  assert.match(index, /app\.js\?v=20260729-step7-starting-tile/);
-  assert.match(starter, /VERSION="20260729-step7-starting-tile"/);
+  assert.match(index, /app\.js\?v=20260814-step1-weighted-evaluation/);
+  assert.match(starter, /VERSION="20260814-step1-weighted-evaluation"/);
 });

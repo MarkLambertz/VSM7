@@ -58,21 +58,22 @@ import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?
 import { getExportViewModel } from "../application/exportViewModels.js?v=20260729-steering-master-nav-audit";
 import { getSteeringMasterViewModel } from "../application/steeringMasterViewModel.js?v=20260729-steering-master-nav-audit";
 import { createWorkspaceRepository } from "../infrastructure/fileBackedRepository.js?v=20260717-file-storage";
-import { exportExportIntent } from "../infrastructure/exporters.js?v=20260729-steering-master-nav-audit";
+import { exportExportIntent } from "../infrastructure/exporters.js?v=20260814-step1-weighted-evaluation";
 import { buildE2ERouteDocument } from "../infrastructure/e2eRouteDocuments.js?v=20260729-steering-master-nav-audit";
 import { renderRenameDialog } from "./renameDialog.js?v=20260729-steering-master-nav-audit";
 import { destructiveActionMessage } from "./shared/destructiveActions.js?v=20260729-steering-master-nav-audit";
 import { createE2ERouteExportCoordinator } from "./shared/e2eRouteExport.js?v=20260729-steering-master-nav-audit";
 import { createChannelVarietyExportCoordinator } from "./shared/channelVarietyExport.js?v=20260729-steering-master-nav-audit";
 import { buildAppHash, parseAppHash } from "./shared/appRouting.js?v=20260729-steering-master-nav-audit";
+import { getNextFlowAction } from "./shared/flowNavigation.js?v=20260803-navigation-audit";
 import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260729-steering-master-nav-audit";
 import { resolveSteeringMasterNavigation } from "./shared/steeringMasterNavigation.js?v=20260729-steering-master-nav-audit";
 import { renderProjectManagement } from "./projectManagement.js?v=20260729-steering-master-nav-audit";
 import { applySkinPreference, defaultSkin, readSkinPreference } from "./skinSettings.js?v=20260729-steering-master-nav-audit";
 import { renderStartPage } from "./startPage.js?v=20260729-steering-master-nav-audit";
-import { renderOverview, renderOverviewFullscreenTile } from "./steps/overview.js?v=20260729-steering-master-nav-audit";
+import { renderOverview, renderOverviewFullscreenTile } from "./steps/overview.js?v=20260803-navigation-audit";
 import { renderImplementation, renderImplementationFullscreenTile } from "./steps/implementation.js?v=20260729-steering-master-nav-audit";
-import { getStep1FullscreenTileCount, renderStep1, renderStep1FullscreenTile } from "./steps/step1.js?v=20260729-steering-master-nav-audit";
+import { getStep1FullscreenTileCount, renderStep1, renderStep1FullscreenTile } from "./steps/step1.js?v=20260814-step1-weighted-evaluation";
 import { normalizeStep2Subpage, renderStep2, renderStep2FullscreenTile } from "./steps/step2.js?v=20260729-steering-master-nav-audit";
 import { filterScts, normalizeStep3Subpage, renderStep3, renderStep3FullscreenTile } from "./steps/step3.js?v=20260729-steering-master-nav-audit";
 import { renderStep4, renderStep4FullscreenTile } from "./steps/step4.js?v=20260729-steering-master-nav-audit";
@@ -226,7 +227,7 @@ document.addEventListener("keydown", (event) => {
 function handleRouteHashChange() {
   isApplyingRouteHash = true;
   applyRouteState(parseAppHash(window.location.hash));
-  render();
+  renderAfterNavigation();
   isApplyingRouteHash = false;
   syncRouteHashToState();
 }
@@ -359,6 +360,11 @@ function renderAfterInPlaceAction(anchorSctId = "") {
   } else {
     renderPreservingViewport(anchorSctId);
   }
+}
+
+function renderAfterNavigation() {
+  render();
+  window.requestAnimationFrame(() => window.scrollTo(0, 0));
 }
 
 function syncVisibleSteeringMasterFrames() {
@@ -1752,7 +1758,7 @@ function renderNavigation() {
         <button
           class="step-button ${step.id === "overview" ? "is-home" : ""} ${activeView === step.id ? "is-active" : ""} ${isComplete ? "is-complete" : ""}"
           data-action="navigate"
-          data-view="${step.id === "overview" ? "start" : step.id}"
+          data-view="${step.id}"
           aria-label="${escapeAttr(step.id === "overview" ? "Home" : `${navLabel(step)}${isComplete ? ", done" : ""}`)}"
         >
           ${renderStepToken(step)}
@@ -1856,6 +1862,7 @@ function renderFlowFooter() {
           data-action="${escapeAttr(nextAction.action)}"
           ${nextAction.view ? `data-view="${escapeAttr(nextAction.view)}"` : ""}
           ${nextAction.subpage ? `data-subpage="${escapeAttr(nextAction.subpage)}"` : ""}
+          ${nextAction.system ? `data-system="${escapeAttr(nextAction.system)}"` : ""}
         >
           ${escapeHtml(nextAction.label)}
         </button>
@@ -1891,51 +1898,12 @@ function renderStepCompletionControl(stepId) {
 }
 
 function getNextAction() {
-  if (activeView === "step1") {
-    const nextSubpages = {
-      sif: { label: "Continue with Segmentation Options", subpage: "segmentation" },
-      segmentation: { label: "Continue with Key Buying Criteria", subpage: "criteria" },
-      criteria: { label: "Continue with Six Pack Fields", subpage: "six-pack" },
-      "six-pack": { label: "Continue with Evaluation", subpage: "evaluation" },
-      evaluation: { label: "Continue with Variety Assessment", view: "step2", subpage: "assessment" }
-    };
-    const next = nextSubpages[activeStep1Subpage];
-    return next?.subpage
-      ? { action: "step1-subpage", ...next }
-      : { action: "navigate", ...next };
-  }
-
-  if (activeView === "step3") {
-    const nextSubpages = {
-      signals: { label: "Continue with Complexity Drivers", subpage: "drivers" },
-      drivers: { label: "Continue with SCT Register", subpage: "register" },
-      register: { label: "Continue with Central/Decentral", view: "step4" }
-    };
-    const next = nextSubpages[activeStep3Subpage];
-    return next?.subpage
-      ? { action: "step3-subpage", ...next }
-      : { action: "navigate", ...next };
-  }
-
-  if (activeView === "step2") {
-    const nextSubpages = {
-      assessment: { label: "Continue with Steering Challenges", subpage: "challenges" },
-      challenges: { label: "Continue with SCT Input Signals", view: "step3", subpage: "signals" }
-    };
-    const next = nextSubpages[activeStep2Subpage];
-    return next?.subpage
-      ? { action: "step2-subpage", ...next }
-      : { action: "navigate", ...next };
-  }
-
-  const nextByView = {
-    step4: { label: "Continue with Design Steering System", view: "step5" },
-    step5: { label: "Continue with Channels", view: "step6" },
-    step6: { label: "Continue with Representation", view: "step7" },
-    step7: { label: "Continue with Implementation", view: "implementation" }
-  };
-
-  return nextByView[activeView] ? { action: "navigate", ...nextByView[activeView] } : null;
+  return getNextFlowAction({
+    view: activeView,
+    step1Subpage: activeStep1Subpage,
+    step2Subpage: activeStep2Subpage,
+    step3Subpage: activeStep3Subpage
+  });
 }
 
 async function handleInput(target) {
@@ -2105,7 +2073,7 @@ function handleAction(button) {
   if (action === "step1-subpage") {
     activeStep1Subpage = button.dataset.subpage || "sif";
     activeStep1FullscreenTile = 0;
-    render();
+    renderAfterNavigation();
     return;
   }
 
@@ -2113,8 +2081,7 @@ function handleAction(button) {
     activeStep2Subpage = normalizeStep2Subpage(button.dataset.subpage || "assessment");
     isFocusFullscreen = false;
     activeHostFullscreenTile = "";
-    render();
-    window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    renderAfterNavigation();
     return;
   }
 
@@ -2122,36 +2089,39 @@ function handleAction(button) {
     activeStep3Subpage = normalizeStep3Subpage(button.dataset.subpage || "signals");
     isFocusFullscreen = false;
     activeHostFullscreenTile = "";
-    render();
-    window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    renderAfterNavigation();
     return;
   }
 
   if (action === "step6-subpage") {
     activeStep6Subpage = button.dataset.subpage === "channels" ? "channels" : "e2e";
-    renderAfterInPlaceAction();
+    renderAfterNavigation();
     return;
   }
 
   if (action === "navigate") {
     activeView = button.dataset.view || "overview";
-    const navigatesToStep2Subpage = activeView === "step2" && button.dataset.subpage;
-    const navigatesToStep3Subpage = activeView === "step3" && button.dataset.subpage;
     if (activeView === "step2" && button.dataset.subpage) {
       activeStep2Subpage = normalizeStep2Subpage(button.dataset.subpage);
     }
     if (activeView === "step3" && button.dataset.subpage) {
       activeStep3Subpage = normalizeStep3Subpage(button.dataset.subpage);
     }
+    if (activeView === "step5" && button.dataset.system) {
+      activeStep5System = button.dataset.system;
+    }
+    if (activeView === "step6" && button.dataset.subpage) {
+      activeStep6Subpage = button.dataset.subpage === "channels" ? "channels" : "e2e";
+    }
+    if (activeView === "step7" && button.dataset.subpage) {
+      activeStep7Substep = normalizeStep7Substep(button.dataset.subpage);
+    }
     isSettingsOpen = false;
     if (!supportsHostTileFullscreen(activeView)) {
       isFocusFullscreen = false;
       activeHostFullscreenTile = "";
     }
-    render();
-    if (navigatesToStep2Subpage || navigatesToStep3Subpage) {
-      window.requestAnimationFrame(() => window.scrollTo(0, 0));
-    }
+    renderAfterNavigation();
     return;
   }
 
@@ -2220,7 +2190,7 @@ function handleAction(button) {
     activeView = "step6";
     activeStep6Subpage = "channels";
     isFocusFullscreen = false;
-    render();
+    renderAfterNavigation();
     return;
   }
 
@@ -2231,7 +2201,7 @@ function handleAction(button) {
       activeStep6Subpage = "e2e";
       selectedStep6SctId = taskId;
       isFocusFullscreen = false;
-      render();
+      renderAfterNavigation();
     }
     return;
   }
@@ -2399,7 +2369,7 @@ function handleAction(button) {
     activeView = "start";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
-    render();
+    renderAfterNavigation();
     return;
   }
 
@@ -2409,7 +2379,7 @@ function handleAction(button) {
     activeView = "overview";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
-    render();
+    renderAfterNavigation();
     return;
   }
 
@@ -2419,7 +2389,7 @@ function handleAction(button) {
     activeView = "overview";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
-    render();
+    renderAfterNavigation();
     return;
   }
 
@@ -2429,7 +2399,7 @@ function handleAction(button) {
     activeView = "projects";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
-    render();
+    renderAfterNavigation();
     return;
   }
 
@@ -2439,7 +2409,7 @@ function handleAction(button) {
     activeView = "overview";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
-    render();
+    renderAfterNavigation();
     return;
   }
 
@@ -2448,7 +2418,7 @@ function handleAction(button) {
     activeView = "projects";
     activeStep1Subpage = "sif";
     isFocusFullscreen = false;
-    render();
+    renderAfterNavigation();
     return;
   }
 
