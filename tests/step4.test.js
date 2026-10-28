@@ -82,7 +82,7 @@ test("Step IV contribution matrix opens as a host-owned tile fullscreen surface"
   assert.match(tileHtml, /data-allocation-contribution/);
   assert.match(tileHtml, /data-action="open-export-panel"/);
   assert.doesNotMatch(tileHtml, /step1-fullscreen-progress/);
-  assert.match(appSource, /step4\.js\?v=20260729-steering-master-nav-audit/);
+  assert.match(appSource, /step4\.js\?v=20261028-suite-design/);
   assert.match(appSource, /host-tile-fullscreen-open/);
   assert.match(appSource, /renderHostTileFullscreenLayer/);
 });

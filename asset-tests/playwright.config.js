@@ -5,6 +5,8 @@ const PORT = 7799;
 module.exports = defineConfig({
   testDir: __dirname,
   testMatch: '*.spec.js',
+  // This suite needs its own strict source/dist hosts and deployment prefixes.
+  testIgnore: 'subpath-production.spec.js',
   timeout: 20000,
   fullyParallel: false,
   reporter: [['list']],

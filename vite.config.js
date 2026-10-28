@@ -1,24 +1,22 @@
 import { defineConfig } from 'vite'
-import { resolve } from 'path'
-import { copyFileSync, existsSync, mkdirSync } from 'fs'
-import { dirname } from 'path'
+import { resolve } from 'node:path'
+import { cpSync, mkdirSync } from 'node:fs'
 
-// Custom plugin to copy CSS file to dist
-const copyCssPlugin = {
-  name: 'copy-css',
-  closeBundle() {
-    const src = resolve(__dirname, 'src/presentation/styles.css')
-    const destDir = resolve(__dirname, 'dist/assets')
-    const dest = resolve(destDir, 'styles.css')
-    
-    if (existsSync(src)) {
-      mkdirSync(destDir, { recursive: true })
-      copyFileSync(src, dest)
-    }
-  }
-}
+const assetVersion = '20261028-left-navigation'
+
+// Standalone documents own their inline scripts and iframe bridges. Copy them
+// verbatim rather than bundling them as main-page code.
+const staticApplicationPaths = [
+  'vsm.html',
+  'e2e-robustness-check.html',
+  'channel-variety-check.html',
+  'embedded',
+  'design-previews',
+  'src/presentation/assets'
+]
 
 export default defineConfig({
+  base: './',
   build: {
     outDir: 'dist',
     rollupOptions: {
@@ -33,42 +31,38 @@ export default defineConfig({
       }
     }
   },
-  // Custom plugin to remove type="module" from script tags and use relative paths
   plugins: [
-    copyCssPlugin,
     {
-      name: 'fix-html-for-file-protocol',
-      transformIndexHtml(html) {
-        // Remove type="module" and fix paths
-        let result = html
-          .replace(/type="module"\s*/g, '')
-          .replace(/crossorigin\s*/g, '')  // Remove crossorigin attribute
-          .replace(/src="\/assets\//g, 'src="./assets/')
-          .replace(/href="\.\/src\/presentation\/styles\.css[^"]*/g, 'href="./assets/styles.css"')
-        
-        // Ensure CSS link exists (Vite might strip it)
-        if (!result.includes('styles.css')) {
-          result = result.replace(
-            '</title>',
-            '</title>\n    <link rel="stylesheet" href="./assets/styles.css">'
-          )
+      name: 'copy-standalone-application-assets',
+      apply: 'build',
+      closeBundle() {
+        for (const path of staticApplicationPaths) {
+          // A missing editor must fail the build rather than ship broken frames.
+          cpSync(resolve(__dirname, path), resolve(__dirname, 'dist', path), {
+            recursive: true,
+            filter: (source) => !source.endsWith('/.DS_Store')
+          })
         }
-        
-        // Move script tag to bottom of body (after #app element)
-        // This ensures DOM is ready before script runs
-        const scriptMatch = result.match(/<script[^>]*src="\.\/assets\/bundle\.js"[^>]*><\/script>/)
-        if (scriptMatch) {
-          result = result.replace(scriptMatch[0], '')
-          result = result.replace(
-            '<div id="app" class="app-shell"></div>',
-            '<div id="app" class="app-shell"></div>\n    ' + scriptMatch[0] + '\n  '
-          )
+        mkdirSync(resolve(__dirname, 'dist/assets'), { recursive: true })
+        for (const stylesheet of ['styles.css', 'suite.css']) {
+          cpSync(resolve(__dirname, 'src/presentation', stylesheet), resolve(__dirname, 'dist/assets', stylesheet))
         }
-        
-        // Clean up double newlines
-        result = result.replace(/\n\s*\n/g, '\n')
-        
-        return result
+      }
+    },
+    {
+      name: 'support-static-file-entry',
+      apply: 'build',
+      transformIndexHtml: {
+        order: 'post',
+        handler(html) {
+          // Preserve file:// launches: defer the classic IIFE until #app exists.
+          // Vite's relative base supports / and arbitrary deployment prefixes.
+          return html
+            .replace(/type="module"\s*/g, 'defer ')
+            .replace(/crossorigin\s*/g, '')
+            .replace('src="./assets/bundle.js"', `src="./assets/bundle.js?v=${assetVersion}"`)
+            .replace('</title>', `</title>\n    <link rel="stylesheet" href="./assets/styles.css?v=${assetVersion}">\n    <link rel="stylesheet" href="./assets/suite.css?v=${assetVersion}">`)
+        }
       }
     }
   ]

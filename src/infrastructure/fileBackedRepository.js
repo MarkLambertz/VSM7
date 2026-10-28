@@ -9,7 +9,7 @@ export class FileRepositoryError extends Error {
 
 export function createWorkspaceRepository(options = {}) {
   const fallback = options.fallback || createLocalStorageRepository();
-  const apiBase = options.apiBase || "/api/storage";
+  const apiBase = options.apiBase || "./api/storage";
   const api = createFileApi(apiBase);
   const health = api.health();
 

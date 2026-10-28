@@ -6,6 +6,8 @@
   "scripts": {
     "setup": "npm install && npx playwright install chromium",
     "test": "playwright test",
+    "test:sct-flow": "playwright test workshop-sct-flow.spec.js",
+    "test:suite": "playwright test --config suite.playwright.config.js",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui"
   },

@@ -6,13 +6,16 @@
     <title>VSM7 Workshop Workspace</title>
     <script>
       try {
-        var savedSkin = localStorage.getItem("vsm7-interface-skin");
-        document.documentElement.dataset.skin = savedSkin === "command-deck" ? savedSkin : "workshop";
+        var savedMode = localStorage.getItem("vsm7-color-mode");
+        document.documentElement.dataset.mode = savedMode === "white" || savedMode === "black"
+          ? savedMode
+          : localStorage.getItem("vsm7-interface-skin") === "command-deck" ? "black" : "white";
       } catch (_) {
-        document.documentElement.dataset.skin = "workshop";
+        document.documentElement.dataset.mode = "white";
       }
     </script>
-    <link rel="stylesheet" href="./src/presentation/styles.css?v=20260729-steering-master-nav-audit">
+    <link rel="stylesheet" href="./src/presentation/styles.css?v=20261028-left-navigation">
+    <link rel="stylesheet" href="./src/presentation/suite.css?v=20261028-left-navigation">
   </head>
   <body>
     <div id="app" class="app-shell"></div>
@@ -35,6 +38,6 @@
         }
       }, 2500);
     </script>
-    <script type="module" src="./src/presentation/app.js?v=20260814-step1-weighted-evaluation"></script>
+    <script type="module" src="./src/presentation/app.js?v=20261028-left-navigation"></script>
   </body>
 </html>

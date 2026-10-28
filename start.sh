@@ -7,7 +7,7 @@ cd "${APP_DIR}"
 PORT=4173
 HOST="localhost"
 URL="http://${HOST}:${PORT}/"
-VERSION="20260814-step1-weighted-evaluation"
+VERSION="20261028-left-navigation"
 EXPECTED_TITLE="VSM7 Workshop Workspace"
 SERVER_SCRIPT="scripts/vsm7_file_server.py"
 WORKSPACE_DIR="${VSM7_WORKSPACE_DIR:-${APP_DIR}/VSM7-Workspaces}"

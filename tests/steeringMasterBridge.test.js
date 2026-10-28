@@ -12,8 +12,8 @@ test("standalone VSM route embeds the host-mode Steering Master", () => {
   const frame = renderSteeringMasterFrame();
   const page = renderVsmStandalone({});
 
-  assert.match(steeringMasterFrameSource, /design-previews\/steering-master\.html\?host=vsm7/);
-  assert.match(steeringMasterFrameSource, /v=20260729-steering-master-nav-audit/);
+  assert.match(steeringMasterFrameSource, /embedded\/steering-master\.html\?host=vsm7/);
+  assert.match(steeringMasterFrameSource, /v=20261028-app-relative-embeds/);
   assert.match(steeringMasterFrameSource, /vsm=\.\.%(?:2F|2f)vsm\.html/);
   assert.match(frame, /data-steering-master-frame/);
   assert.match(frame, /allow="fullscreen"/);

@@ -16,7 +16,8 @@ Success-Critical Tasks (SCTs) form the backbone of the model. They are defined o
 - Step and tile views suited to both workshop capture and focused facilitation
 - Steering Master for reviewing systems, accountability, meetings, instruments, and channel health across the design
 - Context-aware exports to Word, Excel, PowerPoint, PDF, SVG, PNG, and JSON where the underlying artifact supports the format
-- Workshop and Command Deck interface skins
+- One shared interface with saved white and black appearance modes
+- Left-side seven-step navigation with an Open/Close control
 - Browser-local fallback when the file-backed server is unavailable
 - Static, browser-shareable application with no required Node.js backend
 
@@ -111,6 +112,10 @@ The **Steering Master** provides a cross-cutting view of the resulting control o
 
 VSM7 is a static browser application. For stakeholder access, publish the repository contents to a static web host. The hosted version can use browser-local persistence; the supplied Python launcher adds local file-backed storage for workshop and desktop use.
 
+For a production package, run `npm ci` and `npm run build`, then publish the complete `dist/` directory. The same package supports domain-root hosting and application prefixes such as `/vsm7/`; the web host should redirect `/vsm7` to `/vsm7/`. Embedded editors and the optional storage API resolve relative to that application directory. No extensionless editor aliases are required.
+
+Production editors, including Step VII, live in `embedded/`. `design-previews/` remains available separately and is included in the build with its local dependencies. Keep the full output directory together so nested frames, exports, images, and the Steering Master's 3D view remain available.
+
 No Node.js backend or database is required for normal app usage.
 
 ## Architecture
@@ -119,7 +124,8 @@ No Node.js backend or database is required for normal app usage.
 - `src/application`: workspace orchestration and view-model composition
 - `src/infrastructure`: file/localStorage repositories and export generation
 - `src/presentation`: browser interface, steps, routing, and embedded-tool bridges
-- `design-previews`: embedded visualization and specialist workshop surfaces
+- `embedded`: production visualization and specialist workshop surfaces
+- `design-previews`: preserved standalone design previews
 - `scripts`: local file-backed server
 - `tests`: domain, integration, export, routing, launcher, and bridge checks
 
@@ -148,6 +154,8 @@ Install the development dependencies and run the test suite:
 npm install
 npm test
 ```
+
+After `npm run build`, run `cd asset-tests && npm ci && npx playwright install chromium && npx playwright test --config=subpath.playwright.config.js` for browser regressions at `/` and `/vsm7/`, against both source files and the production package. These checks use isolated synthetic browser data and a strict static host without URL aliases.
 
 The normal application remains browser-based; the Node.js toolchain is used only for development, testing, and optional local preview tooling.
 

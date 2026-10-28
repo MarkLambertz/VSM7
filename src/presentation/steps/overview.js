@@ -7,9 +7,9 @@ export function renderOverview(workspace) {
   return `
     <section class="view-header">
       <div>
-        <p class="eyebrow">Single source of truth</p>
-        <h1>VSM project workspace</h1>
-        <p>The app captures the consolidated essence of the workshop and generates the downstream files from canonical project data.</p>
+        <p class="eyebrow">The workshop at a glance</p>
+        <h1>Project overview</h1>
+        <p>Keep the purpose, scope, and steering decisions together as your design takes shape.</p>
       </div>
     </section>
     <section class="summary-strip">
@@ -19,7 +19,7 @@ export function renderOverview(workspace) {
     </section>
     <section class="work-section">
       <div class="section-heading">
-        <h2>Project Frame</h2>
+        <div><p class="eyebrow">Shared context</p><h2>Project Frame</h2></div>
         <div class="section-actions">
           ${tileExportButton("overview", "overview-project-frame", "Export project frame")}
           ${tileFullscreenButton("overview-project-frame", "Open project frame fullscreen")}

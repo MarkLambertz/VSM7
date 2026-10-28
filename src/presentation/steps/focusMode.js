@@ -15,10 +15,10 @@ import {
 } from "../shared/renderHelpers.js?v=20260729-steering-master-nav-audit";
 import { renderMethodVisual } from "../shared/methodVisuals.js?v=20260729-steering-master-nav-audit";
 import { renderStep2Assessment, renderStep2Remedies } from "./step2.js?v=20260729-steering-master-nav-audit";
-import { renderStep3Register } from "./step3.js?v=20260729-steering-master-nav-audit";
-import { renderStep4ContributionMatrix, renderStep4DecisionGuide } from "./step4.js?v=20260729-steering-master-nav-audit";
+import { renderStep3Register } from "./step3.js?v=20261028-suite-design";
+import { renderStep4ContributionMatrix, renderStep4DecisionGuide } from "./step4.js?v=20261028-suite-design";
 import { renderStep5Mapping } from "./step5.js?v=20260729-steering-master-nav-audit";
-import { renderStep6Channels, renderStep6E2ECheck } from "./step6.js?v=20260729-steering-master-nav-audit";
+import { renderStep6Channels, renderStep6E2ECheck } from "./step6.js?v=20261028-app-relative-embeds";
 import { renderImplementationWorkspace } from "./implementation.js?v=20260729-steering-master-nav-audit";
 
 const focusStepMetadata = {

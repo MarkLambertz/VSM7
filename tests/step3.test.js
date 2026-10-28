@@ -94,7 +94,7 @@ test("Step III renders the SCT register as a separate substep", () => {
   assert.match(html, /data-export-tile="scts"/);
   assert.match(html, /Add SCT/);
   assert.match(html, /sct-compact-table/);
-  assert.doesNotMatch(html, /data-preserve-scroll="sct-register"/);
+  assert.match(html, /class="sct-table-panel" data-preserve-scroll="sct-register"/);
   assert.doesNotMatch(html, /sct-table-wrap/);
   assert.match(html, /Description preview/);
   assert.match(html, /SCT-001/);

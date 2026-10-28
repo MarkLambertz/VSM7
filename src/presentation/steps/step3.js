@@ -153,7 +153,7 @@ export function renderStep3Register(workspace, taskSources, {
         </div>
       ` : ""}
       <div class="sct-register-workspace ${selectedTask ? "has-inspector" : ""}">
-        <div class="sct-table-panel">
+        <div class="sct-table-panel" data-preserve-scroll="sct-register">
         ${tasks.length
           ? renderSctTable(filteredTasks, selectedSctId, selectedSctMergeIds, tasks.length)
           : `<p class="empty-state">Add the first success-critical task.</p>`}

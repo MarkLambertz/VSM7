@@ -21,4 +21,4 @@ http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(fp)] || 'application/octet-stream' });
     res.end(data);
   });
-}).listen(PORT, () => console.log(`asset-tests static server: ${ROOT} on http://127.0.0.1:${PORT}`));
+}).listen(PORT, '127.0.0.1', () => console.log(`asset-tests static server: ${ROOT} on http://127.0.0.1:${PORT}`));

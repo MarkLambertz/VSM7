@@ -57,7 +57,7 @@ import {
 import { createSampleWorkspace } from "../application/sampleWorkspaceFactory.js?v=20260729-steering-master-nav-audit";
 import { getExportViewModel } from "../application/exportViewModels.js?v=20260729-steering-master-nav-audit";
 import { getSteeringMasterViewModel } from "../application/steeringMasterViewModel.js?v=20260729-steering-master-nav-audit";
-import { createWorkspaceRepository } from "../infrastructure/fileBackedRepository.js?v=20260717-file-storage";
+import { createWorkspaceRepository } from "../infrastructure/fileBackedRepository.js?v=20261028-app-relative-embeds";
 import { exportExportIntent } from "../infrastructure/exporters.js?v=20260814-step1-weighted-evaluation";
 import { buildE2ERouteDocument } from "../infrastructure/e2eRouteDocuments.js?v=20260729-steering-master-nav-audit";
 import { renderRenameDialog } from "./renameDialog.js?v=20260729-steering-master-nav-audit";
@@ -68,19 +68,19 @@ import { buildAppHash, parseAppHash } from "./shared/appRouting.js?v=20260729-st
 import { getNextFlowAction } from "./shared/flowNavigation.js?v=20260803-navigation-audit";
 import { escapeAttr, escapeHtml } from "./shared/renderHelpers.js?v=20260729-steering-master-nav-audit";
 import { resolveSteeringMasterNavigation } from "./shared/steeringMasterNavigation.js?v=20260729-steering-master-nav-audit";
-import { renderProjectManagement } from "./projectManagement.js?v=20260729-steering-master-nav-audit";
-import { applySkinPreference, defaultSkin, readSkinPreference } from "./skinSettings.js?v=20260729-steering-master-nav-audit";
-import { renderStartPage } from "./startPage.js?v=20260729-steering-master-nav-audit";
-import { renderOverview, renderOverviewFullscreenTile } from "./steps/overview.js?v=20260803-navigation-audit";
+import { renderProjectManagement } from "./projectManagement.js?v=20261028-suite-design";
+import { applyColorModePreference, readColorModePreference } from "./appearanceSettings.js?v=20261028-suite-design";
+import { renderStartPage } from "./startPage.js?v=20261028-suite-design";
+import { renderOverview, renderOverviewFullscreenTile } from "./steps/overview.js?v=20261028-suite-design";
 import { renderImplementation, renderImplementationFullscreenTile } from "./steps/implementation.js?v=20260729-steering-master-nav-audit";
 import { getStep1FullscreenTileCount, renderStep1, renderStep1FullscreenTile } from "./steps/step1.js?v=20260814-step1-weighted-evaluation";
 import { normalizeStep2Subpage, renderStep2, renderStep2FullscreenTile } from "./steps/step2.js?v=20260729-steering-master-nav-audit";
-import { filterScts, normalizeStep3Subpage, renderStep3, renderStep3FullscreenTile } from "./steps/step3.js?v=20260729-steering-master-nav-audit";
-import { renderStep4, renderStep4FullscreenTile } from "./steps/step4.js?v=20260729-steering-master-nav-audit";
+import { filterScts, normalizeStep3Subpage, renderStep3, renderStep3FullscreenTile } from "./steps/step3.js?v=20261028-suite-design";
+import { renderStep4, renderStep4FullscreenTile } from "./steps/step4.js?v=20261028-suite-design";
 import { renderStep5, renderStep5FullscreenTile } from "./steps/step5.js?v=20260729-steering-master-nav-audit";
-import { getActiveStep6SctId, renderStep6, renderStep6FullscreenTile } from "./steps/step6.js?v=20260729-steering-master-nav-audit";
-import { renderStep7 } from "./steps/step7.js?v=20260729-step7-starting-tile";
-import { renderVsmStandalone } from "./vsmStandalone.js?v=20260729-steering-master-nav-audit";
+import { getActiveStep6SctId, renderStep6, renderStep6FullscreenTile } from "./steps/step6.js?v=20261028-app-relative-embeds";
+import { renderStep7 } from "./steps/step7.js?v=20261028-app-relative-embeds";
+import { renderVsmStandalone } from "./vsmStandalone.js?v=20261028-app-relative-embeds";
 import {
   buildVsmHostTree,
   getVsmSystemType,
@@ -115,10 +115,9 @@ let activeSteeringMasterSystem = null;
 let activeSteeringMasterView = "2d";
 let isSteeringMasterFullscreen = false;
 let pendingStep7Selection = null;
-let isSettingsOpen = false;
 let renameTarget = null;
-let isNavCollapsed = false;
-let activeSkin = applySkinPreference(readSkinPreference());
+let isNavCollapsed = window.matchMedia("(max-width: 680px)").matches;
+let activeColorMode = applyColorModePreference(readColorModePreference());
 let saveStatus = repository.isFileBacked ? "File saved" : "Saved";
 let saveTimer = null;
 let e2eRouteSaveTimer = null;
@@ -254,7 +253,6 @@ function applyRouteState(route) {
     activeStep7Substep = normalizeStep7Substep(route.step7Substep);
   }
 
-  isSettingsOpen = false;
   if (!supportsHostTileFullscreen(activeView)) {
     isFocusFullscreen = false;
     activeHostFullscreenTile = "";
@@ -315,9 +313,8 @@ function render() {
         ${renderSaveIndicator()}
         ${renderTopbarVsmButton()}
         ${renderTopbarMenu()}
-        ${renderSettingsTrigger()}
+        ${renderAppearanceToggle()}
       </div>
-      ${isSettingsOpen ? renderSettingsLayer() : ""}
     </header>
     <div class="workspace-layout ${showStepNavigation ? "" : "no-rail"} ${isNavCollapsed ? "nav-collapsed" : ""}">
       ${showStepNavigation ? renderNavigation() : ""}
@@ -432,7 +429,6 @@ function navigateFromSteeringMaster(message) {
   }
 
   activeView = target.view;
-  isSettingsOpen = false;
   isFocusFullscreen = false;
   activeHostFullscreenTile = "";
 
@@ -460,7 +456,7 @@ function syncSteeringMasterFrame(frame) {
   postToSteeringMasterFrame(frame, { cmd: "setModel", model: vm.model });
   postToSteeringMasterFrame(frame, {
     cmd: "skin",
-    skin: activeSkin === "command-deck" ? "deck" : "workshop"
+    skin: activeColorMode === "black" ? "deck" : "workshop"
   });
   postToSteeringMasterFrame(frame, { cmd: "select", system: activeSteeringMasterSystem });
 }
@@ -783,7 +779,7 @@ function syncStep7Frame(frame) {
   postToStep7Frame(frame, { cmd: "loadModel", model });
   postToStep7Frame(frame, {
     cmd: "setSkin",
-    skin: activeSkin === "command-deck" ? "deck" : "workshop"
+    skin: activeColorMode === "black" ? "deck" : "workshop"
   });
   postToStep7Frame(frame, {
     cmd: "goto",
@@ -986,7 +982,7 @@ function ensureExportPanelFrame() {
   frame.dataset.exportPanelFrame = "true";
   frame.title = "VSM7 export panel";
   frame.setAttribute("aria-hidden", "true");
-  frame.src = "./design-previews/export-panel.html?host=vsm7&embed=1&v=20260729-steering-master-nav-audit";
+  frame.src = "./embedded/export-panel.html?host=vsm7&embed=1&v=20261028-app-relative-embeds";
   exportPanelFrame = frame;
   document.body.appendChild(frame);
   return frame;
@@ -1008,7 +1004,7 @@ function handleExportBridgeMessage(event) {
 
   if (message.evt === "ready") {
     exportPanelReady = true;
-    syncExportPanelSkin();
+    syncExportPanelAppearance();
     flushExportPanelQueue();
     return;
   }
@@ -1037,7 +1033,7 @@ function openExportPanel(stepId, tileId, scope = "tile", origin = "tile") {
 
   setExportPanelActive(true);
   postToExportPanel({ cmd: "setViewModel", stepId, tileId: normalizedTileId, vm });
-  syncExportPanelSkin();
+  syncExportPanelAppearance();
   postToExportPanel({ cmd: "open", stepId, tileId: normalizedTileId, scope, origin });
 }
 
@@ -1228,10 +1224,10 @@ function exportIntentFilename(intent, fallback, extension) {
   return value.toLowerCase().endsWith(`.${extension}`) ? value : `${value}.${extension}`;
 }
 
-function syncExportPanelSkin() {
+function syncExportPanelAppearance() {
   postToExportPanel({
     cmd: "setSkin",
-    skin: activeSkin === "command-deck" ? "deck" : "workshop"
+    skin: activeColorMode === "black" ? "deck" : "workshop"
   });
 }
 
@@ -1565,63 +1561,40 @@ function renderTopbarVsmButton() {
   `;
 }
 
-function renderSettingsTrigger() {
+function renderAppearanceToggle() {
+  const isBlack = activeColorMode === "black";
+  const nextMode = isBlack ? "white" : "black";
   return `
     <button
-      class="topbar-settings-button ${isSettingsOpen ? "is-active" : ""}"
-      data-action="toggle-settings"
-      title="Interface settings"
-      aria-label="Open interface settings"
-      aria-expanded="${isSettingsOpen ? "true" : "false"}"
+      class="ghost-button appearance-toggle"
+      data-action="toggle-color-mode"
+      title="Switch to ${nextMode} mode"
+      aria-label="Switch to ${nextMode} mode"
+      aria-pressed="${isBlack}"
     >
-      <span aria-hidden="true">⚙</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        ${isBlack
+          ? '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4L19 5"/>'
+          : '<path d="M20.5 13a8.5 8.5 0 0 1-9.5-9.5A8.5 8.5 0 1 0 20.5 13Z"/>'}
+      </svg>
+      <span>${isBlack ? "Black" : "White"}</span>
     </button>
   `;
 }
 
-function renderSettingsLayer() {
-  return `
-    <section class="settings-layer" aria-label="Interface settings">
-      <div class="settings-layer-header">
-        <div>
-          <p class="eyebrow">Interface settings</p>
-          <h2>Choose your VSM7 skin</h2>
-        </div>
-        <button class="icon-button" data-action="close-settings" title="Close" aria-label="Close interface settings">x</button>
-      </div>
-      <div class="skin-choice-grid" role="radiogroup" aria-label="VSM7 interface skin">
-        ${renderSkinChoice("workshop", "Workshop", "Bright, calm, facilitation-first")}
-        ${renderSkinChoice("command-deck", "Command Deck", "High-contrast, segmented, focused")}
-      </div>
-      <div class="settings-layer-footer">
-        <span>Applied across VSM7</span>
-        <button class="ghost-button small" data-action="reset-skin">Reset default</button>
-      </div>
-    </section>
-  `;
-}
-
-function renderSkinChoice(skin, name, description) {
-  const isActive = activeSkin === skin;
-
-  return `
-    <button
-      class="skin-choice skin-choice-${skin} ${isActive ? "is-active" : ""}"
-      data-action="select-skin"
-      data-skin="${skin}"
-      role="radio"
-      aria-checked="${isActive ? "true" : "false"}"
-    >
-      <span class="skin-preview" aria-hidden="true">
-        <span></span><span></span><span></span><span></span>
-      </span>
-      <span class="skin-choice-copy">
-        <strong>${name}</strong>
-        <small>${description}</small>
-      </span>
-      <span class="skin-choice-check" aria-hidden="true">${isActive ? "✓" : ""}</span>
-    </button>
-  `;
+function toggleColorMode(button) {
+  activeColorMode = applyColorModePreference(activeColorMode === "black" ? "white" : "black");
+  const skin = activeColorMode === "black" ? "deck" : "workshop";
+  // Appearance updates do not reload embedded workspaces or replace authored models.
+  document.querySelectorAll("[data-steering-master-frame]").forEach((frame) => {
+    postToSteeringMasterFrame(frame, { cmd: "skin", skin });
+  });
+  document.querySelectorAll("[data-step7-frame]").forEach((frame) => {
+    postToStep7Frame(frame, { cmd: "setSkin", skin });
+  });
+  syncExportPanelAppearance();
+  button.outerHTML = renderAppearanceToggle();
+  document.querySelector('[data-action="toggle-color-mode"]')?.focus({ preventScroll: true });
 }
 
 function renderBrandMark() {
@@ -1751,7 +1724,12 @@ function renderSaveIndicator() {
 
 function renderNavigation() {
   return `
-    <nav class="step-rail ${isNavCollapsed ? "is-collapsed" : ""}" aria-label="VSM steps">
+    <nav class="step-rail ${isNavCollapsed ? "is-collapsed" : ""}" aria-label="VSM steps" data-preserve-scroll="step-navigation">
+      <div class="step-rail-header">
+        <span class="step-rail-label">VSM steps</span>
+        ${renderNavigationToggle()}
+      </div>
+      <div class="step-list" id="vsm-step-list">
       ${stepDefinitions.map((step) => {
         const isComplete = step.id !== "overview" && isStepComplete(workspace, step.id);
         return `
@@ -1759,6 +1737,8 @@ function renderNavigation() {
           class="step-button ${step.id === "overview" ? "is-home" : ""} ${activeView === step.id ? "is-active" : ""} ${isComplete ? "is-complete" : ""}"
           data-action="navigate"
           data-view="${step.id}"
+          title="${escapeAttr(step.id === "overview" ? "Home" : navLabel(step))}"
+          ${activeView === step.id ? 'aria-current="page"' : ""}
           aria-label="${escapeAttr(step.id === "overview" ? "Home" : `${navLabel(step)}${isComplete ? ", done" : ""}`)}"
         >
           ${renderStepToken(step)}
@@ -1771,9 +1751,20 @@ function renderNavigation() {
         </button>
       `;
       }).join("")}
-      <button class="step-rail-toggle" data-action="toggle-nav">${isNavCollapsed ? "Expand" : "Collapse"}</button>
+      </div>
     </nav>
   `;
+}
+
+function renderNavigationToggle() {
+  const label = isNavCollapsed ? "Open" : "Close";
+  return `<button class="step-rail-toggle" data-action="toggle-nav"
+    aria-label="${label} step navigation" title="${label} step navigation"
+    aria-expanded="${!isNavCollapsed}" aria-controls="vsm-step-list">
+    <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="2.5" y="3" width="15" height="14" rx="2"/><path d="M7 3v14"/>
+      <path d="${isNavCollapsed ? "m10 7 3 3-3 3" : "m14 7-3 3 3 3"}"/>
+    </svg><span>${label}</span></button>`;
 }
 
 function renderStepToken(step) {
@@ -2038,35 +2029,18 @@ function handleAction(button) {
     return;
   }
 
-  if (action === "toggle-settings") {
-    isSettingsOpen = !isSettingsOpen;
-    render();
-    return;
-  }
-
-  if (action === "close-settings") {
-    isSettingsOpen = false;
-    render();
-    return;
-  }
-
-  if (action === "select-skin") {
-    activeSkin = applySkinPreference(button.dataset.skin);
-    syncExportPanelSkin();
-    render();
-    return;
-  }
-
-  if (action === "reset-skin") {
-    activeSkin = applySkinPreference(defaultSkin);
-    syncExportPanelSkin();
-    render();
+  if (action === "toggle-color-mode") {
+    toggleColorMode(button);
     return;
   }
 
   if (action === "toggle-nav") {
     isNavCollapsed = !isNavCollapsed;
-    render();
+    // Resize the chrome in place so active editor frames and workshop scroll stay intact.
+    button.closest(".workspace-layout")?.classList.toggle("nav-collapsed", isNavCollapsed);
+    button.closest(".step-rail")?.classList.toggle("is-collapsed", isNavCollapsed);
+    button.outerHTML = renderNavigationToggle();
+    app.querySelector('[data-action="toggle-nav"]')?.focus({ preventScroll: true });
     return;
   }
 
@@ -2116,8 +2090,7 @@ function handleAction(button) {
     if (activeView === "step7" && button.dataset.subpage) {
       activeStep7Substep = normalizeStep7Substep(button.dataset.subpage);
     }
-    isSettingsOpen = false;
-    if (!supportsHostTileFullscreen(activeView)) {
+      if (!supportsHostTileFullscreen(activeView)) {
       isFocusFullscreen = false;
       activeHostFullscreenTile = "";
     }
@@ -2130,16 +2103,14 @@ function handleAction(button) {
     activeStep1FullscreenTile = clampStep1FullscreenTile(button.dataset.tile, getStep1FullscreenTileCount(workspace, activeStep1Subpage));
     activeHostFullscreenTile = "";
     isFocusFullscreen = true;
-    isSettingsOpen = false;
-    render();
+      render();
     return;
   }
 
   if (action === "host-tile-fullscreen-open" || action === "step4-tile-fullscreen-open") {
     activeHostFullscreenTile = button.dataset.tile || "contribution-matrix";
     isFocusFullscreen = true;
-    isSettingsOpen = false;
-    render();
+      render();
     return;
   }
 
@@ -2652,7 +2623,6 @@ function openRenameDialog(button, type) {
     currentName,
     draftName: currentName
   };
-  isSettingsOpen = false;
   render();
 
   window.requestAnimationFrame(() => {

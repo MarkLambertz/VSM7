@@ -167,7 +167,7 @@ export function renderStep6Channels(workspace, options = {}) {
       <div class="channel-variety-frame-shell">
         <iframe
           class="channel-variety-frame"
-          src="./channel-variety-check.html?vsm=/vsm.html%3Fv%3D20260729-steering-master-nav-audit&assetVersion=20260729-steering-master-nav-audit"
+          src="./channel-variety-check.html?vsm=./vsm.html%3Fv%3D20261028-app-relative-embeds&assetVersion=20261028-app-relative-embeds"
           title="Communication variety checks for ${escapeAttr(context.meta.sifName)}"
           allow="fullscreen"
           sandbox="allow-scripts allow-same-origin allow-downloads"

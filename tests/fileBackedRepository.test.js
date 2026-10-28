@@ -22,7 +22,7 @@ function installLocalStorageMock() {
   return store;
 }
 
-function installFileApiMock({ available = true } = {}) {
+function installFileApiMock({ available = true, pageUrl = "https://vsm7.example/", apiBase = "./api/storage" } = {}) {
   const state = {
     activeProjectId: "",
     projects: [],
@@ -42,13 +42,18 @@ function installFileApiMock({ available = true } = {}) {
     setRequestHeader() {}
 
     send(body) {
-      requests.push({ method: this.method, url: this.url, body });
+      const resolvedUrl = new URL(this.url, pageUrl);
+      requests.push({ method: this.method, url: this.url, resolvedUrl: resolvedUrl.href, body });
       if (!available) {
         throw new Error("server unavailable");
       }
 
       const payload = body ? JSON.parse(body) : null;
-      const response = handleRequest(this.method, this.url, payload, state);
+      const resolvedApiBase = new URL(apiBase, pageUrl).href.replace(/\/$/, "");
+      const route = resolvedUrl.href.startsWith(`${resolvedApiBase}/`)
+        ? `/api/storage${resolvedUrl.href.slice(resolvedApiBase.length)}`
+        : resolvedUrl.href;
+      const response = handleRequest(this.method, route, payload, state);
       this.status = response.status || 200;
       this.responseText = JSON.stringify(response.body || {});
     }
@@ -111,6 +116,10 @@ function handleRequest(method, url, payload, state) {
     return { body: { ok: Boolean(workspace) } };
   }
 
+  if (method === "POST" && ["/api/storage/rename-organization", "/api/storage/delete-project", "/api/storage/delete-organization"].includes(url)) {
+    return { body: { ok: true } };
+  }
+
   return { status: 404, body: { error: "missing mock route" } };
 }
 
@@ -153,4 +162,70 @@ test("workspace repository uses file API and migrates existing browser projects"
     "Browser project",
     "Renamed file project"
   ]);
+});
+
+test("all default storage API requests resolve within the application directory", () => {
+  for (const pageUrl of [
+    "https://vsm7.example/",
+    "https://vsm7.example/vsm7/",
+    "https://vsm7.example/vsm7/index.html?v=build#/step7/7.4",
+    "https://vsm7.example/bpc/tools/vsm7/?v=build#/step6/e2e"
+  ]) {
+    installLocalStorageMock();
+    const { requests } = installFileApiMock({ pageUrl });
+    const repository = createWorkspaceRepository();
+    const workspace = createWorkspace();
+
+    assert.equal(repository.mode, "file", pageUrl);
+    repository.save(workspace);
+    repository.load();
+    repository.loadProject(workspace.project.id);
+    repository.listProjects();
+    repository.renameProject(workspace.project.id, "Subpath project");
+    repository.renameOrganization(workspace.organization.id, "Subpath organization");
+    repository.deleteProject(workspace.project.id);
+    repository.deleteOrganization(workspace.organization.id);
+
+    const apiBaseUrl = new URL("./api/storage/", pageUrl).href;
+    assert.equal(requests.length, 10, pageUrl);
+    for (const request of requests) {
+      assert.match(request.url, /^\.\/api\/storage\//, request.url);
+      assert.ok(request.resolvedUrl.startsWith(apiBaseUrl), request.resolvedUrl);
+    }
+    assert.deepEqual(requests.map(({ resolvedUrl }) => new URL(resolvedUrl).pathname.split("/").at(-1)), [
+      "health", "projects", "workspace", "workspace", "project", "projects",
+      "rename-project", "rename-organization", "delete-project", "delete-organization"
+    ]);
+  }
+});
+
+test("storage API remains optional when an application is hosted under a subpath", () => {
+  installLocalStorageMock();
+  const { requests } = installFileApiMock({
+    available: false,
+    pageUrl: "https://vsm7.example/vsm7/"
+  });
+  const repository = createWorkspaceRepository();
+  const workspace = createWorkspace();
+
+  repository.save(workspace);
+
+  assert.equal(repository.mode, "browser");
+  assert.equal(repository.load().project.id, workspace.project.id);
+  assert.deepEqual(requests.map(({ resolvedUrl }) => resolvedUrl), [
+    "https://vsm7.example/vsm7/api/storage/health"
+  ]);
+});
+
+test("an explicitly configured storage API base keeps its existing URL semantics", () => {
+  for (const apiBase of ["./custom/storage", "/shared/storage", "https://storage.example/workspaces"]) {
+    installLocalStorageMock();
+    const pageUrl = "https://vsm7.example/vsm7/";
+    const { requests } = installFileApiMock({ pageUrl, apiBase });
+    const repository = createWorkspaceRepository({ apiBase });
+
+    assert.equal(repository.mode, "file", apiBase);
+    assert.equal(requests[0].resolvedUrl, new URL(`${apiBase}/health`, pageUrl).href);
+    assert.equal(requests[1].resolvedUrl, new URL(`${apiBase}/projects`, pageUrl).href);
+  }
 });

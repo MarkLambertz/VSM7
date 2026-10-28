@@ -1,6 +1,6 @@
 import { createAllocation, formatSctNumber, getRecursionOrganizations } from "../../domain/vsm.js?v=20260729-steering-master-nav-audit";
 import { emptyState, escapeAttr, escapeHtml, fullscreenTile, stepExportButton, stepHeader, tileExportButton, tileFullscreenButton } from "../shared/renderHelpers.js?v=20260729-steering-master-nav-audit";
-import { filterScts, renderSctFilters } from "./step3.js?v=20260729-steering-master-nav-audit";
+import { filterScts, renderSctFilters } from "./step3.js?v=20261028-suite-design";
 
 export const step4DecisionGuide = [
   {

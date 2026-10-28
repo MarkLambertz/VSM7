@@ -14,9 +14,9 @@ export function renderProjectManagement(workspace, projects, selectedOrganizatio
   return `
     <section class="view-header">
       <div>
-        <p class="eyebrow">Workspace manager</p>
+        <p class="eyebrow">Your workspace</p>
         <h1>Organizations & Projects</h1>
-        <p>Choose the organization first, then create, open, rename, or remove the projects that belong to it.</p>
+        <p>Select an organization to find its projects or start a new workshop.</p>
       </div>
       <div class="header-actions">
         <button class="ghost-button" data-action="add-organization">New Organization</button>
@@ -94,7 +94,7 @@ function renderProjectCard(project, activeProjectId) {
     <article class="project-card ${isActive ? "is-active" : ""}">
       <div class="project-card-main">
         <div>
-          <p class="eyebrow">${isActive ? "Open project" : "Project"}</p>
+          <p class="eyebrow">${isActive ? "Current project" : "Project"}</p>
           <h3>${escapeHtml(project.name || "Untitled project")}</h3>
         </div>
         <div class="project-meta">
@@ -128,6 +128,7 @@ function actionButton(action, label, icon, dataset, isPrimary = false) {
   return `
     <button class="manager-icon-button ${isPrimary ? "is-primary" : ""}" data-action="${escapeAttr(action)}" ${attributes} title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}">
       <span class="manager-icon manager-icon-${escapeAttr(icon)}" aria-hidden="true"></span>
+      ${isPrimary ? `<span class="manager-action-label">${escapeHtml(label)}</span>` : ""}
     </button>
   `;
 }

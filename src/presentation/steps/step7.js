@@ -13,7 +13,7 @@ export function renderStep7() {
       <iframe
         class="step7-claude-frame"
         data-step7-frame
-        src="./design-previews/step7-ux.html?host=vsm7&v=20260729-step7-starting-tile"
+        src="./embedded/step7-ux.html?host=vsm7&v=20261028-app-relative-embeds"
         title="Step VII Representation editor"
         allow="fullscreen"
       ></iframe>

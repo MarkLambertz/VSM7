@@ -71,7 +71,7 @@ test('full screen: button + F request it, and the host is notified', async ({ pa
 });
 
 test('embedded VSM: selecting a loop highlights its channel in the vsm.html iframe', async ({ page }) => {
-  await expect(page.locator('#vsmframe')).toHaveAttribute('src', /vsm\?pane=hidden/);
+  await expect(page.locator('#vsmframe')).toHaveAttribute('src', /vsm\.html\?pane=hidden/);
   // wait for the embedded vsm.html to render its channels
   await page.frameLocator('#vsmframe').locator('[data-lyr="b"]').first().waitFor({ timeout: 10000 });
   // select the audit loop → embedded diagram should dim the command channel, keep audit bright
