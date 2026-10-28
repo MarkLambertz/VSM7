@@ -286,9 +286,14 @@ body[data-overlay="vsm"] .node[data-sys]{border-left-width:6px}
 
 
 /* ---- add-vessel modal ---- */
-.modal-layer{display:none;position:fixed;inset:0;z-index:80;align-items:flex-start;justify-content:center;background:rgba(15,25,30,.42);padding:6vh 20px}
+body.has-vessel-dialog{overflow:hidden}
+.modal-layer{display:none;position:fixed;inset:0;z-index:400;align-items:center;justify-content:center;background:rgba(15,25,30,.42);padding:16px;overflow:hidden;overscroll-behavior:contain}
 .modal-layer.on{display:flex}
-.modal{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 56px rgba(10,20,25,.34);width:min(560px,96vw);max-height:88vh;overflow:auto}
+.modal{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 56px rgba(10,20,25,.34);width:min(560px,100%);max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);min-height:0;overflow:hidden}
+.modal .m-head,.modal .m-foot{flex-shrink:0}
+.modal .m-body{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.modal .m-foot{flex-wrap:wrap}
+.modal .m-foot .row{margin-left:auto}
 .m-head{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
 .m-head b{font-size:16px}
 .m-body{padding:16px 20px;display:flex;flex-direction:column;gap:13px}
@@ -1439,7 +1444,9 @@ function vesselDupes(name){
   return VESSELS.filter(v=>{const vn=v.name.toLowerCase();
     return vn===n || vn.includes(n) || n.includes(vn) || words.some(w=>vn.includes(w));});
 }
+let vesselDialogReturn=null;
 function openVesselDialog(type){
+  vesselDialogReturn={focus:document.activeElement,scroll:captureScrollState()};
   const typeBtns=[['role','Role'],['function','Function'],['meeting','Meeting']].map(([t,l])=>`<button data-act="dtype" data-t="${t}" class="${t===type?'on':''}">${l}</button>`).join('');
   const scopeOpts=scopeOptions(defaultScopeUnitId());
   const m=document.getElementById('modal');
@@ -1462,7 +1469,9 @@ function openVesselDialog(type){
       <div class="row"><button class="btn" data-act="dclose">Cancel</button><button class="btn primary" data-act="dcreate">Create vessel</button></div></div>
   </div>`;
   m.classList.add('on');
-  const n=document.getElementById('dname'); if(n) n.focus();
+  document.body.classList.add('has-vessel-dialog');
+  emit('vesselDialog',{open:true});   // UI only: the host presents the same editor above its chrome.
+  const n=document.getElementById('dname'); if(n) n.focus({preventScroll:true});
 }
 function defaultScopeUnitId(){
   return ((UNITS.find(u=>u&&u.id===CTX_META.sif)||{}).id)
@@ -1495,7 +1504,21 @@ function createVessel(){
   closeModal();
   state.step='7.1'; render();
 }
-function closeModal(){const m=document.getElementById('modal'); m.classList.remove('on'); m.innerHTML='';}
+function closeModal(){
+  const m=document.getElementById('modal'); if(!m.classList.contains('on'))return;
+  const previous=vesselDialogReturn; vesselDialogReturn=null;
+  m.classList.remove('on'); m.innerHTML='';
+  document.body.classList.remove('has-vessel-dialog');
+  emit('vesselDialog',{open:false});
+  if(previous){
+    applyScrollState(previous.scroll);
+    requestAnimationFrame(()=>{
+      if(vesselDialogReturn)return;
+      applyScrollState(previous.scroll);
+      if(previous.focus&&previous.focus.isConnected)previous.focus.focus({preventScroll:true});
+    });
+  }
+}
 
 function step7Skin(){return document.body.dataset.skin==='deck'?'deck':'workshop';}
 function sendSkinToEmbeddedFrame(frame,skin=step7Skin()){
@@ -1608,7 +1631,14 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('keydown',e=>{
   const _mo=document.getElementById('modal'); const modalOpen=!!(_mo&&_mo.classList.contains('on'));
-  if(e.key==='Escape'&&modalOpen){closeModal();return;}
+  if(e.key==='Escape'&&modalOpen){e.preventDefault();closeModal();return;}
+  if(e.key==='Tab'&&modalOpen){
+    const controls=[..._mo.querySelectorAll('button,input,select,textarea,[tabindex]')].filter(el=>!el.disabled&&el.tabIndex>=0&&el.getClientRects().length);
+    const first=controls[0],last=controls[controls.length-1],active=document.activeElement;
+    if(e.shiftKey&&(active===first||!_mo.contains(active))){e.preventDefault();last&&last.focus();}
+    else if(!e.shiftKey&&(active===last||!_mo.contains(active))){e.preventDefault();first&&first.focus();}
+    return;
+  }
   if(e.key==='Escape'&&state.tileFs){exitTileFs();return;}   // overlay-fallback exit (native fullscreen Esc arrives via fullscreenchange)
   if((e.key==='f'||e.key==='F')&&!modalOpen&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!/^(input|textarea|select)$/i.test(e.target.tagName)){e.preventDefault();toggleFs();}
 });
@@ -1616,7 +1646,7 @@ document.addEventListener('keydown',e=>{
 function isFs(){return !!(document.fullscreenElement||document.webkitFullscreenElement);}
 function toggleFs(){ try{ let p; if(isFs()){const fn=document.exitFullscreen||document.webkitExitFullscreen; p=fn&&fn.call(document);} else {const el=document.documentElement, fn=el.requestFullscreen||el.webkitRequestFullscreen; p=fn&&fn.call(el);} if(p&&p.catch)p.catch(()=>{}); }catch(_){} }
 function updFsBtn(){const b=document.getElementById('fsBtn'); if(b)b.textContent=isFs()?'⛶ Exit full screen':'⛶ Full screen';}
-['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{updFsBtn();if(!isFs()&&state.tileFs)exitTileFs();emit('fullscreenchange',{fullscreen:isFs(),tile:state.tileFs});}));
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{updFsBtn();if(!isFs()&&state.tileFs)exitTileFs();emit('fullscreenchange',{fullscreen:isFs(),tile:state.tileFs});if(document.getElementById('modal').classList.contains('on'))emit('vesselDialog',{open:true});}));
 
 /* ============================ BRIDGE · window.STEP7 (DRAFT — house pattern, see STEP7-REPRESENTATION-BRIEFING §bridge) ============================ */
 const inFrame=!!(window.parent&&window.parent!==window);

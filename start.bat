@@ -6,7 +6,7 @@ cd /d "%~dp0"
 set "PORT=4173"
 set "HOST=localhost"
 set "URL=http://%HOST%:%PORT%/"
-set "VERSION=20261028-left-navigation"
+set "VERSION=20261028-step7-dialog"
 set "EXPECTED_TITLE=VSM7 Workshop Workspace"
 set "SERVER_SCRIPT=scripts\vsm7_file_server.py"
 

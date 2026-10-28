@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import { resolve } from 'node:path'
 import { cpSync, mkdirSync } from 'node:fs'
 
-const assetVersion = '20261028-left-navigation'
+const assetVersion = '20261028-step7-dialog'
 
 // Standalone documents own their inline scripts and iframe bridges. Copy them
 // verbatim rather than bundling them as main-page code.

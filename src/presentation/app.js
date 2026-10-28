@@ -79,7 +79,7 @@ import { filterScts, normalizeStep3Subpage, renderStep3, renderStep3FullscreenTi
 import { renderStep4, renderStep4FullscreenTile } from "./steps/step4.js?v=20261028-suite-design";
 import { renderStep5, renderStep5FullscreenTile } from "./steps/step5.js?v=20260729-steering-master-nav-audit";
 import { getActiveStep6SctId, renderStep6, renderStep6FullscreenTile } from "./steps/step6.js?v=20261028-app-relative-embeds";
-import { renderStep7 } from "./steps/step7.js?v=20261028-app-relative-embeds";
+import { renderStep7 } from "./steps/step7.js?v=20261028-step7-dialog";
 import { renderVsmStandalone } from "./vsmStandalone.js?v=20261028-app-relative-embeds";
 import {
   buildVsmHostTree,
@@ -115,6 +115,7 @@ let activeSteeringMasterSystem = null;
 let activeSteeringMasterView = "2d";
 let isSteeringMasterFullscreen = false;
 let pendingStep7Selection = null;
+let step7DialogPresentation = null;
 let renameTarget = null;
 let isNavCollapsed = window.matchMedia("(max-width: 680px)").matches;
 let activeColorMode = applyColorModePreference(readColorModePreference());
@@ -285,6 +286,7 @@ function syncRouteHashToState() {
 }
 
 function render() {
+  closeStep7DialogPresentation(false);
   syncAllocations(workspace);
   const taskIds = new Set(workspace.step3.successCriticalTasks.map((task) => task.id));
   selectedSctMergeIds = new Set([...selectedSctMergeIds].filter((taskId) => taskIds.has(taskId)));
@@ -606,8 +608,42 @@ function syncVisibleStep7Frames() {
     }
 
     frame.dataset.step7HostWired = "true";
-    frame.addEventListener("load", () => syncStep7Frame(frame));
+    frame.addEventListener("load", () => {
+      closeStep7DialogPresentation();
+      syncStep7Frame(frame);
+    });
   });
+}
+
+// A dialog must use the browser viewport, not the partly visible editor's iframe.
+// Keep the same mounted editor and reserve its place while presenting the dialog.
+function openStep7DialogPresentation(frame) {
+  if (step7DialogPresentation?.frame === frame) return;
+  const fullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fullscreen?.contains(frame)) return;
+  closeStep7DialogPresentation();
+  const host = frame.closest(".step7-claude-host");
+  if (!host) return;
+  step7DialogPresentation = {
+    frame,
+    host,
+    minHeight: host.style.minHeight,
+    x: window.scrollX,
+    y: window.scrollY
+  };
+  host.style.minHeight = `${host.getBoundingClientRect().height}px`;
+  frame.classList.add("is-dialog-presented");
+  document.documentElement.classList.add("has-step7-dialog");
+}
+
+function closeStep7DialogPresentation(restoreViewport = true) {
+  const presentation = step7DialogPresentation;
+  if (!presentation) return;
+  step7DialogPresentation = null;
+  presentation.frame.classList.remove("is-dialog-presented");
+  presentation.host.style.minHeight = presentation.minHeight;
+  document.documentElement.classList.remove("has-step7-dialog");
+  if (restoreViewport) window.scrollTo(presentation.x, presentation.y);
 }
 
 function handleStep7BridgeMessage(event) {
@@ -615,6 +651,12 @@ function handleStep7BridgeMessage(event) {
   const message = event.data;
 
   if (!frame || !isTrustedFrameMessage(event, frame) || !message || typeof message !== "object" || !message.evt) {
+    return;
+  }
+
+  if (message.evt === "vesselDialog" && typeof message.open === "boolean") {
+    if (message.open) openStep7DialogPresentation(frame);
+    else if (step7DialogPresentation?.frame === frame) closeStep7DialogPresentation();
     return;
   }
 

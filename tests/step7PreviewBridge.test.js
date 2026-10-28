@@ -74,7 +74,7 @@ test("Step VII host loads the production editor beneath the application path", (
 
   assert.equal(url.pathname, "/vsm7/embedded/step7-ux.html");
   assert.equal(url.searchParams.get("host"), "vsm7");
-  assert.equal(url.searchParams.get("v"), "20261028-app-relative-embeds");
+  assert.equal(url.searchParams.get("v"), "20261028-step7-dialog");
   assert.doesNotMatch(source, /design-previews|localhost|127\.0\.0\.1/);
 });
 

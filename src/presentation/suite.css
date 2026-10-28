@@ -555,3 +555,17 @@ html[data-mode="black"] .score-cell.score-high, html[data-mode="black"] .score-c
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0s !important; animation-duration: 0s !important; }
 }
+
+/* Step VII dialogs use the visible browser viewport while retaining the editor instance. */
+html.has-step7-dialog { overflow: hidden; scrollbar-gutter: stable; }
+.step7-claude-frame.is-dialog-presented {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
